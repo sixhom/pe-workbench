@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>小学四年级体育工作台</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- 侧边栏遮罩 -->
+        <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()"></div>
+
+        <!-- 左侧导航栏 -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">🏟️</div>
+                <div class="title">
+                    <h1>体育工作台</h1>
+                    <span class="subtitle">小学四年级专用</span>
+                </div>
+            </div>
+            <ul class="nav-list">
+                <li class="nav-item active" data-page="home">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-text">首页</span>
+                </li>
+                <li class="nav-item" data-page="roster">
+                    <span class="nav-icon">👥</span>
+                    <span class="nav-text">学生花名册</span>
+                </li>
+                <li class="nav-item" data-page="analysis">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">体测数据管理</span>
+                </li>
+                <li class="nav-item" data-page="lessons">
+                    <span class="nav-icon">📚</span>
+                    <span class="nav-text">备课教案库</span>
+                </li>
+                <li class="nav-item" data-page="safety">
+                    <span class="nav-icon">🛡️</span>
+                    <span class="nav-text">安全应急预案</span>
+                </li>
+            </ul>
+            <div class="sidebar-footer">
+                <label class="import-btn" title="导入Excel体测表">
+                    📂 导入Excel
+                    <input type="file" id="excelImport" accept=".xlsx,.xls" style="display:none">
+                </label>
+            </div>
+        </nav>
+
+        <!-- 主内容区 -->
+        <main class="main-content" id="mainContent">
+            <!-- 手机端顶部导航 -->
+            <div class="mobile-header" id="mobileHeader">
+                <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="菜单">☰</button>
+                <span class="mobile-page-title" id="mobilePageTitle">工作台首页</span>
+            </div>
+
+            <!-- 首页 -->
+            <div class="page active" id="page-home">
+                <div class="page-header">
+                    <h2>工作台首页</h2>
+                    <div class="header-stats" id="homeStats"></div>
+                </div>
+
+                <div class="home-section">
+                    <h3 class="section-title">📋 常规工作</h3>
+                    <div class="card-grid" id="routineCards"></div>
+                </div>
+
+                <div class="home-section">
+                    <h3 class="section-title">⭐ 特色工作</h3>
+                    <div class="card-grid" id="featureCards"></div>
+                </div>
+            </div>
+
+            <!-- 学生花名册 -->
+            <div class="page" id="page-roster">
+                <div class="page-header">
+                    <h2>学生花名册管理</h2>
+                    <div class="header-actions">
+                        <button class="btn btn-sm btn-outline" onclick="openEntryModal()">✏️ 录入数据</button>
+                        <button class="btn btn-sm" onclick="exportRoster()">📥 导出</button>
+                    </div>
+                </div>
+                <div class="toolbar">
+                    <div class="class-tabs" id="classTabs"></div>
+                    <div class="filter-bar">
+                        <select id="rosterGenderFilter" class="filter-select">
+                            <option value="">全部性别</option>
+                            <option value="男">男生</option>
+                            <option value="女">女生</option>
+                        </select>
+                        <select id="rosterLevelFilter" class="filter-select">
+                            <option value="">全部体能水平</option>
+                            <option value="优秀">体能优秀</option>
+                            <option value="良好">体能良好</option>
+                            <option value="及格">体能及格</option>
+                            <option value="薄弱">体能薄弱</option>
+                        </select>
+                        <input type="text" id="rosterSearch" class="search-input" placeholder="搜索学生姓名...">
+                    </div>
+                </div>
+                <div class="roster-summary" id="rosterSummary"></div>
+                <div class="table-wrapper">
+                    <table class="data-table" id="rosterTable"></table>
+                </div>
+            </div>
+
+            <!-- 体测数据分析 -->
+            <div class="page" id="page-analysis">
+                <div class="page-header">
+                    <h2>体测成绩分析表</h2>
+                    <div class="header-actions">
+                        <button class="btn btn-sm btn-outline" onclick="openEntryModal()">✏️ 录入数据</button>
+                        <select id="analysisClass" class="filter-select"></select>
+                    </div>
+                </div>
+                <div class="analysis-tabs">
+                    <button class="tab-btn active" data-atab="overview">班级概览</button>
+                    <button class="tab-btn" data-atab="project">项目分析</button>
+                    <button class="tab-btn" data-atab="student">学生详情</button>
+                    <button class="tab-btn" data-atab="warning">薄弱预警</button>
+                </div>
+                <div class="tab-content active" id="atab-overview">
+                    <div class="stat-cards" id="overviewStats"></div>
+                    <div class="chart-row">
+                        <div class="chart-box"><canvas id="chartRun50"></canvas></div>
+                        <div class="chart-box"><canvas id="chartSkipRope"></canvas></div>
+                    </div>
+                    <div class="chart-row">
+                        <div class="chart-box"><canvas id="chartSitReach"></canvas></div>
+                        <div class="chart-box"><canvas id="chartSitUps"></canvas></div>
+                    </div>
+                </div>
+                <div class="tab-content" id="atab-project">
+                    <div class="project-selector" id="projectSelector"></div>
+                    <div class="chart-box large"><canvas id="chartProject"></canvas></div>
+                    <div class="project-stats" id="projectStats"></div>
+                </div>
+                <div class="tab-content" id="atab-student">
+                    <div class="student-selector">
+                        <select id="studentSelect" class="filter-select"></select>
+                    </div>
+                    <div class="student-detail" id="studentDetail"></div>
+                </div>
+                <div class="tab-content" id="atab-warning">
+                    <div id="warningContent"></div>
+                </div>
+            </div>
+
+            <!-- 备课教案库 -->
+            <div class="page" id="page-lessons">
+                <div class="page-header">
+                    <h2>备课教案库</h2>
+                </div>
+                <div class="lesson-filters">
+                    <div class="level-tabs" id="levelTabs"></div>
+                    <input type="text" id="lessonSearch" class="search-input" placeholder="搜索教案...">
+                </div>
+                <div class="lesson-grid" id="lessonGrid"></div>
+            </div>
+
+            <!-- 安全应急预案 -->
+            <div class="page" id="page-safety">
+                <div class="page-header">
+                    <h2>课堂安全与应急预案</h2>
+                </div>
+                <div class="safety-grid" id="safetyGrid"></div>
+            </div>
+
+            <!-- 弹出层：学生详情 -->
+            <div class="modal-overlay" id="studentModal" onclick="closeModal('studentModal')">
+                <div class="modal" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3 id="modalStudentName">学生详情</h3>
+                        <button class="modal-close" onclick="closeModal('studentModal')">✕</button>
+                    </div>
+                    <div class="modal-body" id="modalStudentBody"></div>
+                </div>
+            </div>
+
+            <!-- 弹出层：教案详情 -->
+            <div class="modal-overlay" id="lessonModal" onclick="closeModal('lessonModal')">
+                <div class="modal modal-large" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3 id="modalLessonTitle">教案详情</h3>
+                        <button class="modal-close" onclick="closeModal('lessonModal')">✕</button>
+                    </div>
+                    <div class="modal-body" id="modalLessonBody"></div>
+                </div>
+            </div>
+
+            <!-- 弹出层：卡片详情 -->
+            <div class="modal-overlay" id="cardModal" onclick="closeModal('cardModal')">
+                <div class="modal" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3 id="cardModalTitle">详情</h3>
+                        <button class="modal-close" onclick="closeModal('cardModal')">✕</button>
+                    </div>
+                    <div class="modal-body" id="cardModalBody"></div>
+                </div>
+            </div>
+
+            <!-- 弹出层：数据录入 -->
+            <div class="modal-overlay entry-modal" id="entryModal" onclick="closeModal('entryModal')">
+                <div class="modal" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>✏️ 录入新数据</h3>
+                        <button class="modal-close" onclick="closeModal('entryModal')">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        <form class="entry-form" onsubmit="saveEntryData(event)">
+                            <!-- 班级选择 -->
+                            <div>
+                                <label>📋 选择班级</label>
+                                <select id="entryClass" onchange="onEntryClassChange()"></select>
+                            </div>
+
+                            <!-- 搜索已有学生 -->
+                            <div>
+                                <label>🔍 选择学生</label>
+                                <div class="student-search-wrap">
+                                    <input type="text" id="entryStudentSearch" placeholder="输入姓名搜索..." autocomplete="off" oninput="onStudentSearch()" onfocus="onStudentSearch()">
+                                    <div class="student-search-results" id="studentSearchResults"></div>
+                                </div>
+                            </div>
+
+                            <!-- 新增学生 -->
+                            <div class="entry-divider">或者 新增学生</div>
+                            <div class="entry-new-student">
+                                <input type="text" id="entryNewName" placeholder="输入新学生姓名" oninput="onNewStudentInput()">
+                                <select id="entryNewGender">
+                                    <option value="男">男生</option>
+                                    <option value="女">女生</option>
+                                </select>
+                            </div>
+
+                            <!-- 已选学生提示 -->
+                            <div id="selectedStudentHint" style="display:none;background:var(--primary-bg);padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;color:var(--primary-dark);"></div>
+
+                            <!-- 体测数据 -->
+                            <div>
+                                <label>📊 体测成绩</label>
+                                <div class="entry-score-grid">
+                                    <div class="entry-score-item">
+                                        <div class="score-icon">🏃</div>
+                                        <div class="score-name">50米跑</div>
+                                        <input type="number" id="entryRun50" placeholder="如 9.5" step="0.1" min="0" max="30">
+                                        <div class="score-unit">秒</div>
+                                    </div>
+                                    <div class="entry-score-item">
+                                        <div class="score-icon">🪢</div>
+                                        <div class="score-name">1分钟跳绳</div>
+                                        <input type="number" id="entrySkipRope" placeholder="如 120" step="1" min="0" max="300">
+                                        <div class="score-unit">次</div>
+                                    </div>
+                                    <div class="entry-score-item">
+                                        <div class="score-icon">🤸</div>
+                                        <div class="score-name">坐位体前屈</div>
+                                        <input type="number" id="entrySitReach" placeholder="如 10.5" step="0.1" min="-30" max="40">
+                                        <div class="score-unit">厘米</div>
+                                    </div>
+                                    <div class="entry-score-item">
+                                        <div class="score-icon">💪</div>
+                                        <div class="score-name">仰卧起坐</div>
+                                        <input type="number" id="entrySitUps" placeholder="如 35" step="1" min="0" max="80">
+                                        <div class="score-unit">次/分钟</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 操作按钮 -->
+                            <div class="entry-actions">
+                                <button type="button" class="btn btn-cancel" onclick="closeModal('entryModal')">取消</button>
+                                <button type="submit" class="btn btn-save">💾 保存数据</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Toast 提示 -->
+            <div class="toast" id="toast"></div>
+        </main>
+
+        <!-- 手机端底部导航栏 -->
+        <nav class="bottom-nav" id="bottomNav">
+            <button class="bottom-nav-item active" data-page="home">
+                <span class="bn-icon">🏠</span>首页
+            </button>
+            <button class="bottom-nav-item" data-page="roster">
+                <span class="bn-icon">👥</span>花名册
+            </button>
+            <button class="bottom-nav-item" data-page="analysis">
+                <span class="bn-icon">📊</span>体测
+            </button>
+            <button class="bottom-nav-item" data-page="lessons">
+                <span class="bn-icon">📚</span>教案
+            </button>
+            <button class="bottom-nav-item" data-page="safety">
+                <span class="bn-icon">🛡️</span>安全
+            </button>
+        </nav>
+    </div>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+
+    <!-- 手机端浮动录入按钮 -->
+    <button class="fab-btn" onclick="openEntryModal()" title="录入新数据">✏️</button>
+</body>
+</html>
