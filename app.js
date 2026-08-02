@@ -361,6 +361,8 @@ function showStudentDetail(cls, no) {
             <h4>体能短板分析</h4>
             <div class="detail-content">${getWeaknessAnalysis(student)}</div>
         </div>
+        
+        ${(student.history && student.history.length > 0) ? renderHistoryTrend(student) : ''}
     `;
     
     document.getElementById('modalStudentBody').innerHTML = body;
@@ -384,6 +386,123 @@ function getWeaknessAnalysis(student) {
         text += '可鼓励学生在优势项目上继续提升，树立运动信心。';
     }
     return text;
+}
+
+// ===== History Trend =====
+function renderHistoryTrend(student) {
+    const items = ['run50', 'skipRope', 'sitReach', 'sitUps'];
+    const history = student.history || [];
+    
+    // Build all records (history + current)
+    const allRecords = [...history];
+    const now = new Date();
+    const dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    allRecords.push({
+        date: dateStr,
+        run50: student.run50,
+        skipRope: student.skipRope,
+        sitReach: student.sitReach,
+        sitUps: student.sitUps,
+    });
+    
+    if (allRecords.length < 2) return '';
+    
+    // Calculate changes between consecutive records
+    const getChangeIcon = (item, oldVal, newVal, lowerIsBetter) => {
+        if (oldVal === null || oldVal === undefined || newVal === null || newVal === undefined) return '';
+        if (oldVal === newVal) return '<span style="color:#9E9E9E;">→</span>';
+        const improved = lowerIsBetter ? newVal < oldVal : newVal > oldVal;
+        return improved 
+            ? '<span style="color:#4CAF50;font-weight:700;">↑' + Math.abs(newVal - oldVal).toFixed(1) + '</span>'
+            : '<span style="color:#f44336;font-weight:700;">↓' + Math.abs(newVal - oldVal).toFixed(1) + '</span>';
+    };
+    
+    let html = `
+        <div class="detail-section">
+            <h4>📈 成绩趋势对比（共${allRecords.length}次记录）</h4>
+            <div style="overflow-x:auto;">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th style="white-space:nowrap;">日期</th>
+                            ${items.map(i => `<th style="text-align:center;">${TEST_ITEMS[i].icon}<br>${TEST_ITEMS[i].name}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+    
+    allRecords.forEach((rec, idx) => {
+        const isLatest = idx === allRecords.length - 1;
+        const prev = idx > 0 ? allRecords[idx - 1] : null;
+        
+        html += `<tr style="${isLatest ? 'background:#E3F2FD;font-weight:600;' : ''}">`;
+        html += `<td style="white-space:nowrap;">${rec.date}${isLatest ? '<br><span style="font-size:10px;color:#2196F3;">最新</span>' : ''}</td>`;
+        
+        items.forEach(item => {
+            const val = rec[item];
+            const lowerIsBetter = TEST_ITEMS[item]?.lowerIsBetter;
+            const changeIcon = prev ? getChangeIcon(item, prev[item], val, lowerIsBetter) : '';
+            const level = getScoreLevel(item, val, student.gender);
+            
+            html += `<td style="text-align:center;">`;
+            if (val !== null && val !== undefined) {
+                html += `${val}<span style="font-size:11px;color:var(--gray-400);"> ${TEST_ITEMS[item].unit}</span>`;
+                html += `<br><span class="badge badge-${level}" style="font-size:10px;">${LEVEL_LABELS[level]}</span>`;
+            } else {
+                html += '<span style="color:var(--gray-400);">—</span>';
+            }
+            if (changeIcon) {
+                html += `<br><span style="font-size:11px;">${changeIcon}</span>`;
+            }
+            html += `</td>`;
+        });
+        
+        html += `</tr>`;
+    });
+    
+    html += `
+                    </tbody>
+                </table>
+            </div>
+    `;
+    
+    // Overall progress summary
+    if (allRecords.length >= 2) {
+        const first = allRecords[0];
+        const last = allRecords[allRecords.length - 1];
+        const improvements = [];
+        const declines = [];
+        
+        items.forEach(item => {
+            const firstVal = first[item];
+            const lastVal = last[item];
+            if (firstVal !== null && firstVal !== undefined && lastVal !== null && lastVal !== undefined && firstVal !== lastVal) {
+                const lowerIsBetter = TEST_ITEMS[item]?.lowerIsBetter;
+                const improved = lowerIsBetter ? lastVal < firstVal : lastVal > firstVal;
+                const diff = Math.abs(lastVal - firstVal).toFixed(1);
+                if (improved) {
+                    improvements.push(`${TEST_ITEMS[item].name}(+${diff})`);
+                } else {
+                    declines.push(`${TEST_ITEMS[item].name}(-${diff})`);
+                }
+            }
+        });
+        
+        html += '<div style="margin-top:12px;padding:10px;background:#F5F5F5;border-radius:8px;font-size:13px;">';
+        if (improvements.length > 0) {
+            html += `<div style="color:#2E7D32;">✅ 进步项目：${improvements.join('、')}</div>`;
+        }
+        if (declines.length > 0) {
+            html += `<div style="color:#C62828;">⚠️ 退步项目：${declines.join('、')}</div>`;
+        }
+        if (improvements.length === 0 && declines.length === 0) {
+            html += '<div style="color:var(--gray-500);">成绩无明显变化</div>';
+        }
+        html += '</div>';
+    }
+    
+    html += '</div>';
+    return html;
 }
 
 // ===== Analysis =====
@@ -598,6 +717,7 @@ function renderStudentDetail(no) {
             <h4>体能分析</h4>
             <div class="detail-content">${getWeaknessAnalysis(student)}</div>
         </div>
+        ${(student.history && student.history.length > 0) ? renderHistoryTrend(student) : ''}
     `;
     
     document.getElementById('studentDetail').innerHTML = body;
@@ -1126,7 +1246,36 @@ function saveEntryData(e) {
         return;
     }
     
-    // Update student data
+    // Save current scores to history before updating
+    const hasOldData = targetStudent.run50 !== null && targetStudent.run50 !== undefined ||
+                       targetStudent.skipRope !== null && targetStudent.skipRope !== undefined ||
+                       targetStudent.sitReach !== null && targetStudent.sitReach !== undefined ||
+                       targetStudent.sitUps !== null && targetStudent.sitUps !== undefined;
+    
+    if (hasOldData && entryMode === 'existing') {
+        if (!targetStudent.history) targetStudent.history = [];
+        const now = new Date();
+        const dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+        // Only push if the latest history entry is from a different date or history is empty
+        const lastEntry = targetStudent.history[targetStudent.history.length - 1];
+        if (!lastEntry || lastEntry.date !== dateStr) {
+            targetStudent.history.push({
+                date: dateStr,
+                run50: targetStudent.run50 ?? null,
+                skipRope: targetStudent.skipRope ?? null,
+                sitReach: targetStudent.sitReach ?? null,
+                sitUps: targetStudent.sitUps ?? null,
+            });
+        } else {
+            // Same day - update the existing history entry
+            lastEntry.run50 = targetStudent.run50 ?? lastEntry.run50;
+            lastEntry.skipRope = targetStudent.skipRope ?? lastEntry.skipRope;
+            lastEntry.sitReach = targetStudent.sitReach ?? lastEntry.sitReach;
+            lastEntry.sitUps = targetStudent.sitUps ?? lastEntry.sitUps;
+        }
+    }
+    
+    // Update student data with new scores
     if (run50 !== null) targetStudent.run50 = run50;
     if (skipRope !== null) targetStudent.skipRope = skipRope;
     if (sitReach !== null) targetStudent.sitReach = sitReach;
@@ -1146,6 +1295,230 @@ function saveEntryData(e) {
     // Close modal
     closeModal('entryModal');
 }
+
+// ===== Quick Entry (Pinyin Search + Single Item) =====
+let qeSelectedStudent = null;
+let qeSelectedProject = null;
+let pinyinCache = {}; // name → initials
+
+function getNameInitials(name) {
+    if (!name) return '';
+    if (pinyinCache[name]) return pinyinCache[name];
+    let initials = '';
+    try {
+        if (typeof pinyinPro !== 'undefined' && pinyinPro.pinyin) {
+            initials = pinyinPro.pinyin(name, { pattern: 'first', type: 'array' }).join('');
+        }
+    } catch(e) { /* fallback below */ }
+    if (!initials) {
+        // Fallback: first char of each char (for non-Chinese)
+        initials = name.toLowerCase();
+    }
+    pinyinCache[name] = initials;
+    return initials;
+}
+
+function openQuickEntry() {
+    const classSelect = document.getElementById('qeClass');
+    classSelect.innerHTML = Object.keys(appData.students).map(cls =>
+        `<option value="${cls}" ${cls === appData.currentClass ? 'selected' : ''}>${cls}</option>`
+    ).join('');
+
+    // Build project pills
+    const projects = ['run50', 'skipRope', 'sitReach', 'sitUps'];
+    document.getElementById('qeProjectSelector').innerHTML = projects.map(p =>
+        `<div class="qe-pill" data-project="${p}" onclick="selectQeProject('${p}')">${TEST_ITEMS[p].icon} ${TEST_ITEMS[p].name}</div>`
+    ).join('');
+
+    // Reset state
+    document.getElementById('qeSearch').value = '';
+    document.getElementById('qeSearchResults').classList.remove('show');
+    document.getElementById('qeEntryPanel').style.display = 'none';
+    qeSelectedStudent = null;
+    qeSelectedProject = null;
+    document.querySelectorAll('.qe-pill').forEach(p => p.classList.remove('active'));
+
+    openModal('quickEntryModal');
+    setTimeout(() => document.getElementById('qeSearch').focus(), 300);
+}
+
+function onQeClassChange() {
+    document.getElementById('qeSearch').value = '';
+    document.getElementById('qeSearchResults').classList.remove('show');
+    document.getElementById('qeEntryPanel').style.display = 'none';
+    qeSelectedStudent = null;
+}
+
+function onQeSearch() {
+    const search = document.getElementById('qeSearch').value.trim().toLowerCase();
+    const cls = document.getElementById('qeClass').value;
+    const students = appData.students[cls] || [];
+    const results = document.getElementById('qeSearchResults');
+
+    if (search.length === 0) {
+        results.classList.remove('show');
+        return;
+    }
+
+    const filtered = students.filter(s => {
+        const nameLower = s.name.toLowerCase();
+        const initials = getNameInitials(s.name);
+        // Match by name, initials, or partial initials
+        return nameLower.includes(search) ||
+               initials.includes(search) ||
+               initials.startsWith(search);
+    });
+
+    if (filtered.length === 0) {
+        results.innerHTML = '<div style="padding:12px;color:var(--gray-500);font-size:13px;">未找到匹配学生</div>';
+        results.classList.add('show');
+        return;
+    }
+
+    results.innerHTML = filtered.map(s => {
+        const level = getOverallLevel(s);
+        const initials = getNameInitials(s.name);
+        return `
+            <div class="student-search-result" onclick="selectQeStudent('${cls}', ${s.no})">
+                <span class="sname">${s.name}</span>
+                <span style="font-size:11px;color:var(--gray-400);">${initials}</span>
+                <span class="badge ${s.gender === '男' ? 'badge-male' : 'badge-female'}">${s.gender}</span>
+                <span style="margin-left:auto"><span class="badge badge-${level}">${LEVEL_LABELS[level]}</span></span>
+            </div>
+        `;
+    }).join('');
+    results.classList.add('show');
+
+    setTimeout(() => {
+        document.addEventListener('click', closeQeSearchResults);
+    }, 100);
+}
+
+function closeQeSearchResults(e) {
+    if (!e.target.closest('.qe-section .student-search-wrap')) {
+        document.getElementById('qeSearchResults').classList.remove('show');
+        document.removeEventListener('click', closeQeSearchResults);
+    }
+}
+
+function selectQeStudent(cls, no) {
+    const student = appData.students[cls]?.find(s => s.no == no);
+    if (!student) return;
+
+    qeSelectedStudent = { cls, no, student };
+    document.getElementById('qeSearch').value = student.name;
+    document.getElementById('qeSearchResults').classList.remove('show');
+    updateQeEntryPanel();
+}
+
+function selectQeProject(project) {
+    qeSelectedProject = project;
+    document.querySelectorAll('.qe-pill').forEach(p => p.classList.remove('active'));
+    document.querySelector(`.qe-pill[data-project="${project}"]`).classList.add('active');
+    updateQeEntryPanel();
+}
+
+function updateQeEntryPanel() {
+    if (!qeSelectedStudent || !qeSelectedProject) {
+        document.getElementById('qeEntryPanel').style.display = 'none';
+        return;
+    }
+
+    const student = qeSelectedStudent.student;
+    const project = qeSelectedProject;
+    const item = TEST_ITEMS[project];
+    const oldVal = student[project];
+    const oldLevel = getScoreLevel(project, oldVal, student.gender);
+    const hasOldVal = oldVal !== null && oldVal !== undefined && oldVal !== '';
+
+    document.getElementById('qeStudentCard').innerHTML = `
+        <span class="qe-sname">${student.name}</span>
+        <span class="badge ${student.gender === '男' ? 'badge-male' : 'badge-female'}">${student.gender}</span>
+        <span class="qe-sinfo">${hasOldVal ? `当前: ${oldVal}${item.unit}（${LEVEL_LABELS[oldLevel]}）` : '暂无记录'}</span>
+    `;
+
+    const scoreInput = document.getElementById('qeScoreInput');
+    scoreInput.value = '';
+    scoreInput.placeholder = `输入${item.name}`;
+    scoreInput.step = item.name.includes('跑') || item.name.includes('体前屈') ? '0.1' : '1';
+    scoreInput.min = item.name.includes('体前屈') ? '-30' : '0';
+
+    document.getElementById('qeScoreUnit').textContent = item.unit;
+
+    document.getElementById('qeHint').innerHTML = hasOldVal
+        ? `<span class="qe-old-score">旧成绩: ${oldVal}${item.unit}（${LEVEL_LABELS[oldLevel]}）</span> — 输入新成绩后保存，旧成绩自动存入历史记录`
+        : '输入成绩后按「保存」或回车键提交';
+
+    document.getElementById('qeEntryPanel').style.display = 'block';
+    setTimeout(() => scoreInput.focus(), 100);
+}
+
+function saveQuickEntry() {
+    if (!qeSelectedStudent || !qeSelectedProject) {
+        showToast('请先选择学生和录入项目', 'error');
+        return;
+    }
+
+    const score = parseNum(document.getElementById('qeScoreInput').value);
+    if (score === null) {
+        showToast('请输入有效成绩', 'error');
+        return;
+    }
+
+    const student = qeSelectedStudent.student;
+    const project = qeSelectedProject;
+    const item = TEST_ITEMS[project];
+    const oldVal = student[project];
+
+    // Save old score to history if there is one
+    const hasOldData = oldVal !== null && oldVal !== undefined;
+    if (hasOldData) {
+        if (!student.history) student.history = [];
+        const now = new Date();
+        const dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+        const lastEntry = student.history[student.history.length - 1];
+        if (!lastEntry || lastEntry.date !== dateStr) {
+            student.history.push({
+                date: dateStr,
+                run50: student.run50 ?? null,
+                skipRope: student.skipRope ?? null,
+                sitReach: student.sitReach ?? null,
+                sitUps: student.sitUps ?? null,
+            });
+        }
+    }
+
+    // Update with new score
+    student[project] = score;
+    saveAppData();
+
+    // Refresh UI
+    if (document.getElementById('page-roster').classList.contains('active')) renderRoster();
+    if (document.getElementById('page-analysis').classList.contains('active')) renderAnalysis();
+
+    // Show success feedback
+    const newLevel = getScoreLevel(project, score, student.gender);
+    const oldLevel = hasOldData ? getScoreLevel(project, oldVal, student.gender) : 'none';
+    const lowerIsBetter = item.lowerIsBetter;
+    let changeText = '';
+    if (hasOldData && oldVal !== score) {
+        const improved = lowerIsBetter ? score < oldVal : score > oldVal;
+        const diff = Math.abs(score - oldVal).toFixed(1);
+        changeText = improved
+            ? ` <span style="color:#4CAF50;font-weight:700;">↑${diff} 进步！</span>`
+            : ` <span style="color:#f44336;font-weight:700;">↓${diff} 需努力</span>`;
+    }
+
+    showToast(`✅ ${student.name} ${item.name}: ${score}${item.unit}（${LEVEL_LABELS[newLevel]}）${changeText}`, 'success');
+
+    // Reset for next student
+    document.getElementById('qeSearch').value = '';
+    document.getElementById('qeEntryPanel').style.display = 'none';
+    qeSelectedStudent = null;
+    // Keep project selected for rapid entry
+    setTimeout(() => document.getElementById('qeSearch').focus(), 200);
+}
+
 function exportRoster() {
     const cls = appData.currentClass;
     const students = appData.students[cls] || [];
@@ -1226,9 +1599,65 @@ function handleExcelImport(e) {
                 return;
             }
             
-            // Merge with existing data
+            // Merge with existing data - preserve history
+            const now = new Date();
+            const dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+            
             Object.keys(newStudents).forEach(cls => {
-                appData.students[cls] = newStudents[cls];
+                if (!appData.students[cls]) {
+                    // New class - just add it
+                    appData.students[cls] = newStudents[cls];
+                    return;
+                }
+                
+                const existingStudents = appData.students[cls];
+                const newClassStudents = newStudents[cls];
+                
+                newClassStudents.forEach(newStudent => {
+                    // Find matching student by name
+                    const existingIdx = existingStudents.findIndex(s => s.name === newStudent.name);
+                    
+                    if (existingIdx >= 0) {
+                        const old = existingStudents[existingIdx];
+                        // Check if there's actual old data to save
+                        const hasOldData = old.run50 !== null && old.run50 !== undefined ||
+                                           old.skipRope !== null && old.skipRope !== undefined ||
+                                           old.sitReach !== null && old.sitReach !== undefined ||
+                                           old.sitUps !== null && old.sitUps !== undefined;
+                        
+                        if (hasOldData) {
+                            if (!old.history) old.history = [];
+                            // Check if there's a difference worth saving
+                            const hasNewData = newStudent.run50 !== null || newStudent.skipRope !== null || 
+                                               newStudent.sitReach !== null || newStudent.sitUps !== null;
+                            if (hasNewData) {
+                                const lastEntry = old.history[old.history.length - 1];
+                                if (!lastEntry || lastEntry.date !== dateStr) {
+                                    old.history.push({
+                                        date: dateStr,
+                                        run50: old.run50 ?? null,
+                                        skipRope: old.skipRope ?? null,
+                                        sitReach: old.sitReach ?? null,
+                                        sitUps: old.sitUps ?? null,
+                                    });
+                                }
+                            }
+                        }
+                        
+                        // Update with new data, keeping old values where new is null
+                        if (newStudent.height !== null) old.height = newStudent.height;
+                        if (newStudent.weight !== null) old.weight = newStudent.weight;
+                        if (newStudent.run50 !== null) old.run50 = newStudent.run50;
+                        if (newStudent.skipRope !== null) old.skipRope = newStudent.skipRope;
+                        if (newStudent.sitReach !== null) old.sitReach = newStudent.sitReach;
+                        if (newStudent.sitUps !== null) old.sitUps = newStudent.sitUps;
+                        if (newStudent.lung !== null) old.lung = newStudent.lung;
+                        if (newStudent.gender) old.gender = newStudent.gender;
+                    } else {
+                        // New student - add to class
+                        existingStudents.push(newStudent);
+                    }
+                });
             });
             
             appData.currentClass = Object.keys(appData.students)[0];
@@ -1241,7 +1670,8 @@ function handleExcelImport(e) {
             renderRoster();
             
             const totalStudents = Object.values(newStudents).reduce((sum, list) => sum + list.length, 0);
-            showToast(`成功导入 ${Object.keys(newStudents).length} 个班级，共 ${totalStudents} 名学生`, 'success');
+            const totalClasses = Object.keys(newStudents).length;
+            showToast(`✅ 成功导入 ${totalClasses} 个班级共 ${totalStudents} 名学生，旧成绩已存入历史记录`, 'success');
             
         } catch(err) {
             console.error(err);

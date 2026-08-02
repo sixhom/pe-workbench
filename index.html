@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.24.2/dist/index.min.js"></script>
 </head>
 <body>
     <div id="app">
@@ -83,6 +84,7 @@
                 <div class="page-header">
                     <h2>学生花名册管理</h2>
                     <div class="header-actions">
+                        <button class="btn btn-sm btn-outline" onclick="openQuickEntry()">⚡ 快速录入</button>
                         <button class="btn btn-sm btn-outline" onclick="openEntryModal()">✏️ 录入数据</button>
                         <button class="btn btn-sm" onclick="exportRoster()">📥 导出</button>
                     </div>
@@ -116,6 +118,7 @@
                 <div class="page-header">
                     <h2>体测成绩分析表</h2>
                     <div class="header-actions">
+                        <button class="btn btn-sm btn-outline" onclick="openQuickEntry()">⚡ 快速录入</button>
                         <button class="btn btn-sm btn-outline" onclick="openEntryModal()">✏️ 录入数据</button>
                         <select id="analysisClass" class="filter-select"></select>
                     </div>
@@ -284,6 +287,49 @@
                 </div>
             </div>
 
+            <!-- 弹出层：快速录入 -->
+            <div class="modal-overlay quick-entry-modal" id="quickEntryModal" onclick="closeModal('quickEntryModal')">
+                <div class="modal" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>⚡ 快速录入</h3>
+                        <button class="modal-close" onclick="closeModal('quickEntryModal')">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- 班级选择 -->
+                        <div class="qe-section">
+                            <label>📋 班级</label>
+                            <select id="qeClass" onchange="onQeClassChange()"></select>
+                        </div>
+
+                        <!-- 拼音首字母搜索 -->
+                        <div class="qe-section">
+                            <label>⌨️ 输入姓名 / 拼音首字母</label>
+                            <div class="student-search-wrap">
+                                <input type="text" id="qeSearch" placeholder="如 zs 或 张三" autocomplete="off" oninput="onQeSearch()" onfocus="onQeSearch()">
+                                <div class="student-search-results" id="qeSearchResults"></div>
+                            </div>
+                        </div>
+
+                        <!-- 选择体测项目 -->
+                        <div class="qe-section">
+                            <label>📊 录入项目</label>
+                            <div class="qe-project-pills" id="qeProjectSelector"></div>
+                        </div>
+
+                        <!-- 选中学生 + 成绩输入区 -->
+                        <div id="qeEntryPanel" class="qe-entry-panel" style="display:none;">
+                            <div class="qe-student-card" id="qeStudentCard"></div>
+                            <div class="qe-score-row">
+                                <input type="number" id="qeScoreInput" placeholder="输入成绩" step="0.1" onkeydown="if(event.key==='Enter')saveQuickEntry()">
+                                <span class="qe-score-unit" id="qeScoreUnit"></span>
+                                <button class="btn btn-save" onclick="saveQuickEntry()">✅ 保存</button>
+                            </div>
+                            <div class="qe-hint" id="qeHint"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Toast 提示 -->
             <div class="toast" id="toast"></div>
         </main>
@@ -311,7 +357,9 @@
     <script src="data.js"></script>
     <script src="app.js"></script>
 
-    <!-- 手机端浮动录入按钮 -->
-    <button class="fab-btn" onclick="openEntryModal()" title="录入新数据">✏️</button>
+    <!-- 手机端浮动快速录入按钮 -->
+    <button class="fab-btn" onclick="openQuickEntry()" title="快速录入">⚡</button>
+    <!-- 手机端浮动完整录入按钮 -->
+    <button class="fab-btn fab-btn-secondary" onclick="openEntryModal()" title="完整录入">✏️</button>
 </body>
 </html>
