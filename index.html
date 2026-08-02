@@ -36,9 +36,9 @@
                     <span class="nav-icon">📊</span>
                     <span class="nav-text">体测数据管理</span>
                 </li>
-                <li class="nav-item" data-page="lessons">
-                    <span class="nav-icon">📚</span>
-                    <span class="nav-text">备课教案库</span>
+                <li class="nav-item" data-page="toolbox">
+                    <span class="nav-icon">🧰</span>
+                    <span class="nav-text">教学工具箱</span>
                 </li>
                 <li class="nav-item" data-page="safety">
                     <span class="nav-icon">🛡️</span>
@@ -160,16 +160,110 @@
                 </div>
             </div>
 
-            <!-- 备课教案库 -->
-            <div class="page" id="page-lessons">
+            <!-- 教学工具箱 -->
+            <div class="page" id="page-toolbox">
                 <div class="page-header">
-                    <h2>备课教案库</h2>
+                    <h2>教学工具箱</h2>
+                    <span class="page-sub">备课 / 游戏 / 打卡 / 沟通，一个菜单全搞定</span>
                 </div>
-                <div class="lesson-filters">
-                    <div class="level-tabs" id="levelTabs"></div>
-                    <input type="text" id="lessonSearch" class="search-input" placeholder="搜索教案...">
+
+                <div class="toolbox-tabs" id="toolboxTabs">
+                    <button class="ttab-btn active" data-ttab="generator">📝 训练计划生成器</button>
+                    <button class="ttab-btn" data-ttab="games">🎮 体育游戏库</button>
+                    <button class="ttab-btn" data-ttab="log">📋 课堂打卡记录</button>
+                    <button class="ttab-btn" data-ttab="comms">💬 家校话术库</button>
                 </div>
-                <div class="lesson-grid" id="lessonGrid"></div>
+
+                <!-- 训练计划生成器 -->
+                <div class="ttab-content active" id="ttab-generator">
+                    <div class="gen-form">
+                        <div class="gen-field">
+                            <label>🎓 年级</label>
+                            <select id="genGrade" class="filter-select"></select>
+                        </div>
+                        <div class="gen-field">
+                            <label>⏱️ 课时</label>
+                            <select id="genDuration" class="filter-select"></select>
+                        </div>
+                        <div class="gen-field">
+                            <label>🎯 训练重点</label>
+                            <select id="genFocus" class="filter-select"></select>
+                        </div>
+                        <div class="gen-field">
+                            <label>🏟️ 器材</label>
+                            <select id="genEquip" class="filter-select"></select>
+                        </div>
+                        <div class="gen-actions">
+                            <button class="btn" onclick="generatePlan()">✨ 一键生成训练计划</button>
+                        </div>
+                    </div>
+                    <div id="genOutput"></div>
+                </div>
+
+                <!-- 体育游戏库 -->
+                <div class="ttab-content" id="ttab-games">
+                    <div class="game-filters">
+                        <div class="game-cats" id="gameCats"></div>
+                        <input type="text" id="gameSearch" class="search-input" placeholder="搜索游戏名称...">
+                    </div>
+                    <div class="game-grid" id="gameGrid"></div>
+                </div>
+
+                <!-- 课堂打卡记录 -->
+                <div class="ttab-content" id="ttab-log">
+                    <div class="log-form">
+                        <div class="log-row">
+                            <div class="log-field">
+                                <label>📅 日期</label>
+                                <input type="date" id="logDate" class="filter-select">
+                            </div>
+                            <div class="log-field">
+                                <label>📋 班级</label>
+                                <select id="logClass" class="filter-select"></select>
+                            </div>
+                        </div>
+                        <div class="log-field">
+                            <label>📝 教学内容</label>
+                            <input type="text" id="logContent" class="search-input" placeholder="如：50米跑+跳绳练习">
+                        </div>
+                        <div class="log-row">
+                            <div class="log-field">
+                                <label>✅ 应到 <span id="logShould" class="log-hint-inline"></span></label>
+                                <input type="number" id="logShouldInput" class="filter-select" min="0">
+                            </div>
+                            <div class="log-field">
+                                <label>🙋 实到</label>
+                                <input type="number" id="logActual" class="filter-select" min="0">
+                            </div>
+                            <div class="log-field">
+                                <label>🚫 请假</label>
+                                <input type="number" id="logLeave" class="filter-select" min="0">
+                            </div>
+                        </div>
+                        <div class="log-field">
+                            <label>⭐ 课堂表现</label>
+                            <div class="log-perf" id="logPerf">
+                                <button type="button" class="perf-btn" data-perf="好">😀 好</button>
+                                <button type="button" class="perf-btn" data-perf="中">😐 中</button>
+                                <button type="button" class="perf-btn" data-perf="待改进">😟 待改进</button>
+                            </div>
+                        </div>
+                        <div class="log-field">
+                            <label>📌 备注</label>
+                            <textarea id="logNote" class="search-input" rows="2" placeholder="特殊情况、安全事项等"></textarea>
+                        </div>
+                        <div class="log-actions">
+                            <button class="btn" onclick="saveClassLog()">💾 保存本节课记录</button>
+                        </div>
+                    </div>
+                    <div class="log-history-title">📚 历史记录</div>
+                    <div id="logHistory"></div>
+                </div>
+
+                <!-- 家校话术库 -->
+                <div class="ttab-content" id="ttab-comms">
+                    <div class="comms-grid" id="commsGrid"></div>
+                </div>
             </div>
 
             <!-- 安全应急预案 -->
@@ -228,14 +322,14 @@
                 </div>
             </div>
 
-            <!-- 弹出层：教案详情 -->
-            <div class="modal-overlay" id="lessonModal" onclick="closeModal('lessonModal')">
+            <!-- 弹出层：工具箱详情（游戏 / 话术） -->
+            <div class="modal-overlay" id="toolboxModal" onclick="closeModal('toolboxModal')">
                 <div class="modal modal-large" onclick="event.stopPropagation()">
                     <div class="modal-header">
-                        <h3 id="modalLessonTitle">教案详情</h3>
-                        <button class="modal-close" onclick="closeModal('lessonModal')">✕</button>
+                        <h3 id="modalToolboxTitle">详情</h3>
+                        <button class="modal-close" onclick="closeModal('toolboxModal')">✕</button>
                     </div>
-                    <div class="modal-body" id="modalLessonBody"></div>
+                    <div class="modal-body" id="modalToolboxBody"></div>
                 </div>
             </div>
 
@@ -386,8 +480,8 @@
             <button class="bottom-nav-item" data-page="analysis">
                 <span class="bn-icon">📊</span>体测
             </button>
-            <button class="bottom-nav-item" data-page="lessons">
-                <span class="bn-icon">📚</span>教案
+            <button class="bottom-nav-item" data-page="toolbox">
+                <span class="bn-icon">🧰</span>工具
             </button>
             <button class="bottom-nav-item" data-page="safety">
                 <span class="bn-icon">🛡️</span>安全
@@ -396,6 +490,7 @@
     </div>
 
     <script src="data.js"></script>
+    <script src="toolbox-data.js"></script>
     <script src="app.js"></script>
 
     <!-- 手机端浮动快速录入按钮 -->

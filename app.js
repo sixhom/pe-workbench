@@ -1,5 +1,5 @@
 // ===== Global State =====
-let appData = { students: {}, currentClass: null, charts: {} };
+let appData = { students: {}, currentClass: null, charts: {}, logs: [] };
 
 // ===== Init =====
 document.addEventListener('DOMContentLoaded', () => {
@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initHomeStats();
     initRoster();
     initAnalysis();
-    initLessons();
+    initToolbox();
     initSafety();
     initExcelImport();
     initHomeCards();
@@ -24,13 +24,16 @@ function loadAppData() {
             const parsed = JSON.parse(saved);
             appData.students = parsed.students || {};
             appData.currentClass = parsed.currentClass || Object.keys(appData.students)[0];
+            appData.logs = parsed.logs || [];
         } catch(e) {
             appData.students = JSON.parse(JSON.stringify(STUDENT_DATA));
             appData.currentClass = Object.keys(appData.students)[0];
+            appData.logs = [];
         }
     } else {
         appData.students = JSON.parse(JSON.stringify(STUDENT_DATA));
         appData.currentClass = Object.keys(appData.students)[0];
+        appData.logs = [];
     }
 }
 
@@ -38,6 +41,7 @@ function saveAppData() {
     localStorage.setItem('pe_workbench_data', JSON.stringify({
         students: appData.students,
         currentClass: appData.currentClass,
+        logs: appData.logs,
     }));
 }
 
@@ -52,7 +56,7 @@ function initNavigation() {
 }
 
 function navigateTo(page) {
-    const pageNames = { home: '工作台首页', roster: '学生花名册', analysis: '体测数据管理', lessons: '备课教案库', safety: '安全应急预案', studentmgmt: '学生管理' };
+    const pageNames = { home: '工作台首页', roster: '学生花名册', analysis: '体测数据管理', toolbox: '教学工具箱', safety: '安全应急预案', studentmgmt: '学生管理' };
     
     // Update sidebar
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -80,7 +84,7 @@ function navigateTo(page) {
     // Refresh data on page load
     if (page === 'roster') renderRoster();
     if (page === 'analysis') renderAnalysis();
-    if (page === 'lessons') renderLessons();
+    if (page === 'toolbox') renderToolbox();
     if (page === 'studentmgmt') renderStudentMgmt();
 }
 
@@ -160,12 +164,12 @@ const LEVEL_COLORS = { excellent: '#4CAF50', good: '#2196F3', pass: '#FF9800', w
 function initHomeStats() {
     const totalStudents = Object.values(appData.students).reduce((sum, list) => sum + list.length, 0);
     const totalClasses = Object.keys(appData.students).length;
-    const totalLessons = Object.values(LESSON_PLANS).reduce((sum, d) => sum + d.totalCount, 0);
-    
+    const gameCount = (typeof GAMES !== 'undefined' && GAMES.length) ? GAMES.length : 0;
+
     document.getElementById('homeStats').innerHTML = `
         <div class="header-stat">📊 ${totalClasses}个班级</div>
         <div class="header-stat">👥 <span class="stat-val">${totalStudents}</span> 名学生</div>
-        <div class="header-stat">📚 ${totalLessons} 篇教案</div>
+        <div class="header-stat">🎮 ${gameCount} 个课堂游戏</div>
     `;
 }
 
@@ -174,7 +178,7 @@ function initHomeCards() {
     const routineCards = [
         { id: 'roster', icon: '👥', title: '学生花名册管理', desc: '批量导入/手动录入学生信息，关联体测历史、课堂表现、体能短板标记', tag: '花名册+体测', color: '#4CAF50', bg: '#E8F5E9' },
         { id: 'analysis', icon: '📊', title: '体测成绩分析表', desc: '自动同步花名册体测数据，生成班级统计、个人趋势、薄弱预警', tag: '自动同步', color: '#42A5F5', bg: '#E3F2FD' },
-        { id: 'lessons', icon: '📚', title: '体育课备课教案', desc: '水平一/二/三教案库，含教学目标、重难点、教学过程', tag: '70篇教案', color: '#FFA726', bg: '#FFF3E0' },
+        { id: 'toolbox', icon: '🧰', title: '教学工具箱', desc: '训练计划生成器、体育游戏库、课堂打卡记录、家校话术库，备课上课一站式', tag: '4大工具', color: '#FFA726', bg: '#FFF3E0' },
         { id: 'safety', icon: '🛡️', title: '课堂安全与应急预案', desc: '运动损伤处理流程、突发事件应急方案、安全检查清单', tag: '安全第一', color: '#EF5350', bg: '#FFEBEE' },
         { id: 'tracking', icon: '📈', title: '学生体能学情跟踪', desc: '跟踪学生体能发展轨迹，识别进步与退步趋势', tag: '成长追踪', color: '#AB47BC', bg: '#F3E5F5' },
     ];
@@ -199,14 +203,15 @@ function initHomeCards() {
 }
 
 function openCardDetail(id) {
-    const navMap = { roster: 'roster', analysis: 'analysis', lessons: 'lessons', safety: 'safety' };
+    const navMap = { roster: 'roster', analysis: 'analysis', toolbox: 'toolbox', safety: 'safety' };
     if (navMap[id]) {
         document.querySelector(`.nav-item[data-page="${navMap[id]}"]`).click();
+        if (id === 'toolbox') switchToolboxTab('generator');
         return;
     }
-    
+
+    if (id === 'games') { document.querySelector('.nav-item[data-page="toolbox"]').click(); switchToolboxTab('games'); return; }
     if (id === 'tracking') openTrackingModal();
-    if (id === 'games') openGamesModal();
     if (id === 'safety_edu') openSafetyEduModal();
     if (id === 'gallery') openGalleryModal();
 }
@@ -846,78 +851,290 @@ function renderWarnings() {
     `).join('');
 }
 
-// ===== Lessons =====
-let currentLevel = '水平二';
+// ===== 教学工具箱 =====
+let currentGameCat = '全部';
+let currentPerf = '';
+window._currentPlan = null;
 
-function initLessons() {
-    const levels = Object.keys(LESSON_PLANS);
-    document.getElementById('levelTabs').innerHTML = levels.map(l => 
-        `<div class="level-tab ${l === currentLevel ? 'active' : ''}" data-level="${l}">${l}</div>`
-    ).join('');
-    
-    document.getElementById('levelTabs').addEventListener('click', e => {
-        if (e.target.classList.contains('level-tab')) {
-            currentLevel = e.target.dataset.level;
-            document.querySelectorAll('.level-tab').forEach(t => t.classList.remove('active'));
-            e.target.classList.add('active');
-            renderLessons();
-        }
-    });
-    
-    document.getElementById('lessonSearch').addEventListener('input', renderLessons);
+function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 }
 
-function renderLessons() {
-    const search = document.getElementById('lessonSearch').value.trim().toLowerCase();
-    const data = LESSON_PLANS[currentLevel];
-    if (!data) return;
-    
-    let plans = data.plans || [];
-    if (search) {
-        plans = plans.filter(p => 
-            p.title.toLowerCase().includes(search) || 
-            (p.content || '').toLowerCase().includes(search) ||
-            (p.category || '').toLowerCase().includes(search)
-        );
-    }
-    
-    const levelColors = { '水平一': '#4CAF50', '水平二': '#2196F3', '水平三': '#FF9800' };
-    const levelBgs = { '水平一': '#E8F5E9', '水平二': '#E3F2FD', '水平三': '#FFF3E0' };
-    
-    if (plans.length === 0) {
-        document.getElementById('lessonGrid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--gray-500);">未找到匹配的教案</div>';
+function fillSelect(id, arr) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = arr.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+}
+
+function initToolbox() {
+    if (typeof TRAINING === 'undefined') return;
+    fillSelect('genGrade', TRAINING.grades);
+    fillSelect('genDuration', Object.keys(TRAINING.durations));
+    fillSelect('genFocus', TRAINING.focusList);
+    fillSelect('genEquip', TRAINING.equipment);
+
+    const cats = ['全部', ...GAME_CATEGORIES];
+    document.getElementById('gameCats').innerHTML = cats.map(c =>
+        `<div class="game-cat ${c === '全部' ? 'active' : ''}" data-cat="${esc(c)}" onclick="selectGameCat('${esc(c)}')">${esc(c)}</div>`
+    ).join('');
+    const gs = document.getElementById('gameSearch');
+    if (gs) gs.addEventListener('input', renderGames);
+
+    fillSelect('logClass', Object.keys(appData.students));
+    document.getElementById('logDate').value = new Date().toISOString().slice(0, 10);
+    document.querySelectorAll('.perf-btn').forEach(b => b.addEventListener('click', () => {
+        document.querySelectorAll('.perf-btn').forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        currentPerf = b.dataset.perf;
+    }));
+    document.getElementById('logClass').addEventListener('change', updateLogShould);
+
+    const tabs = document.getElementById('toolboxTabs');
+    if (tabs) tabs.addEventListener('click', e => {
+        const btn = e.target.closest('.ttab-btn');
+        if (btn) switchToolboxTab(btn.dataset.ttab);
+    });
+
+    renderGames();
+    renderComms();
+    renderLogHistory();
+    updateLogShould();
+}
+
+function switchToolboxTab(ttab) {
+    document.querySelectorAll('.ttab-btn').forEach(b => b.classList.toggle('active', b.dataset.ttab === ttab));
+    document.querySelectorAll('.ttab-content').forEach(c => c.classList.toggle('active', c.id === 'ttab-' + ttab));
+}
+
+function renderToolbox() {
+    renderGames();
+    renderComms();
+    renderLogHistory();
+}
+
+// ---------- 训练计划生成器 ----------
+function generatePlan() {
+    const grade = document.getElementById('genGrade').value;
+    const duration = document.getElementById('genDuration').value;
+    const focus = document.getElementById('genFocus').value;
+    const equip = document.getElementById('genEquip').value;
+    const alloc = TRAINING.durations[duration];
+    const main = TRAINING.main[focus];
+    const warms = (TRAINING.warmups[focus] || TRAINING.warmups['综合']);
+    const cools = TRAINING.cooldowns;
+    const safety = TRAINING.safety[focus] || '注意充分热身与放松，关注学生身体状况，安全第一。';
+
+    const plan = {
+        header: `${grade}《${main.title}》训练计划`,
+        meta: [
+            ['课时', duration],
+            ['训练重点', focus],
+            ['器材', equip],
+            ['时间分配', `开始${alloc.开始}′·准备${alloc.准备}′·基本${alloc.基本}′·结束${alloc.结束}′`],
+        ],
+        alloc,
+        start: '体育委员整队报告人数 → 师生问好 → 宣布本课内容与安全要求 → 安排见习生。',
+        warmups: warms.map(w => `${w.name}：${w.desc}`),
+        goals: main.goals,
+        mains: main.steps,
+        game: main.game,
+        cools: cools.map(c => `${c.name}：${c.desc}`),
+        safety,
+    };
+    window._currentPlan = plan;
+    document.getElementById('genOutput').innerHTML =
+        planToHTML(plan) +
+        `<div class="plan-actions">
+            <button class="btn" onclick="copyPlan()">📋 复制计划</button>
+            <button class="btn btn-outline" onclick="printPlan()">🖨️ 打印 / 导出PDF</button>
+        </div>`;
+    document.getElementById('genOutput').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function planToHTML(p) {
+    const a = p.alloc;
+    return `<div class="plan-card">
+        <div class="plan-title">${esc(p.header)}</div>
+        <div class="plan-meta">${p.meta.map(m => `<span><b>${esc(m[0])}</b> ${esc(m[1])}</span>`).join('')}</div>
+        <div class="plan-section"><h4>🚩 开始部分（约${a.开始}分钟）</h4><p>${esc(p.start)}</p></div>
+        <div class="plan-section"><h4>🔥 准备部分 · 热身（约${a.准备}分钟）</h4><ul>${p.warmups.map(w => `<li>${esc(w)}</li>`).join('')}</ul></div>
+        <div class="plan-section"><h4>🏋️ 基本部分（约${a.基本}分钟）</h4>
+            <p class="plan-goal">🎯 教学目标：${esc(p.goals)}</p>
+            <ol>${p.mains.map(s => `<li>${esc(s)}</li>`).join('')}</ol>
+            <p class="plan-game">🎮 课课练 / 游戏：<b>${esc(p.game)}</b></p>
+        </div>
+        <div class="plan-section"><h4>🌿 结束部分（约${a.结束}分钟）</h4><ul>${p.cools.map(c => `<li>${esc(c)}</li>`).join('')}</ul></div>
+        <div class="plan-section plan-safety"><h4>⚠️ 安全提示</h4><p>${esc(p.safety)}</p></div>
+    </div>`;
+}
+
+function planToText(p) {
+    const a = p.alloc;
+    let t = `${p.header}\n` + p.meta.map(m => `${m[0]}：${m[1]}`).join('  ') + '\n\n';
+    t += `【教学目标】${p.goals}\n\n`;
+    t += `一、开始部分（约${a.开始}分钟）\n${p.start}\n\n`;
+    t += `二、准备部分·热身（约${a.准备}分钟）\n` + p.warmups.map((w, i) => `${i + 1}. ${w}`).join('\n') + '\n\n';
+    t += `三、基本部分（约${a.基本}分钟）\n` + p.mains.map((s, i) => `${i + 1}. ${s}`).join('\n') + `\n游戏：${p.game}\n\n`;
+    t += `四、结束部分（约${a.结束}分钟）\n` + p.cools.map((c, i) => `${i + 1}. ${c}`).join('\n') + '\n\n';
+    t += `【安全提示】${p.safety}\n`;
+    return t;
+}
+
+function copyPlan() {
+    if (window._currentPlan) copyText(planToText(window._currentPlan));
+}
+
+function printPlan() {
+    const p = window._currentPlan;
+    if (!p) return;
+    const w = window.open('', '_blank');
+    w.document.write(`<html><head><meta charset="utf-8"><title>${esc(p.header)}</title>
+<style>body{font-family:'Microsoft YaHei',sans-serif;padding:24px;line-height:1.7;color:#222}
+h1{font-size:20px;text-align:center}.meta{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;color:#555;font-size:13px;margin:8px 0 16px}
+h4{margin:14px 0 6px;color:#388E3C}ul,ol{margin-left:20px}.safety{background:#FFF3E0;padding:10px;border-radius:8px}@media print{body{padding:0}}</style></head>
+<body>${planToHTML(p)}<script>window.onload=function(){window.print();}<\/script></body></html>`);
+    w.document.close();
+}
+
+// ---------- 体育游戏库 ----------
+function renderGames() {
+    const gs = document.getElementById('gameSearch');
+    const search = (gs ? gs.value : '').trim().toLowerCase();
+    let list = GAMES.filter(g =>
+        (currentGameCat === '全部' || g.cat === currentGameCat) &&
+        (!search || g.name.toLowerCase().includes(search))
+    );
+    const grid = document.getElementById('gameGrid');
+    if (!list.length) { grid.innerHTML = '<div class="empty-tip">未找到匹配的游戏</div>'; return; }
+    grid.innerHTML = list.map(g => `<div class="game-card" onclick="showGameDetail('${esc(g.name)}')">
+        <span class="game-cat-tag cat-${esc(g.cat)}">${esc(g.cat)}</span>
+        <div class="game-name">${esc(g.name)}</div>
+        <div class="game-meta">👥${esc(g.people)} · 📍${esc(g.space)} · 🕒${esc(g.time)}</div>
+    </div>`).join('');
+}
+
+function selectGameCat(cat) {
+    currentGameCat = cat;
+    document.querySelectorAll('.game-cat').forEach(x => x.classList.toggle('active', x.dataset.cat === cat));
+    renderGames();
+}
+
+function showGameDetail(name) {
+    const g = GAMES.find(x => x.name === name);
+    if (!g) return;
+    document.getElementById('modalToolboxTitle').textContent = g.name;
+    document.getElementById('modalToolboxBody').innerHTML = `
+        <div class="detail-section"><span class="game-cat-tag cat-${esc(g.cat)}">${esc(g.cat)}</span></div>
+        <div class="detail-grid">
+            <div><b>适用人数</b>${esc(g.people)}</div>
+            <div><b>场地</b>${esc(g.space)}</div>
+            <div><b>器材</b>${esc(g.equip)}</div>
+            <div><b>时长</b>${esc(g.time)}</div>
+        </div>
+        <div class="detail-section"><h4>📋 玩法规则</h4><div class="detail-content">${esc(g.rules)}</div></div>
+        <div class="detail-section plan-safety"><h4>⚠️ 安全提示</h4><div class="detail-content">${esc(g.safety)}</div></div>`;
+    openModal('toolboxModal');
+}
+
+// ---------- 家校话术库 ----------
+function renderComms() {
+    const grid = document.getElementById('commsGrid');
+    if (!grid) return;
+    grid.innerHTML = COMMS.map((c, i) => `<div class="comms-card">
+        <div class="comms-scenario">${esc(c.scenario)}</div>
+        <div class="comms-title">${esc(c.title)}</div>
+        <div class="comms-text">${esc(c.text)}</div>
+        <button class="btn btn-sm" onclick="copyComms(${i})">📋 复制话术</button>
+    </div>`).join('');
+}
+
+function copyComms(i) { copyText(COMMS[i].text); }
+
+// ---------- 课堂打卡记录 ----------
+function updateLogShould() {
+    const cls = document.getElementById('logClass').value;
+    const n = appData.students[cls] ? appData.students[cls].length : 0;
+    const hint = document.getElementById('logShould');
+    const input = document.getElementById('logShouldInput');
+    if (hint) hint.textContent = n ? `（共${n}人）` : '';
+    if (input) input.value = n;
+}
+
+function saveClassLog() {
+    const cls = document.getElementById('logClass').value;
+    if (!cls) { showToast('请选择班级'); return; }
+    if (!currentPerf) { showToast('请选择课堂表现'); return; }
+    const date = document.getElementById('logDate').value || new Date().toISOString().slice(0, 10);
+    const content = (document.getElementById('logContent').value || '').trim() || '(未填写)';
+    const should = parseInt(document.getElementById('logShouldInput').value) || 0;
+    const actual = parseInt(document.getElementById('logActual').value) || 0;
+    const leave = parseInt(document.getElementById('logLeave').value) || 0;
+    const note = (document.getElementById('logNote').value || '').trim();
+
+    appData.logs.unshift({ id: Date.now(), date, cls, content, should, actual, leave, perf: currentPerf, note });
+    saveAppData();
+    renderLogHistory();
+
+    document.getElementById('logContent').value = '';
+    document.getElementById('logActual').value = '';
+    document.getElementById('logLeave').value = '';
+    document.getElementById('logNote').value = '';
+    document.querySelectorAll('.perf-btn').forEach(b => b.classList.remove('active'));
+    currentPerf = '';
+    showToast('已保存本节课记录', 'success');
+}
+
+function renderLogHistory() {
+    const box = document.getElementById('logHistory');
+    if (!box) return;
+    if (!appData.logs.length) {
+        box.innerHTML = '<div class="empty-tip">还没有打卡记录，上完课记得来记一笔～</div>';
         return;
     }
-    
-    document.getElementById('lessonGrid').innerHTML = plans.map(p => `
-        <div class="lesson-card" onclick="showLessonDetail('${p.id}')">
-            <span class="lesson-level" style="background:${levelBgs[currentLevel]};color:${levelColors[currentLevel]};">${currentLevel}</span>
-            ${p.category ? `<div class="lesson-cat">${p.category}</div>` : ''}
-            <div class="lesson-title">${p.title}</div>
-            <div class="lesson-content">${p.content || '点击查看详细教案内容'}</div>
+    box.innerHTML = appData.logs.map(l => `<div class="log-item">
+        <div class="log-item-head">
+            <span class="log-date">📅 ${esc(l.date)}</span>
+            <span class="log-cls">${esc(l.cls)}</span>
+            <span class="log-perf perf-${esc(l.perf)}">${esc(l.perf)}</span>
+            <button class="log-del" onclick="deleteLog(${l.id})">🗑</button>
         </div>
-    `).join('');
+        <div class="log-item-content">📝 ${esc(l.content)}</div>
+        <div class="log-item-stat">应到 ${l.should} · 实到 ${l.actual} · 请假 ${l.leave}${l.note ? (' · 📌 ' + esc(l.note)) : ''}</div>
+    </div>`).join('');
 }
 
-function showLessonDetail(id) {
-    const plan = Object.values(LESSON_PLANS).flatMap(d => d.plans).find(p => p.id === id);
-    if (!plan) return;
-    
-    document.getElementById('modalLessonTitle').textContent = plan.title;
-    
-    const body = `
-        ${plan.category ? `<div class="detail-section"><h4>所属分类</h4><div class="detail-content">${plan.category}</div></div>` : ''}
-        ${plan.content ? `<div class="detail-section"><h4>📋 教学内容</h4><div class="detail-content">${plan.content}</div></div>` : ''}
-        ${plan.goals ? `<div class="detail-section"><h4>🎯 教学目标</h4><div class="detail-content">${plan.goals}</div></div>` : ''}
-        ${plan.keyPoint ? `<div class="detail-section"><h4>⭐ 教学重点</h4><div class="detail-content">${plan.keyPoint}</div></div>` : ''}
-        ${plan.difficulty ? `<div class="detail-section"><h4>⚡ 教学难点</h4><div class="detail-content">${plan.difficulty}</div></div>` : ''}
-        ${plan.processSummary ? `<div class="detail-section"><h4>📝 教学过程</h4><div class="detail-content">${plan.processSummary}</div></div>` : ''}
-        ${plan.load ? `<div class="detail-section"><h4>💪 预计负荷</h4><div class="detail-content">${plan.load}</div></div>` : ''}
-        ${plan.equipment ? `<div class="detail-section"><h4>🏟️ 场地器材</h4><div class="detail-content">${plan.equipment}</div></div>` : ''}
-    `;
-    
-    document.getElementById('modalLessonBody').innerHTML = body;
-    openModal('lessonModal');
+function deleteLog(id) {
+    appData.logs = appData.logs.filter(l => l.id !== id);
+    saveAppData();
+    renderLogHistory();
+    showToast('已删除该记录');
+}
+
+// ---------- 通用复制 ----------
+function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(
+            () => showToast('已复制到剪贴板', 'success'),
+            () => fallbackCopy(text)
+        );
+    } else {
+        fallbackCopy(text);
+    }
+}
+
+function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+        document.execCommand('copy');
+        showToast('已复制到剪贴板', 'success');
+    } catch (e) {
+        showToast('复制失败，请手动选择文字');
+    }
+    document.body.removeChild(ta);
 }
 
 // ===== Safety =====
