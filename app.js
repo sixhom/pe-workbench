@@ -371,6 +371,7 @@ function showStudentDetail(cls, no) {
             <div class="detail-content">${getWeaknessAnalysis(student)}</div>
         </div>
         
+        ${renderBestRecords(student)}
         ${(student.history && student.history.length > 0) ? renderHistoryTrend(student) : ''}
     `;
     
@@ -395,6 +396,88 @@ function getWeaknessAnalysis(student) {
         text += '可鼓励学生在优势项目上继续提升，树立运动信心。';
     }
     return text;
+}
+
+// ===== History Archive (shared) =====
+function archiveCurrentScores(student) {
+    // Check if student has any existing scores worth archiving
+    const hasAnyScore = student.run50 != null || student.skipRope != null ||
+                        student.sitReach != null || student.sitUps != null;
+    if (!hasAnyScore) return;
+    
+    if (!student.history) student.history = [];
+    
+    const now = new Date();
+    const dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    
+    const currentScores = {
+        date: dateStr,
+        run50: student.run50 ?? null,
+        skipRope: student.skipRope ?? null,
+        sitReach: student.sitReach ?? null,
+        sitUps: student.sitUps ?? null,
+    };
+    
+    // If last entry is from today with same scores, skip duplicate
+    const last = student.history[student.history.length - 1];
+    if (last && last.date === dateStr &&
+        last.run50 === currentScores.run50 &&
+        last.skipRope === currentScores.skipRope &&
+        last.sitReach === currentScores.sitReach &&
+        last.sitUps === currentScores.sitUps) {
+        return;
+    }
+    
+    student.history.push(currentScores);
+    
+    // Limit to 50 entries
+    if (student.history.length > 50) {
+        student.history = student.history.slice(-50);
+    }
+}
+
+// ===== History Best Records =====
+function renderBestRecords(student) {
+    const items = ['run50', 'skipRope', 'sitReach', 'sitUps'];
+    const history = student.history || [];
+    
+    // Collect all records
+    const allRecs = [...history];
+    allRecs.push({
+        date: '当前',
+        run50: student.run50 ?? null,
+        skipRope: student.skipRope ?? null,
+        sitReach: student.sitReach ?? null,
+        sitUps: student.sitUps ?? null,
+    });
+    
+    let html = '<div class="detail-section"><h4>🏆 历史最佳成绩</h4><div style="display:flex;flex-wrap:wrap;gap:10px;">';
+    
+    items.forEach(item => {
+        const info = TEST_ITEMS[item];
+        const lowerIsBetter = info?.lowerIsBetter;
+        
+        let bestVal = null, bestDate = '';
+        allRecs.forEach(rec => {
+            const val = rec[item];
+            if (val == null) return;
+            if (bestVal === null) { bestVal = val; bestDate = rec.date; return; }
+            if (lowerIsBetter ? val < bestVal : val > bestVal) { bestVal = val; bestDate = rec.date; }
+        });
+        
+        if (bestVal !== null) {
+            const level = getScoreLevel(item, bestVal, student.gender);
+            html += `<div style="flex:1;min-width:120px;background:#FFF8E1;padding:8px 12px;border-radius:8px;border:1px solid #FFC107;text-align:center;">
+                <div style="font-size:11px;color:var(--gray-500);">${info.icon} ${info.name}</div>
+                <div style="font-size:18px;font-weight:700;color:#F57F17;">${bestVal}<span style="font-size:11px;color:var(--gray-500);">${info.unit}</span></div>
+                <span class="badge badge-${level}" style="font-size:10px;">${LEVEL_LABELS[level]}</span>
+                <div style="font-size:10px;color:var(--gray-400);">${bestDate}</div>
+            </div>`;
+        }
+    });
+    
+    html += '</div></div>';
+    return html;
 }
 
 // ===== History Trend =====
@@ -726,6 +809,7 @@ function renderStudentDetail(no) {
             <h4>体能分析</h4>
             <div class="detail-content">${getWeaknessAnalysis(student)}</div>
         </div>
+        ${renderBestRecords(student)}
         ${(student.history && student.history.length > 0) ? renderHistoryTrend(student) : ''}
     `;
     
@@ -1255,34 +1339,8 @@ function saveEntryData(e) {
         return;
     }
     
-    // Save current scores to history before updating
-    const hasOldData = targetStudent.run50 !== null && targetStudent.run50 !== undefined ||
-                       targetStudent.skipRope !== null && targetStudent.skipRope !== undefined ||
-                       targetStudent.sitReach !== null && targetStudent.sitReach !== undefined ||
-                       targetStudent.sitUps !== null && targetStudent.sitUps !== undefined;
-    
-    if (hasOldData && entryMode === 'existing') {
-        if (!targetStudent.history) targetStudent.history = [];
-        const now = new Date();
-        const dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-        // Only push if the latest history entry is from a different date or history is empty
-        const lastEntry = targetStudent.history[targetStudent.history.length - 1];
-        if (!lastEntry || lastEntry.date !== dateStr) {
-            targetStudent.history.push({
-                date: dateStr,
-                run50: targetStudent.run50 ?? null,
-                skipRope: targetStudent.skipRope ?? null,
-                sitReach: targetStudent.sitReach ?? null,
-                sitUps: targetStudent.sitUps ?? null,
-            });
-        } else {
-            // Same day - update the existing history entry
-            lastEntry.run50 = targetStudent.run50 ?? lastEntry.run50;
-            lastEntry.skipRope = targetStudent.skipRope ?? lastEntry.skipRope;
-            lastEntry.sitReach = targetStudent.sitReach ?? lastEntry.sitReach;
-            lastEntry.sitUps = targetStudent.sitUps ?? lastEntry.sitUps;
-        }
-    }
+    // Archive current scores before updating (works for both new and existing students)
+    archiveCurrentScores(targetStudent);
     
     // Update student data with new scores
     if (run50 !== null) targetStudent.run50 = run50;
@@ -1478,24 +1536,10 @@ function saveQuickEntry() {
     const project = qeSelectedProject;
     const item = TEST_ITEMS[project];
     const oldVal = student[project];
-
-    // Save old score to history if there is one
     const hasOldData = oldVal !== null && oldVal !== undefined;
-    if (hasOldData) {
-        if (!student.history) student.history = [];
-        const now = new Date();
-        const dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-        const lastEntry = student.history[student.history.length - 1];
-        if (!lastEntry || lastEntry.date !== dateStr) {
-            student.history.push({
-                date: dateStr,
-                run50: student.run50 ?? null,
-                skipRope: student.skipRope ?? null,
-                sitReach: student.sitReach ?? null,
-                sitUps: student.sitUps ?? null,
-            });
-        }
-    }
+
+    // Archive current scores before updating
+    archiveCurrentScores(student);
 
     // Update with new score
     student[project] = score;
