@@ -244,7 +244,16 @@ function renderRoster() {
     let filtered = students.filter(s => {
         if (genderFilter && s.gender !== genderFilter) return false;
         if (levelFilter && getOverallLevel(s) !== levelFilter) return false;
-        if (search && !s.name.toLowerCase().includes(search)) return false;
+        if (search) {
+            const nameMatch = s.name.toLowerCase().includes(search);
+            let pinyinMatch = false;
+            if (/^[a-z]+$/.test(search) && typeof pinyinPro !== 'undefined') {
+                const py = pinyinPro.pinyin(s.name, { toneType: 'none', type: 'array' });
+                const initials = py.map(p => p.charAt(0).toLowerCase()).join('');
+                pinyinMatch = initials.includes(search);
+            }
+            if (!nameMatch && !pinyinMatch) return false;
+        }
         return true;
     });
     
