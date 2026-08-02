@@ -1260,6 +1260,78 @@ html, body {
 }
 .fab-btn-secondary:hover { background: var(--primary-bg); transform: scale(1.05); }
 
+/* ===== Student Management Page ===== */
+.mgmt-intro {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin: 4px 0 18px;
+}
+.mgmt-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 18px;
+}
+.mgmt-card {
+    background: #fff;
+    border: 1px solid var(--border-color, #e8eef2);
+    border-radius: 14px;
+    padding: 22px 20px;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s, border-color .15s;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.mgmt-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 18px rgba(31,165,136,.12);
+    border-color: var(--primary, #1fa588);
+}
+.mgmt-card-icon { font-size: 34px; line-height: 1; }
+.mgmt-card-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-dark, #1f2d3d);
+}
+.mgmt-card-desc {
+    font-size: 13px;
+    color: var(--text-muted, #6b7a8d);
+    line-height: 1.6;
+    flex: 1;
+}
+.mgmt-card-action {
+    margin-top: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary, #1fa588);
+}
+.mgmt-card-danger {
+    cursor: default;
+    border-color: #f3c2c2;
+    background: #fff7f7;
+}
+.mgmt-card-danger:hover {
+    transform: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04);
+    border-color: #f3c2c2;
+}
+.mgmt-card-danger .mgmt-card-title { color: #d64545; }
+.mgmt-card-form {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.mgmt-card-form .filter-select { width: 100%; }
+.btn-danger {
+    background: #e74c3c;
+    color: #fff;
+    border: none;
+    font-weight: 600;
+}
+.btn-danger:hover { background: #c0392b; }
+
 /* ===== Large screens ===== */
 @media (min-width: 1400px) {
     .card-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }

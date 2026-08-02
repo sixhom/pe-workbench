@@ -52,7 +52,7 @@ function initNavigation() {
 }
 
 function navigateTo(page) {
-    const pageNames = { home: '工作台首页', roster: '学生花名册', analysis: '体测数据管理', lessons: '备课教案库', safety: '安全应急预案' };
+    const pageNames = { home: '工作台首页', roster: '学生花名册', analysis: '体测数据管理', lessons: '备课教案库', safety: '安全应急预案', studentmgmt: '学生管理' };
     
     // Update sidebar
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -81,6 +81,7 @@ function navigateTo(page) {
     if (page === 'roster') renderRoster();
     if (page === 'analysis') renderAnalysis();
     if (page === 'lessons') renderLessons();
+    if (page === 'studentmgmt') renderStudentMgmt();
 }
 
 // ===== Mobile Navigation =====
@@ -1593,6 +1594,82 @@ function exportRoster() {
     XLSX.utils.book_append_sheet(wb, ws, cls);
     XLSX.writeFile(wb, `${cls}_花名册_${new Date().toLocaleDateString()}.xlsx`);
     showToast('花名册已导出', 'success');
+}
+
+// ===== Student Management Page =====
+function renderStudentMgmt() {
+    const select = document.getElementById('deleteClassSelect');
+    if (!select) return;
+    const classes = Object.keys(appData.students);
+    select.innerHTML = classes.map(c => `<option value="${c}">${c}</option>`).join('');
+    if (classes.length === 0) {
+        select.innerHTML = '<option value="">（暂无班级数据）</option>';
+    }
+}
+
+// 导入新数据：复用侧边栏已有的文件选择框
+function triggerImport() {
+    const input = document.getElementById('excelImport');
+    if (input) input.click();
+}
+
+// 模板下载：生成含表头的 Excel 空模板
+function downloadTemplate() {
+    const classes = Object.keys(appData.students);
+    const header = ['序号', '姓名', '性别', '身高(cm)', '体重(kg)', '50米跑(秒)', '1分钟跳绳(次)', '坐位体前屈(cm)', '1分钟仰卧起坐(次)'];
+    const wb = XLSX.utils.book_new();
+
+    const sheetNames = classes.length > 0 ? classes : ['示例班级'];
+    sheetNames.forEach((cls, idx) => {
+        const sheetName = cls.length > 31 ? cls.substring(0, 31) : cls;
+        const ws = XLSX.utils.aoa_to_sheet([header]);
+        // 预留 3 行空白便于填写示例
+        XLSX.utils.sheet_add_aoa(ws, [
+            [idx + 1, '', '男', '', '', '', '', '', ''],
+            ['', '', '女', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', '', ''],
+        ], { origin: 'A2' });
+        // 设置列宽，方便填写
+        ws['!cols'] = header.map(h => ({ wch: Math.max(8, h.length * 2 + 2) }));
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    });
+
+    XLSX.writeFile(wb, `学生体测录入模板_${new Date().toLocaleDateString()}.xlsx`);
+    showToast('模板已下载，填写后可通过「导入新数据」上传', 'success');
+}
+
+// 删除班级全部数据
+function deleteClassData(e) {
+    e.stopPropagation();
+    const select = document.getElementById('deleteClassSelect');
+    const cls = select ? select.value : '';
+    if (!cls || !appData.students[cls]) {
+        showToast('请先选择一个有效班级', 'error');
+        return;
+    }
+    const count = (appData.students[cls] || []).length;
+    const confirm1 = window.confirm(`确定要删除【${cls}】的全部数据吗？\n该班级共 ${count} 名学生，所有体测成绩与历史记录将被永久删除，无法恢复！`);
+    if (!confirm1) return;
+    const confirm2 = window.confirm(`再次确认：删除【${cls}】全部数据？此操作不可撤销。`);
+    if (!confirm2) return;
+
+    delete appData.students[cls];
+
+    // 若删除了当前班级，切换到剩余第一个班级
+    if (appData.currentClass === cls) {
+        const remaining = Object.keys(appData.students);
+        appData.currentClass = remaining.length > 0 ? remaining[0] : '';
+    }
+    saveAppData();
+
+    // 刷新所有相关模块
+    initRoster();
+    initAnalysis();
+    initHomeStats();
+    renderRoster();
+    renderStudentMgmt();
+
+    showToast(`已删除【${cls}】全部数据`, 'success');
 }
 
 // ===== Excel Import =====

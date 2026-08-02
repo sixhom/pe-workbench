@@ -44,6 +44,10 @@
                     <span class="nav-icon">🛡️</span>
                     <span class="nav-text">安全应急预案</span>
                 </li>
+                <li class="nav-item" data-page="studentmgmt">
+                    <span class="nav-icon">🗂️</span>
+                    <span class="nav-text">学生管理</span>
+                </li>
             </ul>
             <div class="sidebar-footer">
                 <label class="import-btn" title="导入Excel体测表">
@@ -174,6 +178,43 @@
                     <h2>课堂安全与应急预案</h2>
                 </div>
                 <div class="safety-grid" id="safetyGrid"></div>
+            </div>
+
+            <!-- 学生管理 -->
+            <div class="page" id="page-studentmgmt">
+                <div class="page-header">
+                    <h2>学生管理</h2>
+                </div>
+                <p class="mgmt-intro">班级管理工具：清除旧班级数据、导入新数据、下载录入模板。</p>
+
+                <div class="mgmt-grid">
+                    <!-- 模板下载 -->
+                    <div class="mgmt-card mgmt-card-template" onclick="downloadTemplate()">
+                        <div class="mgmt-card-icon">📄</div>
+                        <div class="mgmt-card-title">模板下载</div>
+                        <div class="mgmt-card-desc">下载含表头的 Excel 录入模板，填写后可直接导入。</div>
+                        <div class="mgmt-card-action">点击下载模板 ↓</div>
+                    </div>
+
+                    <!-- 导入新数据 -->
+                    <div class="mgmt-card mgmt-card-import" onclick="triggerImport()">
+                        <div class="mgmt-card-icon">📥</div>
+                        <div class="mgmt-card-title">导入新数据</div>
+                        <div class="mgmt-card-desc">选择 Excel 文件，自动解析并按班级同步学生与体测数据。</div>
+                        <div class="mgmt-card-action">点击选择文件 ↑</div>
+                    </div>
+
+                    <!-- 删除班级全部数据 -->
+                    <div class="mgmt-card mgmt-card-danger">
+                        <div class="mgmt-card-icon">🗑️</div>
+                        <div class="mgmt-card-title">删除班级全部数据</div>
+                        <div class="mgmt-card-desc">永久删除选定班级的所有学生与体测数据，历史记录一并清除，不可恢复。</div>
+                        <div class="mgmt-card-form">
+                            <select id="deleteClassSelect" class="filter-select"></select>
+                            <button class="btn btn-danger" onclick="deleteClassData(event)">🗑️ 删除该班级数据</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- 弹出层：学生详情 -->
