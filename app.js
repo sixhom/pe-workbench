@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initHomeStats();
     initRoster();
     initAnalysis();
+    initScoreEntry();
     initToolbox();
     initSafety();
     initExcelImport();
@@ -56,7 +57,7 @@ function initNavigation() {
 }
 
 function navigateTo(page) {
-    const pageNames = { home: '工作台首页', roster: '学生花名册', analysis: '体测数据管理', toolbox: '教学工具箱', safety: '安全应急预案', studentmgmt: '学生管理' };
+    const pageNames = { home: '工作台首页', roster: '学生花名册', analysis: '体测数据管理', scoreentry: '成绩录入', toolbox: '教学工具箱', safety: '安全应急预案', studentmgmt: '学生管理' };
     
     // Update sidebar
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -84,6 +85,7 @@ function navigateTo(page) {
     // Refresh data on page load
     if (page === 'roster') renderRoster();
     if (page === 'analysis') renderAnalysis();
+    if (page === 'scoreentry') renderScoreEntry();
     if (page === 'toolbox') renderToolbox();
     if (page === 'studentmgmt') renderStudentMgmt();
 }
@@ -129,6 +131,8 @@ function closeModal(id) { document.getElementById(id).classList.remove('show'); 
 // ===== Score Calculation =====
 function getScoreLevel(item, value, gender) {
     if (value === null || value === undefined || value === '' || isNaN(value)) return 'none';
+    // BMI 走自定义分级
+    if (item === 'bmi') return getBmiLevel(value, gender);
     const std = SCORE_STANDARDS[item];
     if (!std || !std[gender]) return 'none';
     const s = std[gender];
@@ -145,6 +149,23 @@ function getScoreLevel(item, value, gender) {
         if (value >= s.及格) return 'pass';
         return 'weak';
     }
+}
+
+// BMI 分级：偏瘦=weak, 正常=good, 超重=weak, 肥胖=weak
+function getBmiLevel(value, gender) {
+    const std = (typeof BMI_STANDARDS !== 'undefined' && BMI_STANDARDS[gender]) || BMI_STANDARDS['男'];
+    if (value < std.under) return 'weak';   // 偏瘦
+    if (value <= std.normalMax) return 'good';  // 正常
+    if (value <= std.overMax) return 'weak';  // 超重
+    return 'weak';  // 肥胖
+}
+
+function getBmiLabel(value, gender) {
+    const std = (typeof BMI_STANDARDS !== 'undefined' && BMI_STANDARDS[gender]) || BMI_STANDARDS['男'];
+    if (value < std.under) return '偏瘦';
+    if (value <= std.normalMax) return '正常';
+    if (value <= std.overMax) return '超重';
+    return '肥胖';
 }
 
 function getOverallLevel(student) {
@@ -178,9 +199,9 @@ function initHomeCards() {
     const routineCards = [
         { id: 'roster', icon: '👥', title: '学生花名册管理', desc: '批量导入/手动录入学生信息，关联体测历史、课堂表现、体能短板标记', tag: '花名册+体测', color: '#4CAF50', bg: '#E8F5E9' },
         { id: 'analysis', icon: '📊', title: '体测成绩分析表', desc: '自动同步花名册体测数据，生成班级统计、个人趋势、薄弱预警', tag: '自动同步', color: '#42A5F5', bg: '#E3F2FD' },
+        { id: 'scoreentry', icon: '📝', title: '成绩录入', desc: '测试日现场批量录入：选年级/班级→选项目→自动分道次→边测边录', tag: '现场录入', color: '#FF7043', bg: '#FBE9E7' },
         { id: 'toolbox', icon: '🧰', title: '教学工具箱', desc: '训练计划生成器、体育游戏库、课堂打卡记录、家校话术库，备课上课一站式', tag: '4大工具', color: '#FFA726', bg: '#FFF3E0' },
         { id: 'safety', icon: '🛡️', title: '课堂安全与应急预案', desc: '运动损伤处理流程、突发事件应急方案、安全检查清单', tag: '安全第一', color: '#EF5350', bg: '#FFEBEE' },
-        { id: 'tracking', icon: '📈', title: '学生体能学情跟踪', desc: '跟踪学生体能发展轨迹，识别进步与退步趋势', tag: '成长追踪', color: '#AB47BC', bg: '#F3E5F5' },
     ];
     
     const featureCards = [
@@ -203,7 +224,7 @@ function initHomeCards() {
 }
 
 function openCardDetail(id) {
-    const navMap = { roster: 'roster', analysis: 'analysis', toolbox: 'toolbox', safety: 'safety' };
+    const navMap = { roster: 'roster', analysis: 'analysis', scoreentry: 'scoreentry', toolbox: 'toolbox', safety: 'safety' };
     if (navMap[id]) {
         document.querySelector(`.nav-item[data-page="${navMap[id]}"]`).click();
         if (id === 'toolbox') switchToolboxTab('generator');
@@ -863,6 +884,279 @@ function esc(s) {
 function fillSelect(id, arr) {
     const el = document.getElementById(id);
     if (el) el.innerHTML = arr.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+}
+
+// ===== Score Entry =====
+const SE_PROJECTS = [
+    { code: 'bmi',      name: '体重指数(BMI)',   icon: '⚖️',  unit: '',  inputType: 'number', step: '0.1', min: '0', max: '60' },
+    { code: 'lung',     name: '肺活量',          icon: '🫁',  unit: 'ml', inputType: 'number', step: '1',   min: '0', max: '9999' },
+    { code: 'run50',    name: '50米跑',          icon: '🏃',  unit: '秒', inputType: 'number', step: '0.01', min: '0', max: '60' },
+    { code: 'sitReach', name: '坐位体前屈',      icon: '🤸',  unit: 'cm', inputType: 'number', step: '0.1', min: '-30', max: '50' },
+    { code: 'skipRope', name: '一分钟跳绳',      icon: '🪢',  unit: '次', inputType: 'number', step: '1',   min: '0', max: '500' },
+    { code: 'run50x8',  name: '50×8折返跑',      icon: '🏃‍♂️', unit: '秒', inputType: 'number', step: '0.1', min: '0', max: '600' },
+    { code: 'sitUps',   name: '一分钟仰卧起坐',  icon: '💪',  unit: '次', inputType: 'number', step: '1',   min: '0', max: '200' },
+];
+const SE_LEVEL_TEXT = { excellent: '优秀', good: '良好', pass: '及格', weak: '未达标', none: '' };
+
+let seState = { step: 1, klass: null, groupSize: 4, project: 'run50', leaveMap: {} };
+
+function parseClassName(klass) {
+    const cnMap = { '一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9 };
+    let m = klass.match(/^([一二三四五六七八九])(\d+)班?$/);
+    if (m) return { grade: cnMap[m[1]], num: parseInt(m[2]), display: m[1] + m[2] };
+    m = klass.match(/^(\d{1,2})(\d+)班?$/);
+    if (m) return { grade: parseInt(m[1]), num: parseInt(m[2]), display: m[1] + m[2] };
+    m = klass.match(/^(\d{1,2})班?$/);
+    if (m) return { grade: parseInt(m[1]), num: null, display: m[1] };
+    return { grade: null, num: null, display: klass.replace('班','') };
+}
+
+function initScoreEntry() {
+    renderSeTestGrid();
+}
+
+function renderScoreEntry() {
+    populateSeGradeClass();
+    seGoStep(1);
+}
+
+function populateSeGradeClass() {
+    const groups = {};
+    Object.keys(appData.students).forEach(k => {
+        const p = parseClassName(k);
+        const g = p.grade || 0;
+        groups[g] = groups[g] || [];
+        groups[g].push({ name: k, num: p.num, display: p.display });
+    });
+    const sortedGrades = Object.keys(groups).map(Number).sort((a, b) => a - b);
+    window._seGroups = groups;
+    const gradeSel = document.getElementById('seGrade');
+    gradeSel.innerHTML = '<option value="">请选择年级</option>' + sortedGrades.map(g =>
+        `<option value="${g}">${g === 0 ? '其他' : g + '年级'}</option>`).join('');
+    onSeGradeChange();
+}
+
+function onSeGradeChange() {
+    const g = document.getElementById('seGrade').value;
+    const groups = window._seGroups || {};
+    const list = (groups[g] || []).slice().sort((a, b) => (a.num || 0) - (b.num || 0));
+    const classSel = document.getElementById('seClass');
+    classSel.innerHTML = list.length
+        ? '<option value="">请选择班级</option>' + list.map(c => `<option value="${esc(c.name)}">${esc(c.display)}班</option>`).join('')
+        : '<option value="">请先选年级</option>';
+    document.getElementById('seClassMeta').innerHTML = '';
+    seState.klass = null;
+    updateSeNextBtn();
+}
+
+function onSeClassChange() {
+    const klass = document.getElementById('seClass').value;
+    seState.klass = klass;
+    if (!klass) { document.getElementById('seClassMeta').innerHTML = ''; updateSeNextBtn(); return; }
+    const list = appData.students[klass] || [];
+    const boys = list.filter(s => s.gender === '男').length;
+    const girls = list.filter(s => s.gender === '女').length;
+    document.getElementById('seClassMeta').innerHTML = `
+        <div class="se-class-stat">
+            <span>👥 共 ${list.length} 人</span>
+            <span>👦 ${boys}</span>
+            <span>👧 ${girls}</span>
+        </div>`;
+    updateSeNextBtn();
+}
+
+function updateSeNextBtn() {
+    const b = document.getElementById('seGotoStep2');
+    if (b) b.disabled = !seState.klass;
+}
+
+function renderSeTestGrid() {
+    const grid = document.getElementById('seTestGrid');
+    if (!grid) return;
+    grid.innerHTML = SE_PROJECTS.map(p => `
+        <button type="button" class="se-test-btn" data-proj="${esc(p.code)}" onclick="seSelectProject('${esc(p.code)}')">
+            <span class="se-test-icon">${p.icon}</span>
+            <span class="se-test-name">${esc(p.name)}</span>
+            <span class="se-test-status" data-status="proj-${esc(p.code)}">完成率: —</span>
+        </button>`).join('');
+    seUpdateProjectStatus();
+}
+
+function seUpdateProjectStatus() {
+    const klass = document.getElementById('seClass')?.value || seState.klass;
+    if (!klass) return;
+    const list = appData.students[klass] || [];
+    SE_PROJECTS.forEach(p => {
+        const el = document.querySelector(`[data-status="proj-${p.code}"]`);
+        if (!el) return;
+        let done = 0;
+        list.forEach(s => { if (s[p.code] != null && s[p.code] !== '') done++; });
+        const pct = list.length ? Math.round(done / list.length * 100) : 0;
+        el.textContent = `完成率: ${pct}%`;
+    });
+}
+
+function seSelectProject(code) {
+    seState.project = code;
+    document.querySelectorAll('.se-test-btn').forEach(b => b.classList.toggle('active', b.dataset.proj === code));
+    const proj = SE_PROJECTS.find(p => p.code === code);
+    document.getElementById('seStep2Summary').innerHTML = `
+        <div class="se-step2-info">
+            <span>📋 ${esc(seState.klass || '')}</span>
+            <span class="se-step2-proj">${proj.icon} ${esc(proj.name)}${proj.unit ? '（' + proj.unit + '）' : ''}</span>
+        </div>`;
+}
+
+function seGoStep(step) {
+    if (step === 2 && !seState.klass) { step = 1; showToast('请先选择班级', ''); }
+    seState.step = step;
+    document.querySelectorAll('.se-step').forEach(s => {
+        const n = parseInt(s.dataset.step);
+        s.classList.toggle('active', n === step);
+        s.classList.toggle('done', n < step);
+    });
+    document.querySelectorAll('.se-view').forEach(v => v.classList.remove('active'));
+    document.getElementById('seView' + step).classList.add('active');
+    if (step === 2) {
+        const cur = seState.project || 'run50';
+        seSelectProject(cur);
+        seState.groupSize = parseInt(document.getElementById('seGroupSize').value) || 4;
+        seUpdateProjectStatus();
+    }
+    if (step === 3) {
+        seState.groupSize = parseInt(document.getElementById('seGroupSize').value) || 4;
+        seState.leaveMap = {};
+        renderSeEntryTable();
+    }
+    document.getElementById('mainContent').scrollTop = 0;
+}
+
+function renderSeEntryTable() {
+    const klass = seState.klass;
+    if (!klass) return;
+    const list = appData.students[klass] || [];
+    const project = seState.project;
+    const projInfo = SE_PROJECTS.find(p => p.code === project);
+    document.getElementById('seEntryTitle').textContent = `${klass.replace('班','')}班 · ${projInfo.name}`;
+
+    const tbody = document.getElementById('seTbody');
+    tbody.innerHTML = list.map((s, idx) => {
+        const group = Math.floor(idx / seState.groupSize) + 1;
+        const lane = (idx % seState.groupSize) + 1;
+        const isLeave = !!seState.leaveMap[s.no];
+        const val = s[project];
+        const rawVal = (val === null || val === undefined) ? '' : val;
+        const level = (!isLeave && rawVal !== '') ? getScoreLevel(project, parseFloat(rawVal), s.gender) : 'none';
+        const levelTxt = SE_LEVEL_TEXT[level];
+        const bmiTag = (project === 'bmi' && rawVal !== '' && !isLeave)
+            ? `<span class="se-bmi-tag">${getBmiLabel(parseFloat(rawVal), s.gender)}</span>` : '';
+        return `<tr data-no="${s.no}" class="${isLeave ? 'se-row-leave' : ''}">
+            <td class="se-col-idx">${idx + 1}</td>
+            <td class="se-col-name">${esc(s.name)}</td>
+            <td>${esc(s.gender)}</td>
+            <td><button type="button" class="se-lane ${isLeave ? 'se-lane-leave' : ''}" onclick="seToggleLeave(${s.no})">${isLeave ? '请假' : `${group}组${lane}`}</button></td>
+            <td class="se-col-score">
+                <div class="se-score-wrap">
+                    <input type="number" step="${projInfo.step}" min="${projInfo.min}" max="${projInfo.max}" class="se-score-input" value="${rawVal}" data-no="${s.no}" onchange="seOnScore(${s.no}, this.value)" ${isLeave ? 'disabled' : ''} placeholder="—">
+                    ${projInfo.unit ? `<span class="se-score-unit">${projInfo.unit}</span>` : ''}
+                    ${bmiTag}
+                </div>
+            </td>
+            <td class="se-col-level"><span class="se-level se-level-${level}">${levelTxt}</span></td>
+        </tr>`;
+    }).join('');
+    updateSeProgress();
+}
+
+function seOnScore(no, value) {
+    const klass = seState.klass;
+    if (!klass) return;
+    const s = (appData.students[klass] || []).find(x => x.no === no);
+    if (!s) return;
+    s[seState.project] = (value === '' || isNaN(parseFloat(value))) ? null : parseFloat(value);
+    saveAppData();
+    const tr = document.querySelector(`tr[data-no="${no}"]`);
+    if (tr) {
+        const level = (seState.leaveMap[no] || value === '') ? 'none' : getScoreLevel(seState.project, parseFloat(value), s.gender);
+        const cell = tr.querySelector('.se-level');
+        if (cell) {
+            cell.className = `se-level se-level-${level}`;
+            cell.textContent = SE_LEVEL_TEXT[level];
+        }
+        if (seState.project === 'bmi' && value !== '') {
+            const tag = tr.querySelector('.se-bmi-tag');
+            if (tag) tag.textContent = getBmiLabel(parseFloat(value), s.gender);
+        }
+    }
+    updateSeProgress();
+}
+
+function seToggleLeave(no) {
+    const klass = seState.klass;
+    if (!klass) return;
+    const s = (appData.students[klass] || []).find(x => x.no === no);
+    if (!s) return;
+    seState.leaveMap[no] = !seState.leaveMap[no];
+    if (seState.leaveMap[no]) {
+        s[seState.project] = null;
+        saveAppData();
+    }
+    renderSeEntryTable();
+}
+
+function updateSeProgress() {
+    const klass = seState.klass;
+    const list = appData.students[klass] || [];
+    const total = list.length;
+    let done = 0, leave = 0;
+    list.forEach(s => {
+        if (seState.leaveMap[s.no]) leave++;
+        else if (s[seState.project] != null && s[seState.project] !== '') done++;
+    });
+    const pct = total ? Math.round(((done + leave) / total) * 100) : 0;
+    document.getElementById('seProgress').style.width = pct + '%';
+    document.getElementById('seProgressText').innerHTML =
+        `完成率 <b>${pct}%</b> · 已录入 <b>${done}</b>/${total} · 请假 ${leave}`;
+}
+
+function seExportCurrent() {
+    const klass = seState.klass;
+    if (!klass) return;
+    const projInfo = SE_PROJECTS.find(p => p.code === seState.project);
+    const list = appData.students[klass] || [];
+    const rows = [['序号','姓名','性别','道次','状态','成绩','得分']];
+    list.forEach((s, idx) => {
+        const group = Math.floor(idx / seState.groupSize) + 1;
+        const lane = (idx % seState.groupSize) + 1;
+        const isLeave = !!seState.leaveMap[s.no];
+        const val = s[seState.project];
+        const lvl = (!isLeave && val != null) ? getScoreLevel(seState.project, parseFloat(val), s.gender) : 'none';
+        const lvlTxt = isLeave ? '请假' : (val == null ? '未录入' : SE_LEVEL_TEXT[lvl]);
+        rows.push([idx + 1, s.name, s.gender, isLeave ? '请假' : (group + '组' + lane), isLeave ? '请假' : '正常', val == null ? '' : val, lvlTxt]);
+    });
+    const csv = '\uFEFF' + rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${klass}_${projInfo.name}_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    showToast('已导出 CSV', 'success');
+}
+
+function seSaveAndNext() {
+    const klass = seState.klass;
+    if (!klass) return;
+    const list = appData.students[klass] || [];
+    let saved = 0;
+    list.forEach(s => {
+        if (s[seState.project] != null && s[seState.project] !== '') {
+            archiveCurrentScores(s);
+            saved++;
+        }
+    });
+    saveAppData();
+    showToast(`已保存 ${saved} 条成绩`, 'success');
+    setTimeout(() => navigateTo('roster'), 700);
 }
 
 function initToolbox() {

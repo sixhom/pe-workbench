@@ -36,6 +36,10 @@
                     <span class="nav-icon">📊</span>
                     <span class="nav-text">体测数据管理</span>
                 </li>
+                <li class="nav-item" data-page="scoreentry">
+                    <span class="nav-icon">📝</span>
+                    <span class="nav-text">成绩录入</span>
+                </li>
                 <li class="nav-item" data-page="toolbox">
                     <span class="nav-icon">🧰</span>
                     <span class="nav-text">教学工具箱</span>
@@ -157,6 +161,104 @@
                 </div>
                 <div class="tab-content" id="atab-warning">
                     <div id="warningContent"></div>
+                </div>
+            </div>
+
+            <!-- 成绩录入 -->
+            <div class="page" id="page-scoreentry">
+                <div class="page-header">
+                    <h2 id="sePageTitle">成绩录入</h2>
+                    <span class="page-sub" id="sePageSub">按测试日现场批量录入，更高效</span>
+                </div>
+
+                <!-- 步骤指示器 -->
+                <div class="se-steps" id="seSteps">
+                    <div class="se-step active" data-step="1"><span class="se-step-num">1</span>选择班级</div>
+                    <div class="se-step" data-step="2"><span class="se-step-num">2</span>选择项目</div>
+                    <div class="se-step" data-step="3"><span class="se-step-num">3</span>录入成绩</div>
+                </div>
+
+                <!-- 步骤 1：选择班级 -->
+                <div class="se-view active" id="seView1">
+                    <div class="se-card">
+                        <div class="se-form-row">
+                            <div class="se-field">
+                                <label>① 选择年级</label>
+                                <select id="seGrade" class="filter-select" onchange="onSeGradeChange()"></select>
+                            </div>
+                            <div class="se-field">
+                                <label>② 选择班级</label>
+                                <select id="seClass" class="filter-select" onchange="onSeClassChange()"></select>
+                            </div>
+                        </div>
+                        <div class="se-class-meta" id="seClassMeta"></div>
+                        <div class="se-actions">
+                            <button class="btn" id="seGotoStep2" onclick="seGoStep(2)">下一步：选择项目 →</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 步骤 2：选择项目 -->
+                <div class="se-view" id="seView2">
+                    <div class="se-card">
+                        <div class="se-summary" id="seStep2Summary"></div>
+                        <div class="se-form-row">
+                            <div class="se-field">
+                                <label>③ 同时测试的学生数量（组别人数）</label>
+                                <select id="seGroupSize" class="filter-select">
+                                    <option value="1">1 人/组</option>
+                                    <option value="2">2 人/组</option>
+                                    <option value="4" selected>4 人/组</option>
+                                    <option value="6">6 人/组</option>
+                                    <option value="8">8 人/组</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="se-form-row">
+                            <div class="se-field se-field-full">
+                                <label>④ 选择测试项目（点击下方按钮选定）</label>
+                                <div class="se-test-grid" id="seTestGrid"></div>
+                            </div>
+                        </div>
+                        <div class="se-actions">
+                            <button class="btn btn-outline" onclick="seGoStep(1)">← 返回选班级</button>
+                            <button class="btn" id="seGotoStep3" onclick="seGoStep(3)">开始录入成绩 →</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 步骤 3：录入成绩 -->
+                <div class="se-view" id="seView3">
+                    <div class="se-entry-header">
+                        <div>
+                            <div class="se-entry-title" id="seEntryTitle">五1班 · 50米跑</div>
+                            <div class="se-entry-tip">点击"道次"可切换请假 · 点击"成绩"输入并自动计分</div>
+                        </div>
+                        <button class="btn btn-outline btn-sm" onclick="seGoStep(2)">🔁 重选班级/项目</button>
+                    </div>
+                    <div class="se-progress-bar">
+                        <div class="se-progress" id="seProgress"></div>
+                        <div class="se-progress-text" id="seProgressText">完成率 0%</div>
+                    </div>
+                    <div class="se-table-wrap">
+                        <table class="se-table" id="seTable">
+                            <thead>
+                                <tr>
+                                    <th class="se-col-idx">#</th>
+                                    <th>姓名</th>
+                                    <th>性别</th>
+                                    <th class="se-col-lane">道次</th>
+                                    <th class="se-col-score">成绩</th>
+                                    <th class="se-col-level">得分</th>
+                                </tr>
+                            </thead>
+                            <tbody id="seTbody"></tbody>
+                        </table>
+                    </div>
+                    <div class="se-footer-actions">
+                        <button class="btn btn-outline" onclick="seExportCurrent()">📊 导出本班项目</button>
+                        <button class="btn" onclick="seSaveAndNext()">💾 保存并查看花名册</button>
+                    </div>
                 </div>
             </div>
 
@@ -479,6 +581,9 @@
             </button>
             <button class="bottom-nav-item" data-page="analysis">
                 <span class="bn-icon">📊</span>体测
+            </button>
+            <button class="bottom-nav-item" data-page="scoreentry">
+                <span class="bn-icon">📝</span>录入
             </button>
             <button class="bottom-nav-item" data-page="toolbox">
                 <span class="bn-icon">🧰</span>工具
