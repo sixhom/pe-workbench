@@ -1159,6 +1159,231 @@ function seSaveAndNext() {
     setTimeout(() => navigateTo('roster'), 700);
 }
 
+// ===== 现场测速：秒表 + 成绩匹配 =====
+const SE_LANE_SIZE = 4;
+let stopwatch = { running: false, startTs: 0, splits: [], rafId: 0 };
+let matchState = { pointer: 0, assigned: {} };
+
+function openStopwatch() {
+    if (seState.step !== 3) { showToast('请先进入"录入成绩"页面', ''); return; }
+    const proj = SE_PROJECTS.find(p => p.code === seState.project);
+    const lbl = document.getElementById('swProjectLabel');
+    if (lbl && proj) lbl.textContent = proj.name + ' 秒表';
+    renderSwSplits();
+    refreshStopwatchButtons();
+    document.getElementById('stopwatchModal').style.display = 'flex';
+    if (stopwatch.running && !stopwatch.rafId) tickStopwatch();
+}
+
+function closeStopwatch() { document.getElementById('stopwatchModal').style.display = 'none'; }
+
+function tickStopwatch() {
+    if (!stopwatch.running) { stopwatch.rafId = 0; return; }
+    const elapsed = (performance.now() - stopwatch.startTs) / 1000;
+    const disp = document.getElementById('swDisplay');
+    if (disp) disp.textContent = elapsed.toFixed(2);
+    stopwatch.rafId = requestAnimationFrame(tickStopwatch);
+}
+
+function startStopwatch() {
+    if (stopwatch.running) return;
+    if (stopwatch.splits.length >= SE_LANE_SIZE) return;
+    stopwatch.running = true;
+    stopwatch.startTs = performance.now();
+    refreshStopwatchButtons();
+    tickStopwatch();
+}
+
+function lapStopwatch() {
+    if (!stopwatch.running) return;
+    if (stopwatch.splits.length >= SE_LANE_SIZE) {
+        showToast('本轮 4 人已记完，请先去成绩匹配', '');
+        return;
+    }
+    const elapsed = (performance.now() - stopwatch.startTs) / 1000;
+    stopwatch.splits.push(+elapsed.toFixed(2));
+    renderSwSplits();
+    updateMatchBadge();
+    refreshStopwatchButtons();
+    if (stopwatch.splits.length >= SE_LANE_SIZE) {
+        stopwatch.running = false;
+        if (stopwatch.rafId) cancelAnimationFrame(stopwatch.rafId);
+        stopwatch.rafId = 0;
+        refreshStopwatchButtons();
+        showToast('4 个成绩已记完！点下方"成绩匹配"分配给学生', 'success');
+        const mb = document.getElementById('matchBarBtn');
+        if (mb) mb.classList.add('ready');
+    }
+}
+
+function resetStopwatch() {
+    if (stopwatch.rafId) cancelAnimationFrame(stopwatch.rafId);
+    stopwatch = { running: false, startTs: 0, splits: [], rafId: 0 };
+    matchState = { pointer: 0, assigned: {} };
+    renderSwSplits();
+    updateMatchBadge();
+    refreshStopwatchButtons();
+    const disp = document.getElementById('swDisplay');
+    if (disp) disp.textContent = '0.00';
+    const mb = document.getElementById('matchBarBtn');
+    if (mb) mb.classList.remove('ready');
+}
+
+function renderSwSplits() {
+    const box = document.getElementById('swSplits');
+    if (!box) return;
+    const proj = SE_PROJECTS.find(p => p.code === seState.project);
+    const unit = proj?.unit || '';
+    let html = '';
+    for (let i = 0; i < SE_LANE_SIZE; i++) {
+        const v = stopwatch.splits[i];
+        const filled = v != null;
+        html += `<div class="sw-slot ${filled ? 'filled' : ''}">
+            <div class="sw-slot-idx">${i + 1}</div>
+            <div class="sw-slot-val">${filled ? v.toFixed(2) : '—'}</div>
+            <div class="sw-slot-unit">${unit}</div>
+        </div>`;
+    }
+    box.innerHTML = html;
+}
+
+function refreshStopwatchButtons() {
+    const startBtn = document.getElementById('swStartBtn');
+    const lapBtn = document.getElementById('swLapBtn');
+    const resetBtn = document.getElementById('swResetBtn');
+    if (!startBtn) return;
+    const full = stopwatch.splits.length >= SE_LANE_SIZE;
+    if (stopwatch.running) {
+        startBtn.textContent = '运行中'; startBtn.disabled = true; lapBtn.disabled = full; resetBtn.disabled = false;
+    } else if (full) {
+        startBtn.textContent = '已完成 4 人'; startBtn.disabled = true; lapBtn.disabled = true; resetBtn.disabled = false;
+    } else if (stopwatch.splits.length === 0) {
+        startBtn.textContent = '开始'; startBtn.disabled = false; lapBtn.disabled = true; resetBtn.disabled = true;
+    } else {
+        startBtn.textContent = '继续'; startBtn.disabled = false; lapBtn.disabled = false; resetBtn.disabled = false;
+    }
+}
+
+function updateMatchBadge() {
+    const n = stopwatch.splits.length;
+    const badge = document.getElementById('matchBadge');
+    if (badge) {
+        if (n > 0) { badge.style.display = 'inline-block'; badge.textContent = n; }
+        else { badge.style.display = 'none'; }
+    }
+}
+
+// ===== 成绩匹配面板 =====
+function openMatchModal() {
+    if (seState.step !== 3) { showToast('请先进入"录入成绩"页面', ''); return; }
+    if (!stopwatch.splits.length) { showToast('还没有秒表成绩，先去秒表计时', ''); return; }
+    if (!seState.klass) { showToast('请先选择班级', ''); return; }
+    if (matchState.pointer >= stopwatch.splits.length) matchState.pointer = 0;
+    renderMatchPanel();
+    document.getElementById('matchModal').style.display = 'flex';
+}
+
+function closeMatchModal() { document.getElementById('matchModal').style.display = 'none'; }
+
+function renderMatchPanel() {
+    const proj = SE_PROJECTS.find(p => p.code === seState.project);
+    const unit = proj?.unit || '';
+    const students = appData.students[seState.klass] || [];
+
+    const timesBox = document.getElementById('matchTimes');
+    let html = '';
+    for (let i = 0; i < SE_LANE_SIZE; i++) {
+        const v = stopwatch.splits[i];
+        const has = v != null;
+        const filled = matchState.assigned[i] != null;
+        const isPointer = i === matchState.pointer && has && !filled;
+        const assignedName = filled ? (students[matchState.assigned[i]]?.name || '已分配') : '';
+        html += `<div class="match-time ${isPointer ? 'active' : ''} ${filled ? 'filled' : ''}">
+            <div class="match-time-idx">第 ${i + 1} 位</div>
+            <div class="match-time-val">${has ? v.toFixed(2) : '—'}</div>
+            <div class="match-time-unit">${unit}</div>
+            ${filled ? `<div class="match-time-name">→ ${escapeHtml(assignedName)}</div>` : ''}
+        </div>`;
+    }
+    timesBox.innerHTML = html;
+
+    const assignedSet = new Set(Object.values(matchState.assigned));
+    const stuBox = document.getElementById('matchStudents');
+    stuBox.innerHTML = students.map((s, idx) => {
+        if (seState.leaveMap[s.no]) {
+            return `<div class="match-stu disabled">
+                <div class="match-stu-lane">${getStudentLaneLabel(idx)}</div>
+                <div class="match-stu-name">${escapeHtml(s.name)}</div>
+                <div class="match-stu-tag">请假</div>
+            </div>`;
+        }
+        if (assignedSet.has(idx)) {
+            const which = Object.keys(matchState.assigned).find(k => matchState.assigned[k] === idx);
+            return `<div class="match-stu done">
+                <div class="match-stu-lane">${getStudentLaneLabel(idx)}</div>
+                <div class="match-stu-name">${escapeHtml(s.name)}</div>
+                <div class="match-stu-tag">→ 第 ${parseInt(which) + 1} 位 ${stopwatch.splits[which]?.toFixed(2)}${unit}</div>
+            </div>`;
+        }
+        return `<div class="match-stu" onclick="assignSplitToStudent(${idx})">
+            <div class="match-stu-lane">${getStudentLaneLabel(idx)}</div>
+            <div class="match-stu-name">${escapeHtml(s.name)}</div>
+            <div class="match-stu-tag">点击分配</div>
+        </div>`;
+    }).join('');
+}
+
+function getStudentLaneLabel(idx) {
+    const group = Math.floor(idx / seState.groupSize) + 1;
+    const lane = (idx % seState.groupSize) + 1;
+    return `${group}组${lane}`;
+}
+
+function assignSplitToStudent(studentIdx) {
+    while (matchState.pointer < SE_LANE_SIZE && matchState.assigned[matchState.pointer] != null) {
+        matchState.pointer++;
+    }
+    if (matchState.pointer >= SE_LANE_SIZE) {
+        showToast('本轮 4 个成绩已全部分配', 'success');
+        renderMatchPanel();
+        return;
+    }
+    if (matchState.pointer >= stopwatch.splits.length) {
+        showToast('秒表成绩还没记到这一位', '');
+        return;
+    }
+    const splitIdx = matchState.pointer;
+    const value = stopwatch.splits[splitIdx];
+
+    const list = appData.students[seState.klass];
+    const s = list[studentIdx];
+    if (!s) return;
+    s[seState.project] = value;
+    if (!Array.isArray(s.history)) s.history = [];
+    const today = new Date().toISOString().slice(0, 10);
+    s.history.push({ date: today, item: seState.project, value, source: '秒表匹配' });
+    saveAppData();
+
+    matchState.assigned[splitIdx] = studentIdx;
+    matchState.pointer++;
+    showToast(`${s.name}：${value.toFixed(2)} ${TEST_ITEMS[seState.project]?.unit || ''} 已填入`, 'success');
+    renderMatchPanel();
+    renderSeEntryTable();
+
+    if (matchState.pointer >= stopwatch.splits.length) {
+        setTimeout(() => {
+            showToast(`本轮 ${SE_LANE_SIZE} 个成绩已全部分配，可点"清零"开始下一组`, 'success');
+            closeMatchModal();
+        }, 600);
+    }
+}
+
+const _origSeGoStep = seGoStep;
+function seGoStep(step) {
+    if (step === 3) resetStopwatch();
+    _origSeGoStep(step);
+}
+
 function initToolbox() {
     if (typeof TRAINING === 'undefined') return;
     fillSelect('genGrade', TRAINING.grades);

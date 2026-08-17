@@ -259,6 +259,18 @@
                         <button class="btn btn-outline" onclick="seExportCurrent()">📊 导出本班项目</button>
                         <button class="btn" onclick="seSaveAndNext()">💾 保存并查看花名册</button>
                     </div>
+
+                    <!-- 现场测速工具：秒表 + 成绩匹配 -->
+                    <div class="se-stopwatch-bar">
+                        <button class="sw-bar-btn sw-bar-stopwatch" id="swBarBtn" onclick="openStopwatch()">
+                            <span class="sw-bar-icon">⏱️</span>
+                            <span class="sw-bar-label">唤起秒表</span>
+                        </button>
+                        <button class="sw-bar-btn sw-bar-match" id="matchBarBtn" onclick="openMatchModal()">
+                            <span class="sw-bar-icon">🎯</span>
+                            <span class="sw-bar-label">成绩匹配 <span id="matchBadge" class="sw-bar-badge" style="display:none;">0</span></span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -602,5 +614,41 @@
     <button class="fab-btn" onclick="openQuickEntry()" title="快速录入">⚡</button>
     <!-- 手机端浮动完整录入按钮 -->
     <button class="fab-btn fab-btn-secondary" onclick="openEntryModal()" title="完整录入">✏️</button>
+
+    <!-- 秒表浮窗（全屏） -->
+    <div class="sw-overlay" id="stopwatchModal" style="display:none;">
+        <div class="sw-card" onclick="event.stopPropagation()">
+            <button class="sw-close" onclick="closeStopwatch()">✕</button>
+            <div class="sw-title">
+                <span class="sw-title-icon">⏱️</span>
+                <span id="swProjectLabel">50米跑 秒表</span>
+                <span class="sw-hint">· 每轮按4人冲线</span>
+            </div>
+            <div class="sw-display" id="swDisplay">0.00</div>
+            <div class="sw-splits" id="swSplits"></div>
+            <div class="sw-controls">
+                <button class="sw-ctrl sw-ctrl-start" id="swStartBtn" onclick="startStopwatch()">开始</button>
+                <button class="sw-ctrl sw-ctrl-lap" id="swLapBtn" onclick="lapStopwatch()" disabled>计时</button>
+                <button class="sw-ctrl sw-ctrl-reset" id="swResetBtn" onclick="resetStopwatch()" disabled>清零</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 成绩匹配浮窗（全屏） -->
+    <div class="match-overlay" id="matchModal" style="display:none;">
+        <div class="match-card" onclick="event.stopPropagation()">
+            <button class="sw-close" onclick="closeMatchModal()">✕</button>
+            <div class="match-title">
+                <span class="sw-title-icon">🎯</span>
+                <span>按冲线顺序，点学生姓名分配成绩</span>
+            </div>
+            <div class="match-times" id="matchTimes"></div>
+            <div class="match-tip">
+                <span class="match-tip-icon">💡</span>
+                <span>点学生姓名，自动填入当前指针所在的那一栏；填完后指针自动跳到下一栏。</span>
+            </div>
+            <div class="match-students" id="matchStudents"></div>
+        </div>
+    </div>
 </body>
 </html>
