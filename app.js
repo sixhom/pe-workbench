@@ -904,6 +904,8 @@ function parseClassName(klass) {
     const cnMap = { '一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9 };
     let m = klass.match(/^([一二三四五六七八九])(\d+)班?$/);
     if (m) return { grade: cnMap[m[1]], num: parseInt(m[2]), display: m[1] + m[2] };
+    m = klass.match(/^(\d)0(\d+)班?$/);  // 形如 404 = 4年级4班（中间0为分隔符）
+    if (m) return { grade: parseInt(m[1]), num: parseInt(m[2]), display: m[1] + '0' + m[2] };
     m = klass.match(/^(\d{1,2})(\d+)班?$/);
     if (m) return { grade: parseInt(m[1]), num: parseInt(m[2]), display: m[1] + m[2] };
     m = klass.match(/^(\d{1,2})班?$/);
@@ -1008,6 +1010,7 @@ function seSelectProject(code) {
 }
 
 function seGoStep(step) {
+    if (step === 3) resetStopwatch();
     if (step === 2 && !seState.klass) { step = 1; showToast('请先选择班级', ''); }
     seState.step = step;
     document.querySelectorAll('.se-step').forEach(s => {
@@ -1376,12 +1379,6 @@ function assignSplitToStudent(studentIdx) {
             closeMatchModal();
         }, 600);
     }
-}
-
-const _origSeGoStep = seGoStep;
-function seGoStep(step) {
-    if (step === 3) resetStopwatch();
-    _origSeGoStep(step);
 }
 
 function initToolbox() {
