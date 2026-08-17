@@ -913,6 +913,11 @@ html, body {
     .fab-btn { display: none !important; }
 }
 
+/* 成绩录入页：用顶部工具栏替代 FAB */
+body.page-scoreentry-active .fab-btn {
+    display: none !important;
+}
+
 /* ===== Data Entry Modal ===== */
 .entry-modal .modal { max-width: 520px; }
 .entry-form { display: flex; flex-direction: column; gap: 18px; }
@@ -2048,6 +2053,75 @@ html, body {
     padding: 0 7px;
 }
 
+/* ===== 成绩录入 · 顶部悬浮操作条（仅 step=3 出现） ===== */
+.se-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 80;
+    display: none;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 8px;
+    margin: 0 -14px 14px -14px;
+    padding: 10px 12px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.98) 65%, rgba(255,255,255,0.85));
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--gray-200, #EEE);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+.se-toolbar.visible { display: grid; }
+.se-tb-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 10px 6px;
+    border: none;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.10);
+    transition: transform 0.1s, box-shadow 0.2s;
+    user-select: none;
+    position: relative;
+    line-height: 1.2;
+}
+.se-tb-btn:active { transform: scale(0.96); }
+.se-tb-stopwatch { background: linear-gradient(135deg, #34C759, #2BA847); }
+.se-tb-match { background: linear-gradient(135deg, #FF7043, #F4511E); }
+.se-tb-match.ready { animation: barPulse 1.2s infinite; }
+.se-tb-quick { background: linear-gradient(135deg, #FFC107, #FF8F00); }
+.se-tb-reset { background: linear-gradient(135deg, #90A4AE, #607D8B); }
+.se-tb-icon { font-size: 22px; line-height: 1; }
+.se-tb-label { font-size: 12px; }
+.se-tb-badge {
+    display: inline-block;
+    background: #fff;
+    color: #F4511E;
+    font-size: 11px;
+    font-weight: 800;
+    border-radius: 999px;
+    padding: 1px 6px;
+    min-width: 16px;
+    text-align: center;
+    margin-left: 2px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+@media (max-width: 768px) {
+    .se-toolbar {
+        margin: 0 -10px 12px -10px;
+        padding: 8px 8px;
+        gap: 6px;
+    }
+    .se-tb-btn { padding: 8px 4px; }
+    .se-tb-icon { font-size: 19px; }
+    .se-tb-label { font-size: 11px; }
+}
+
 /* ===== 秒表浮窗 ===== */
 .sw-overlay {
     position: fixed;
@@ -2204,6 +2278,15 @@ html, body {
 .match-time.filled {
     background: #E8F5E9;
     border-color: #66BB6A;
+    cursor: pointer;
+}
+.match-time.filled:active { transform: scale(0.97); }
+.match-time-x {
+    display: inline-block;
+    margin-left: 4px;
+    color: #C62828;
+    font-weight: 800;
+    font-size: 12px;
 }
 .match-time-idx { font-size: 11px; color: #666; margin-bottom: 4px; }
 .match-time-val {

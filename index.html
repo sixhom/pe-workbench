@@ -171,6 +171,26 @@
                     <span class="page-sub" id="sePageSub">按测试日现场批量录入，更高效</span>
                 </div>
 
+                <!-- 现场测速工具：顶部悬浮操作条（仅 step=3 时显示） -->
+                <div class="se-toolbar" id="seToolbar">
+                    <button class="se-tb-btn se-tb-stopwatch" id="swBarBtn" onclick="openStopwatch()">
+                        <span class="se-tb-icon">⏱️</span>
+                        <span class="se-tb-label">唤起秒表</span>
+                    </button>
+                    <button class="se-tb-btn se-tb-match" id="matchBarBtn" onclick="openMatchModal()">
+                        <span class="se-tb-icon">🎯</span>
+                        <span class="se-tb-label">成绩匹配 <span id="matchBadge" class="se-tb-badge" style="display:none;">0</span></span>
+                    </button>
+                    <button class="se-tb-btn se-tb-quick" id="quickBarBtn" onclick="openQuickEntry()">
+                        <span class="se-tb-icon">⚡</span>
+                        <span class="se-tb-label">快速录入</span>
+                    </button>
+                    <button class="se-tb-btn se-tb-reset" id="resetBarBtn" onclick="resetStopwatch()">
+                        <span class="se-tb-icon">🔄</span>
+                        <span class="se-tb-label">重置</span>
+                    </button>
+                </div>
+
                 <!-- 步骤指示器 -->
                 <div class="se-steps" id="seSteps">
                     <div class="se-step active" data-step="1"><span class="se-step-num">1</span>选择班级</div>
@@ -258,18 +278,6 @@
                     <div class="se-footer-actions">
                         <button class="btn btn-outline" onclick="seExportCurrent()">📊 导出本班项目</button>
                         <button class="btn" onclick="seSaveAndNext()">💾 保存并查看花名册</button>
-                    </div>
-
-                    <!-- 现场测速工具：秒表 + 成绩匹配 -->
-                    <div class="se-stopwatch-bar">
-                        <button class="sw-bar-btn sw-bar-stopwatch" id="swBarBtn" onclick="openStopwatch()">
-                            <span class="sw-bar-icon">⏱️</span>
-                            <span class="sw-bar-label">唤起秒表</span>
-                        </button>
-                        <button class="sw-bar-btn sw-bar-match" id="matchBarBtn" onclick="openMatchModal()">
-                            <span class="sw-bar-icon">🎯</span>
-                            <span class="sw-bar-label">成绩匹配 <span id="matchBadge" class="sw-bar-badge" style="display:none;">0</span></span>
-                        </button>
                     </div>
                 </div>
             </div>

@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initSafety();
     initExcelImport();
     initHomeCards();
+    updateSeToolbar();
 });
 
 // ===== Data Management =====
@@ -68,6 +69,7 @@ function navigateTo(page) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const pageEl = document.getElementById('page-' + page);
     if (pageEl) pageEl.classList.add('active');
+    document.body.classList.toggle('page-scoreentry-active', page === 'scoreentry');
     
     // Update mobile title
     const mobileTitle = document.getElementById('mobilePageTitle');
@@ -1032,6 +1034,13 @@ function seGoStep(step) {
         renderSeEntryTable();
     }
     document.getElementById('mainContent').scrollTop = 0;
+    updateSeToolbar();
+}
+
+function updateSeToolbar() {
+    const bar = document.getElementById('seToolbar');
+    if (!bar) return;
+    bar.classList.toggle('visible', seState.step === 3);
 }
 
 function renderSeEntryTable() {
@@ -1281,7 +1290,15 @@ function openMatchModal() {
     if (seState.step !== 3) { showToast('请先进入"录入成绩"页面', ''); return; }
     if (!stopwatch.splits.length) { showToast('还没有秒表成绩，先去秒表计时', ''); return; }
     if (!seState.klass) { showToast('请先选择班级', ''); return; }
-    if (matchState.pointer >= stopwatch.splits.length) matchState.pointer = 0;
+    const allAssigned = matchState.pointer >= stopwatch.splits.length && Object.keys(matchState.assigned).length >= stopwatch.splits.length;
+    if (allAssigned) {
+        const ok = confirm('本轮 4 个成绩已全部分配。\n\n点"确定"→ 清空本轮，开始下一组\n点"取消"→ 继续查看/调整已分配的成绩');
+        if (ok) {
+            resetStopwatch();
+            showToast('已清空，请开始下一轮计时', 'success');
+            return;
+        }
+    }
     renderMatchPanel();
     document.getElementById('matchModal').style.display = 'flex';
 }
@@ -1301,8 +1318,8 @@ function renderMatchPanel() {
         const filled = matchState.assigned[i] != null;
         const isPointer = i === matchState.pointer && has && !filled;
         const assignedName = filled ? (students[matchState.assigned[i]]?.name || '已分配') : '';
-        html += `<div class="match-time ${isPointer ? 'active' : ''} ${filled ? 'filled' : ''}">
-            <div class="match-time-idx">第 ${i + 1} 位</div>
+        html += `<div class="match-time ${isPointer ? 'active' : ''} ${filled ? 'filled' : ''}" ${filled ? `onclick="unassignSplit(${i})" title="点此取消该匹配"` : ''}>
+            <div class="match-time-idx">第 ${i + 1} 位${filled ? ' <span class="match-time-x">×</span>' : ''}</div>
             <div class="match-time-val">${has ? v.toFixed(2) : '—'}</div>
             <div class="match-time-unit">${unit}</div>
             ${filled ? `<div class="match-time-name">→ ${escapeHtml(assignedName)}</div>` : ''}
@@ -1322,10 +1339,10 @@ function renderMatchPanel() {
         }
         if (assignedSet.has(idx)) {
             const which = Object.keys(matchState.assigned).find(k => matchState.assigned[k] === idx);
-            return `<div class="match-stu done">
+            return `<div class="match-stu done" onclick="unassignSplit(${which})">
                 <div class="match-stu-lane">${getStudentLaneLabel(idx)}</div>
                 <div class="match-stu-name">${escapeHtml(s.name)}</div>
-                <div class="match-stu-tag">→ 第 ${parseInt(which) + 1} 位 ${stopwatch.splits[which]?.toFixed(2)}${unit}</div>
+                <div class="match-stu-tag">→ 第 ${parseInt(which) + 1} 位 ${stopwatch.splits[which]?.toFixed(2)}${unit}（点取消）</div>
             </div>`;
         }
         return `<div class="match-stu" onclick="assignSplitToStudent(${idx})">
@@ -1347,7 +1364,7 @@ function assignSplitToStudent(studentIdx) {
         matchState.pointer++;
     }
     if (matchState.pointer >= SE_LANE_SIZE) {
-        showToast('本轮 4 个成绩已全部分配', 'success');
+        showToast('本轮 4 个成绩已全部分配，请点"重置"开始下一组', 'success');
         renderMatchPanel();
         return;
     }
@@ -1375,10 +1392,32 @@ function assignSplitToStudent(studentIdx) {
 
     if (matchState.pointer >= stopwatch.splits.length) {
         setTimeout(() => {
-            showToast(`本轮 ${SE_LANE_SIZE} 个成绩已全部分配，可点"清零"开始下一组`, 'success');
-            closeMatchModal();
+            showToast(`本轮 ${SE_LANE_SIZE} 个成绩已全部分配，可点"重置"开始下一组`, 'success');
         }, 600);
     }
+}
+
+// 取消已分配的某位匹配（让学生姓名+该位 split 都恢复为可点）
+function unassignSplit(splitIdx) {
+    if (splitIdx == null || matchState.assigned[splitIdx] == null) return;
+    const stuIdx = matchState.assigned[splitIdx];
+    const list = appData.students[seState.klass] || [];
+    const s = list[stuIdx];
+    if (s) {
+        s[seState.project] = null;
+        if (Array.isArray(s.history)) {
+            s.history = s.history.filter(h => !(h.item === seState.project && h.value === stopwatch.splits[splitIdx] && h.source === '秒表匹配'));
+        }
+        saveAppData();
+    }
+    delete matchState.assigned[splitIdx];
+    // pointer 归位到最早未分配的位
+    let p = 0;
+    while (p < SE_LANE_SIZE && matchState.assigned[p] != null) p++;
+    matchState.pointer = p;
+    showToast(`已取消第 ${splitIdx + 1} 位匹配（${s ? s.name : ''}）`, '');
+    renderMatchPanel();
+    renderSeEntryTable();
 }
 
 function initToolbox() {
