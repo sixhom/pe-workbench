@@ -1054,8 +1054,6 @@ function renderSeEntryTable() {
 
     const tbody = document.getElementById('seTbody');
     tbody.innerHTML = list.map((s, idx) => {
-        const group = Math.floor(idx / seState.groupSize) + 1;
-        const lane = (idx % seState.groupSize) + 1;
         const isLeave = !!seState.leaveMap[s.no];
         const val = s[project];
         const rawVal = (val === null || val === undefined) ? '' : val;
@@ -1067,7 +1065,6 @@ function renderSeEntryTable() {
             <td class="se-col-idx">${idx + 1}</td>
             <td class="se-col-name">${esc(s.name)}</td>
             <td>${esc(s.gender)}</td>
-            <td><button type="button" class="se-lane ${isLeave ? 'se-lane-leave' : ''}" onclick="seToggleLeave(${s.no})">${isLeave ? '请假' : `${group}组${lane}`}</button></td>
             <td class="se-col-score">
                 <div class="se-score-wrap">
                     <input type="number" step="${projInfo.step}" min="${projInfo.min}" max="${projInfo.max}" class="se-score-input" value="${rawVal}" data-no="${s.no}" onchange="seOnScore(${s.no}, this.value)" ${isLeave ? 'disabled' : ''} placeholder="—">
@@ -1137,15 +1134,13 @@ function seExportCurrent() {
     if (!klass) return;
     const projInfo = SE_PROJECTS.find(p => p.code === seState.project);
     const list = appData.students[klass] || [];
-    const rows = [['序号','姓名','性别','道次','状态','成绩','得分']];
+    const rows = [['序号','姓名','性别','成绩','得分']];
     list.forEach((s, idx) => {
-        const group = Math.floor(idx / seState.groupSize) + 1;
-        const lane = (idx % seState.groupSize) + 1;
         const isLeave = !!seState.leaveMap[s.no];
         const val = s[seState.project];
         const lvl = (!isLeave && val != null) ? getScoreLevel(seState.project, parseFloat(val), s.gender) : 'none';
         const lvlTxt = isLeave ? '请假' : (val == null ? '未录入' : SE_LEVEL_TEXT[lvl]);
-        rows.push([idx + 1, s.name, s.gender, isLeave ? '请假' : (group + '组' + lane), isLeave ? '请假' : '正常', val == null ? '' : val, lvlTxt]);
+        rows.push([idx + 1, s.name, s.gender, val == null ? '' : val, lvlTxt]);
     });
     const csv = '\uFEFF' + rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
@@ -1184,11 +1179,38 @@ function openStopwatch() {
     if (lbl && proj) lbl.textContent = proj.name + ' 秒表';
     renderSwSplits();
     refreshStopwatchButtons();
-    document.getElementById('stopwatchModal').style.display = 'flex';
+    const overlay = document.getElementById('stopwatchModal');
+    overlay.style.display = 'block';
+    overlay.classList.remove('collapsed');
     if (stopwatch.running && !stopwatch.rafId) tickStopwatch();
 }
 
-function closeStopwatch() { document.getElementById('stopwatchModal').style.display = 'none'; }
+// 折叠/展开秒表浮窗：true=折叠成小气泡，false=展开完整卡片
+function toggleSwFloat(collapse) {
+    const overlay = document.getElementById('stopwatchModal');
+    if (!overlay) return;
+    if (collapse) overlay.classList.add('collapsed');
+    else overlay.classList.remove('collapsed');
+    updateSwBubble();
+}
+
+// 更新折叠状态气泡上的「已记录 N/4」文字
+function updateSwBubble() {
+    const bubbleText = document.getElementById('swBubbleText');
+    const bubbleCount = document.getElementById('swBubbleCount');
+    if (bubbleText) bubbleText.textContent = stopwatch.running ? '正在计时…' : '秒表已收起';
+    if (bubbleCount) {
+        const n = stopwatch.splits.length;
+        const full = n >= SE_LANE_SIZE;
+        bubbleCount.textContent = `${n}/${SE_LANE_SIZE}`;
+        bubbleCount.classList.toggle('done', full);
+    }
+}
+
+function closeStopwatch() {
+    const overlay = document.getElementById('stopwatchModal');
+    if (overlay) overlay.style.display = 'none';
+}
 
 function tickStopwatch() {
     if (!stopwatch.running) { stopwatch.rafId = 0; return; }
@@ -1210,22 +1232,19 @@ function startStopwatch() {
 function lapStopwatch() {
     if (!stopwatch.running) return;
     if (stopwatch.splits.length >= SE_LANE_SIZE) {
-        showToast('本轮 4 人已记完，请先去成绩匹配', '');
+        showToast('本轮 4 人已记完，直接点秒表里的「复制」即可', '');
         return;
     }
     const elapsed = (performance.now() - stopwatch.startTs) / 1000;
     stopwatch.splits.push(+elapsed.toFixed(2));
     renderSwSplits();
-    updateMatchBadge();
     refreshStopwatchButtons();
     if (stopwatch.splits.length >= SE_LANE_SIZE) {
         stopwatch.running = false;
         if (stopwatch.rafId) cancelAnimationFrame(stopwatch.rafId);
         stopwatch.rafId = 0;
         refreshStopwatchButtons();
-        showToast('4 个成绩已记完！点下方"成绩匹配"分配给学生', 'success');
-        const mb = document.getElementById('matchBarBtn');
-        if (mb) mb.classList.add('ready');
+        showToast('4 个成绩已记完！点每个成绩的「复制」粘贴到同学成绩栏', 'success');
     }
 }
 
@@ -1262,6 +1281,7 @@ function renderSwSplits() {
         html += `<div class="sw-done-tip">✅ ${SE_LANE_SIZE} 人已全部冲线：点每个成绩的「复制」，再粘贴到对应同学的成绩栏</div>`;
     }
     box.innerHTML = html;
+    updateSwBubble();
 }
 
 // 复制某个秒表成绩（仅秒数，方便粘贴到学生成绩栏）

@@ -248,7 +248,7 @@
                     <div class="se-entry-header">
                         <div>
                             <div class="se-entry-title" id="seEntryTitle">五1班 · 50米跑</div>
-                            <div class="se-entry-tip">点击"道次"可切换请假 · 点击"成绩"输入并自动计分</div>
+                            <div class="se-entry-tip">点击"成绩"输入并自动计分</div>
                         </div>
                         <button class="btn btn-outline btn-sm" onclick="seGoStep(2)">🔁 重选班级/项目</button>
                     </div>
@@ -263,7 +263,6 @@
                                     <th class="se-col-idx">#</th>
                                     <th>姓名</th>
                                     <th>性别</th>
-                                    <th class="se-col-lane">道次</th>
                                     <th class="se-col-score">成绩</th>
                                     <th class="se-col-level">得分</th>
                                 </tr>
@@ -619,14 +618,20 @@
     <!-- 手机端浮动完整录入按钮 -->
     <button class="fab-btn fab-btn-secondary" onclick="openEntryModal()" title="完整录入">✏️</button>
 
-    <!-- 秒表浮窗（全屏） -->
+    <!-- 秒表浮窗（页面内右下角小窗，常驻/可折叠） -->
     <div class="sw-overlay" id="stopwatchModal" style="display:none;">
+        <button class="sw-bubble" onclick="toggleSwFloat(false)" title="展开秒表">
+            <span>⏱️</span>
+            <span id="swBubbleText">秒表已收起</span>
+            <span class="sw-bubble-count" id="swBubbleCount">0/4</span>
+        </button>
         <div class="sw-card" onclick="event.stopPropagation()">
+            <button class="sw-collapse-btn" onclick="toggleSwFloat(true)" title="收起">⌄</button>
             <button class="sw-close" onclick="closeStopwatch()">✕</button>
             <div class="sw-title">
                 <span class="sw-title-icon">⏱️</span>
                 <span id="swProjectLabel">50米跑 秒表</span>
-                <span class="sw-hint">· 每轮按4人冲线</span>
+                <span class="sw-hint">· 每轮4人</span>
             </div>
             <div class="sw-display" id="swDisplay">0.00</div>
             <div class="sw-splits" id="swSplits"></div>
