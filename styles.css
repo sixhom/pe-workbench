@@ -2201,6 +2201,32 @@ body.page-scoreentry-active .fab-btn {
     font-weight: 700;
 }
 .sw-slot-unit { font-size: 10px; opacity: 0.55; margin-top: 2px; }
+.sw-copy-btn {
+    margin-top: 6px;
+    width: 100%;
+    padding: 6px 0;
+    border: none;
+    border-radius: 8px;
+    background: #FF7043;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.12s, background 0.12s;
+}
+.sw-copy-btn:active { transform: scale(0.95); background: #F4511E; }
+.sw-done-tip {
+    grid-column: 1 / -1;
+    margin-top: 4px;
+    padding: 10px 12px;
+    background: rgba(76,175,80,0.18);
+    border: 1px solid rgba(102,187,106,0.5);
+    border-radius: 10px;
+    font-size: 13px;
+    color: #E8F5E9;
+    text-align: center;
+    line-height: 1.5;
+}
 .sw-controls {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;

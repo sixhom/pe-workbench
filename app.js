@@ -1255,9 +1255,39 @@ function renderSwSplits() {
             <div class="sw-slot-idx">${i + 1}</div>
             <div class="sw-slot-val">${filled ? v.toFixed(2) : '—'}</div>
             <div class="sw-slot-unit">${unit}</div>
+            ${filled ? `<button type="button" class="sw-copy-btn" onclick="copySplit(${i})">复制</button>` : ''}
         </div>`;
     }
+    if (stopwatch.splits.length >= SE_LANE_SIZE) {
+        html += `<div class="sw-done-tip">✅ ${SE_LANE_SIZE} 人已全部冲线：点每个成绩的「复制」，再粘贴到对应同学的成绩栏</div>`;
+    }
     box.innerHTML = html;
+}
+
+// 复制某个秒表成绩（仅秒数，方便粘贴到学生成绩栏）
+function copySplit(i) {
+    const v = stopwatch.splits[i];
+    if (v == null) return;
+    const text = v.toFixed(2);
+    const ok = () => showToast(`已复制第 ${i + 1} 个成绩：${text} 秒，去粘贴到对应同学`, 'success');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(ok).catch(() => fallbackCopy(text, ok));
+    } else {
+        fallbackCopy(text, ok);
+    }
+}
+function fallbackCopy(text, cb) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.top = '-9999px';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try { document.execCommand('copy'); if (cb) cb(); }
+    catch (e) { showToast('复制失败，请手动记录：' + text, ''); }
+    document.body.removeChild(ta);
 }
 
 function refreshStopwatchButtons() {

@@ -177,10 +177,6 @@
                         <span class="se-tb-icon">⏱️</span>
                         <span class="se-tb-label">唤起秒表</span>
                     </button>
-                    <button class="se-tb-btn se-tb-match" id="matchBarBtn" onclick="openMatchModal()">
-                        <span class="se-tb-icon">🎯</span>
-                        <span class="se-tb-label">成绩匹配 <span id="matchBadge" class="se-tb-badge" style="display:none;">0</span></span>
-                    </button>
                     <button class="se-tb-btn se-tb-quick" id="quickBarBtn" onclick="openQuickEntry()">
                         <span class="se-tb-icon">⚡</span>
                         <span class="se-tb-label">快速录入</span>
@@ -642,23 +638,5 @@
         </div>
     </div>
 
-    <!-- 成绩匹配浮窗（全屏） -->
-    <div class="match-overlay" id="matchModal" style="display:none;">
-        <div class="match-card" onclick="event.stopPropagation()">
-            <button class="sw-close" onclick="closeMatchModal()">✕</button>
-            <div class="match-title">
-                <span class="sw-title-icon">🎯</span>
-                <span>按冲线顺序，点学生姓名分配成绩</span>
-            </div>
-            <div class="match-status" id="matchStatus"></div>
-            <div class="match-times" id="matchTimes"></div>
-            <div class="match-tip">
-                <span class="match-tip-icon">💡</span>
-                <span>4 个成绩就是第1~4名。按冲线先后点学生姓名：点第 1 个=第1名，点第 2 个=第2名……点错可再点一下该生取消重选。</span>
-            </div>
-            <div class="match-students" id="matchStudents"></div>
-            <button class="match-next-btn" id="matchNextBtn" onclick="matchNextGroup()">开始下一组（清空本轮）</button>
-        </div>
-    </div>
 </body>
 </html>
