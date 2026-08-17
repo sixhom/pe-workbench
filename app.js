@@ -882,6 +882,7 @@ window._currentPlan = null;
 function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 }
+function escapeHtml(s) { return esc(s); }
 
 function fillSelect(id, arr) {
     const el = document.getElementById(id);
@@ -1174,7 +1175,7 @@ function seSaveAndNext() {
 // ===== 现场测速：秒表 + 成绩匹配 =====
 const SE_LANE_SIZE = 4;
 let stopwatch = { running: false, startTs: 0, splits: [], rafId: 0 };
-let matchState = { pointer: 0, assigned: {} };
+let matchState = { assigned: {} };
 
 function openStopwatch() {
     if (seState.step !== 3) { showToast('请先进入"录入成绩"页面', ''); return; }
@@ -1231,7 +1232,7 @@ function lapStopwatch() {
 function resetStopwatch() {
     if (stopwatch.rafId) cancelAnimationFrame(stopwatch.rafId);
     stopwatch = { running: false, startTs: 0, splits: [], rafId: 0 };
-    matchState = { pointer: 0, assigned: {} };
+    matchState = { assigned: {} };
     renderSwSplits();
     updateMatchBadge();
     refreshStopwatchButtons();
@@ -1290,46 +1291,63 @@ function openMatchModal() {
     if (seState.step !== 3) { showToast('请先进入"录入成绩"页面', ''); return; }
     if (!stopwatch.splits.length) { showToast('还没有秒表成绩，先去秒表计时', ''); return; }
     if (!seState.klass) { showToast('请先选择班级', ''); return; }
-    const allAssigned = matchState.pointer >= stopwatch.splits.length && Object.keys(matchState.assigned).length >= stopwatch.splits.length;
-    if (allAssigned) {
-        const ok = confirm('本轮 4 个成绩已全部分配。\n\n点"确定"→ 清空本轮，开始下一组\n点"取消"→ 继续查看/调整已分配的成绩');
-        if (ok) {
-            resetStopwatch();
-            showToast('已清空，请开始下一轮计时', 'success');
-            return;
-        }
-    }
     renderMatchPanel();
     document.getElementById('matchModal').style.display = 'flex';
 }
 
 function closeMatchModal() { document.getElementById('matchModal').style.display = 'none'; }
 
+// 下一个待分配的名次（0=第1名）；没有空位返回 -1
+function matchLowestFreeRank() {
+    for (let i = 0; i < SE_LANE_SIZE; i++) if (matchState.assigned[i] == null) return i;
+    return -1;
+}
+
 function renderMatchPanel() {
     const proj = SE_PROJECTS.find(p => p.code === seState.project);
     const unit = proj?.unit || '';
-    const students = appData.students[seState.klass] || [];
+    const list = appData.students[seState.klass] || [];
+    const nextRank = matchLowestFreeRank();
+    const allDone = nextRank === -1;
 
+    // —— 名次成绩卡（第1~4名）——
     const timesBox = document.getElementById('matchTimes');
     let html = '';
     for (let i = 0; i < SE_LANE_SIZE; i++) {
         const v = stopwatch.splits[i];
         const has = v != null;
         const filled = matchState.assigned[i] != null;
-        const isPointer = i === matchState.pointer && has && !filled;
-        const assignedName = filled ? (students[matchState.assigned[i]]?.name || '已分配') : '';
-        html += `<div class="match-time ${isPointer ? 'active' : ''} ${filled ? 'filled' : ''}" ${filled ? `onclick="unassignSplit(${i})" title="点此取消该匹配"` : ''}>
-            <div class="match-time-idx">第 ${i + 1} 位${filled ? ' <span class="match-time-x">×</span>' : ''}</div>
+        const isCurrent = (i === nextRank) && has;
+        const name = filled ? (list[matchState.assigned[i]]?.name || '') : '';
+        const cls = ['match-time'];
+        if (isCurrent) cls.push('active');
+        if (filled) cls.push('filled');
+        if (allDone) cls.push('all-done');
+        html += `<div class="${cls.join(' ')}" ${filled ? `onclick="unassignRank(${i})" title="点此取消该名次"` : ''}>
+            <div class="match-time-idx">第 ${i + 1} 名${filled ? ' <span class="match-time-x">×</span>' : (isCurrent ? ' · 待分配' : '')}</div>
             <div class="match-time-val">${has ? v.toFixed(2) : '—'}</div>
             <div class="match-time-unit">${unit}</div>
-            ${filled ? `<div class="match-time-name">→ ${escapeHtml(assignedName)}</div>` : ''}
+            ${filled ? `<div class="match-time-name">→ ${escapeHtml(name)}</div>` : ''}
         </div>`;
     }
     timesBox.innerHTML = html;
 
+    // —— 当前分配状态条 ——
+    const statusEl = document.getElementById('matchStatus');
+    if (statusEl) {
+        if (allDone) {
+            statusEl.innerHTML = '✅ 本轮 4 人成绩已全部录入，可点下方"开始下一组"';
+            statusEl.className = 'match-status done';
+        } else {
+            statusEl.innerHTML = `👉 现在分配：<b>第 ${nextRank + 1} 名</b>（${stopwatch.splits[nextRank] != null ? stopwatch.splits[nextRank].toFixed(2) : '—'}${unit}）— 点对应学生姓名`;
+            statusEl.className = 'match-status';
+        }
+    }
+
+    // —— 学生网格 ——
     const assignedSet = new Set(Object.values(matchState.assigned));
     const stuBox = document.getElementById('matchStudents');
-    stuBox.innerHTML = students.map((s, idx) => {
+    stuBox.innerHTML = list.map((s, idx) => {
         if (seState.leaveMap[s.no]) {
             return `<div class="match-stu disabled">
                 <div class="match-stu-lane">${getStudentLaneLabel(idx)}</div>
@@ -1338,17 +1356,17 @@ function renderMatchPanel() {
             </div>`;
         }
         if (assignedSet.has(idx)) {
-            const which = Object.keys(matchState.assigned).find(k => matchState.assigned[k] === idx);
-            return `<div class="match-stu done" onclick="unassignSplit(${which})">
+            const rank = Object.keys(matchState.assigned).find(k => matchState.assigned[k] === idx);
+            return `<div class="match-stu done" onclick="unassignStudent(${idx})">
                 <div class="match-stu-lane">${getStudentLaneLabel(idx)}</div>
                 <div class="match-stu-name">${escapeHtml(s.name)}</div>
-                <div class="match-stu-tag">→ 第 ${parseInt(which) + 1} 位 ${stopwatch.splits[which]?.toFixed(2)}${unit}（点取消）</div>
+                <div class="match-stu-tag">第 ${parseInt(rank) + 1} 名 · ${stopwatch.splits[rank] != null ? stopwatch.splits[rank].toFixed(2) : '—'}${unit}（点取消）</div>
             </div>`;
         }
-        return `<div class="match-stu" onclick="assignSplitToStudent(${idx})">
+        return `<div class="match-stu" onclick="assignStudentToNextRank(${idx})">
             <div class="match-stu-lane">${getStudentLaneLabel(idx)}</div>
             <div class="match-stu-name">${escapeHtml(s.name)}</div>
-            <div class="match-stu-tag">点击分配</div>
+            <div class="match-stu-tag">点此分配</div>
         </div>`;
     }).join('');
 }
@@ -1359,22 +1377,15 @@ function getStudentLaneLabel(idx) {
     return `${group}组${lane}`;
 }
 
-function assignSplitToStudent(studentIdx) {
-    while (matchState.pointer < SE_LANE_SIZE && matchState.assigned[matchState.pointer] != null) {
-        matchState.pointer++;
-    }
-    if (matchState.pointer >= SE_LANE_SIZE) {
-        showToast('本轮 4 个成绩已全部分配，请点"重置"开始下一组', 'success');
-        renderMatchPanel();
-        return;
-    }
-    if (matchState.pointer >= stopwatch.splits.length) {
-        showToast('秒表成绩还没记到这一位', '');
-        return;
-    }
-    const splitIdx = matchState.pointer;
-    const value = stopwatch.splits[splitIdx];
-
+// 点学生姓名 → 自动分配到"下一个待分配名次"（第1名→第2名→第3名→第4名）
+function assignStudentToNextRank(studentIdx) {
+    // 已分配过该学生 → 视为取消重选
+    const existing = Object.keys(matchState.assigned).find(k => matchState.assigned[k] === studentIdx);
+    if (existing != null) { clearRank(parseInt(existing)); return; }
+    const rank = matchLowestFreeRank();
+    if (rank === -1) { showToast('4 个名次都已分配', ''); return; }
+    if (stopwatch.splits[rank] == null) { showToast('秒表第 ' + (rank + 1) + ' 名成绩还没记录', ''); return; }
+    const value = stopwatch.splits[rank];
     const list = appData.students[seState.klass];
     const s = list[studentIdx];
     if (!s) return;
@@ -1383,41 +1394,44 @@ function assignSplitToStudent(studentIdx) {
     const today = new Date().toISOString().slice(0, 10);
     s.history.push({ date: today, item: seState.project, value, source: '秒表匹配' });
     saveAppData();
-
-    matchState.assigned[splitIdx] = studentIdx;
-    matchState.pointer++;
-    showToast(`${s.name}：${value.toFixed(2)} ${TEST_ITEMS[seState.project]?.unit || ''} 已填入`, 'success');
+    matchState.assigned[rank] = studentIdx;
+    showToast(`${s.name} → 第 ${rank + 1} 名：${value.toFixed(2)} ${TEST_ITEMS[seState.project]?.unit || ''}`, 'success');
     renderMatchPanel();
     renderSeEntryTable();
-
-    if (matchState.pointer >= stopwatch.splits.length) {
-        setTimeout(() => {
-            showToast(`本轮 ${SE_LANE_SIZE} 个成绩已全部分配，可点"重置"开始下一组`, 'success');
-        }, 600);
-    }
 }
 
-// 取消已分配的某位匹配（让学生姓名+该位 split 都恢复为可点）
-function unassignSplit(splitIdx) {
-    if (splitIdx == null || matchState.assigned[splitIdx] == null) return;
-    const stuIdx = matchState.assigned[splitIdx];
+// 点已分配的学生 → 取消其名次（成绩一并清空，可重新点分配）
+function unassignStudent(studentIdx) {
+    const rank = Object.keys(matchState.assigned).find(k => matchState.assigned[k] === studentIdx);
+    if (rank == null) return;
+    clearRank(parseInt(rank));
+}
+
+function unassignRank(rank) { clearRank(rank); }
+
+function clearRank(rank) {
+    const stuIdx = matchState.assigned[rank];
+    if (stuIdx == null) return;
     const list = appData.students[seState.klass] || [];
     const s = list[stuIdx];
     if (s) {
         s[seState.project] = null;
         if (Array.isArray(s.history)) {
-            s.history = s.history.filter(h => !(h.item === seState.project && h.value === stopwatch.splits[splitIdx] && h.source === '秒表匹配'));
+            s.history = s.history.filter(h => !(h.item === seState.project && h.value === stopwatch.splits[rank] && h.source === '秒表匹配'));
         }
         saveAppData();
     }
-    delete matchState.assigned[splitIdx];
-    // pointer 归位到最早未分配的位
-    let p = 0;
-    while (p < SE_LANE_SIZE && matchState.assigned[p] != null) p++;
-    matchState.pointer = p;
-    showToast(`已取消第 ${splitIdx + 1} 位匹配（${s ? s.name : ''}）`, '');
+    delete matchState.assigned[rank];
+    showToast(`已取消第 ${rank + 1} 名（${s ? s.name : ''}）`, '');
     renderMatchPanel();
     renderSeEntryTable();
+}
+
+// 本轮 4 人录完 → 清空，开始下一组
+function matchNextGroup() {
+    resetStopwatch();
+    renderMatchPanel();
+    showToast('已清空，请重新计时下一组', 'success');
 }
 
 function initToolbox() {

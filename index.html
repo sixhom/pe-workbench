@@ -650,12 +650,14 @@
                 <span class="sw-title-icon">🎯</span>
                 <span>按冲线顺序，点学生姓名分配成绩</span>
             </div>
+            <div class="match-status" id="matchStatus"></div>
             <div class="match-times" id="matchTimes"></div>
             <div class="match-tip">
                 <span class="match-tip-icon">💡</span>
-                <span>点学生姓名，自动填入当前指针所在的那一栏；填完后指针自动跳到下一栏。</span>
+                <span>4 个成绩就是第1~4名。按冲线先后点学生姓名：点第 1 个=第1名，点第 2 个=第2名……点错可再点一下该生取消重选。</span>
             </div>
             <div class="match-students" id="matchStudents"></div>
+            <button class="match-next-btn" id="matchNextBtn" onclick="matchNextGroup()">开始下一组（清空本轮）</button>
         </div>
     </div>
 </body>

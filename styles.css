@@ -2272,8 +2272,9 @@ body.page-scoreentry-active .fab-btn {
 .match-time.active {
     background: #FFF3E0;
     border-color: #FF7043;
-    box-shadow: 0 0 0 4px rgba(255,112,67,0.18);
-    transform: scale(1.04);
+    box-shadow: 0 0 0 4px rgba(255,112,67,0.22);
+    transform: scale(1.05);
+    animation: rankPulse 1s ease-in-out infinite;
 }
 .match-time.filled {
     background: #E8F5E9;
@@ -2315,6 +2316,45 @@ body.page-scoreentry-active .fab-btn {
     line-height: 1.5;
 }
 .match-tip-icon { flex-shrink: 0; }
+.match-status {
+    padding: 12px 14px;
+    background: #FFF3E0;
+    border: 2px solid #FFB74D;
+    border-radius: 12px;
+    font-size: 14px;
+    color: #E65100;
+    margin-bottom: 14px;
+    line-height: 1.5;
+}
+.match-status b { color: #E65100; }
+.match-status.done {
+    background: #E8F5E9;
+    border-color: #66BB6A;
+    color: #2E7D32;
+}
+.match-time.all-done {
+    background: #E8F5E9;
+    border-color: #66BB6A;
+    opacity: 0.9;
+}
+.match-next-btn {
+    width: 100%;
+    margin-top: 16px;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #FF7043, #F4511E);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(244,81,30,0.28);
+}
+.match-next-btn:active { transform: scale(0.98); }
+@keyframes rankPulse {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(255,112,67,0.22); }
+    50% { box-shadow: 0 0 0 9px rgba(255,112,67,0.08); }
+}
 .match-students {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
