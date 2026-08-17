@@ -37,6 +37,11 @@ function loadAppData() {
         appData.currentClass = Object.keys(appData.students)[0];
         appData.logs = [];
     }
+    // 每个学生补上 grade（由班级名解析），供逐年级评分使用
+    Object.keys(appData.students).forEach(k => {
+        const g = parseClassName(k).grade;
+        (appData.students[k] || []).forEach(s => { if (s.grade == null) s.grade = g; });
+    });
 }
 
 function saveAppData() {
@@ -130,68 +135,94 @@ function showToast(msg, type = '') {
 function openModal(id) { document.getElementById(id).classList.add('show'); }
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 
-// ===== Score Calculation =====
-function getScoreLevel(item, value, gender) {
-    if (value === null || value === undefined || value === '' || isNaN(value)) return 'none';
-    // BMI 走自定义分级
-    if (item === 'bmi') return getBmiLevel(value, gender);
-    const std = SCORE_STANDARDS[item];
-    if (!std || !std[gender]) return 'none';
-    const s = std[gender];
-    const lowerIsBetter = TEST_ITEMS[item]?.lowerIsBetter;
+// ===== Score Calculation（官方《国家学生体质健康标准（2014修订版）》逐年级查表） =====
+function sexKey(gender) { return gender === '女' ? 'F' : 'M'; }
 
+// 在 [score, value] 锚点数组上线性插值；anchors 已按 score 降序排列
+function scoreFromTable(anchors, value, lowerIsBetter) {
+    if (!anchors || !anchors.length) return null;
+    const best = anchors[0], worst = anchors[anchors.length - 1];
     if (lowerIsBetter) {
-        if (value <= s.优秀) return 'excellent';
-        if (value <= s.良好) return 'good';
-        if (value <= s.及格) return 'pass';
-        return 'weak';
+        if (value <= best[1]) return best[0];
+        if (value >= worst[1]) {
+            const prev = anchors[anchors.length - 2];
+            const sc = worst[0] + (worst[0] - prev[0]) / (worst[1] - prev[1]) * (value - worst[1]);
+            return Math.max(0, Math.round(sc));
+        }
+        for (let i = 0; i < anchors.length - 1; i++) {
+            const hi = anchors[i], lo = anchors[i + 1];
+            if (value >= hi[1] && value <= lo[1]) {
+                const t = (value - hi[1]) / (lo[1] - hi[1]);
+                return Math.round(hi[0] + t * (lo[0] - hi[0]));
+            }
+        }
     } else {
-        if (value >= s.优秀) return 'excellent';
-        if (value >= s.良好) return 'good';
-        if (value >= s.及格) return 'pass';
-        return 'weak';
+        if (value >= best[1]) return best[0];
+        if (value <= worst[1]) {
+            const prev = anchors[anchors.length - 2];
+            const sc = worst[0] + (worst[0] - prev[0]) / (worst[1] - prev[1]) * (value - worst[1]);
+            return Math.max(0, Math.round(sc));
+        }
+        for (let i = 0; i < anchors.length - 1; i++) {
+            const hi = anchors[i], lo = anchors[i + 1];
+            if (value >= lo[1] && value <= hi[1]) {
+                const t = (value - lo[1]) / (hi[1] - lo[1]);
+                return Math.round(lo[0] + t * (hi[0] - lo[0]));
+            }
+        }
     }
+    return worst[0];
 }
 
-// 百分制得分：5 档内线性插值
-//   未达标 = 50，及格段 60-79，良好段 80-89，优秀段 90-99，满分 = 100
-//   越小越好（run50/run50x8）和 越大越好（其他）都通用
-function getScore100(item, value, gender) {
+// 取某年级某项目的锚点（低年级未测项目回退到最早有标准的年级）
+function getScoreTable(item, grade, gender) {
+    let gg = grade || 1;
+    if (item === 'sitUps' && gg < 3) gg = 3;
+    if (item === 'run50x8' && gg < 5) gg = 5;
+    const tbl = NATION_SCORE[gg];
+    if (!tbl || !tbl[item]) return null;
+    return tbl[item][sexKey(gender)] || null;
+}
+
+// BMI 分级得分：正常=100，低体重/超重=80，肥胖=60
+function getBmiScore(grade, gender, bmi) {
+    const r = NATION_SCORE[grade]?.bmi?.[sexKey(gender)];
+    if (!r || bmi == null || isNaN(bmi)) return null;
+    if (bmi < r.under) return 80;        // 低体重
+    if (bmi < r.normal[1]) return 100;   // 正常
+    if (bmi < r.over[1]) return 80;      // 超重
+    return 60;                           // 肥胖
+}
+
+function getBmiCategory(value, gender, grade) {
+    const r = NATION_SCORE[grade]?.bmi?.[sexKey(gender)];
+    if (!r) return { label: '-', level: 'none' };
+    if (value < r.under) return { label: '低体重', level: 'weak' };
+    if (value < r.normal[1]) return { label: '正常', level: 'good' };
+    if (value < r.over[1]) return { label: '超重', level: 'weak' };
+    return { label: '肥胖', level: 'weak' };
+}
+
+// 百分制得分（按官方表查表 + 相邻档线性插值，跳绳超满分可加分封顶 +20）
+function getScore100(item, value, gender, grade) {
     if (value === null || value === undefined || value === '' || isNaN(value)) return null;
-    const std = SCORE_STANDARDS[item];
-    if (!std || !std[gender]) return null;
-    const s = std[gender];
+    if (item === 'bmi') return getBmiScore(grade, gender, parseFloat(value));
+    const anchors = getScoreTable(item, grade, gender);
+    if (!anchors) return null;
     const lowerIsBetter = !!TEST_ITEMS[item]?.lowerIsBetter;
-    const safeDiv = (a, b) => b === 0 ? 1 : b;
-
-    if (lowerIsBetter) {
-        if (value <= s.满分) return 100;
-        if (value <= s.优秀) {
-            const span = safeDiv(s.优秀 - s.满分, s.优秀 - s.满分);
-            return Math.round(90 + 10 * (s.优秀 - value) / (s.优秀 - s.满分 || 1));
+    const base = scoreFromTable(anchors, parseFloat(value), lowerIsBetter);
+    if (base == null) return null;
+    if (item === 'skipRope') {
+        const bestVal = anchors[0][1];
+        if (parseFloat(value) > bestVal) {
+            const bonus = Math.min(20, Math.floor((parseFloat(value) - bestVal) / 2));
+            return Math.min(120, base + bonus);
         }
-        if (value <= s.良好) {
-            return Math.round(80 + 10 * (s.良好 - value) / (s.良好 - s.优秀 || 1));
-        }
-        if (value <= s.及格) {
-            return Math.round(60 + 20 * (s.及格 - value) / (s.及格 - s.良好 || 1));
-        }
-        return 50;
     }
-    if (value >= s.满分) return 100;
-    if (value >= s.优秀) {
-        return Math.round(90 + 10 * (value - s.优秀) / (s.满分 - s.优秀 || 1));
-    }
-    if (value >= s.良好) {
-        return Math.round(80 + 10 * (value - s.良好) / (s.优秀 - s.良好 || 1));
-    }
-    if (value >= s.及格) {
-        return Math.round(60 + 20 * (value - s.及格) / (s.良好 - s.及格 || 1));
-    }
-    return 50;
+    return base;
 }
 
-// 按百分制得分反查"段位"（用于颜色和等级）
+// 等级：由百分制得分反推（≥90 优秀，80-89 良好，60-79 及格，<60 不及格）
 function scoreBand(score100) {
     if (score100 == null) return 'none';
     if (score100 >= 90) return 'excellent';
@@ -200,26 +231,25 @@ function scoreBand(score100) {
     return 'weak';
 }
 
-// BMI 分级：偏瘦=weak, 正常=good, 超重=weak, 肥胖=weak
-function getBmiLevel(value, gender) {
-    const std = (typeof BMI_STANDARDS !== 'undefined' && BMI_STANDARDS[gender]) || BMI_STANDARDS['男'];
-    if (value < std.under) return 'weak';   // 偏瘦
-    if (value <= std.normalMax) return 'good';  // 正常
-    if (value <= std.overMax) return 'weak';  // 超重
-    return 'weak';  // 肥胖
+function getScoreLevel(item, value, gender, grade) {
+    if (value === null || value === undefined || value === '' || isNaN(value)) return 'none';
+    return scoreBand(getScore100(item, value, gender, grade));
 }
 
-function getBmiLabel(value, gender) {
-    const std = (typeof BMI_STANDARDS !== 'undefined' && BMI_STANDARDS[gender]) || BMI_STANDARDS['男'];
-    if (value < std.under) return '偏瘦';
-    if (value <= std.normalMax) return '正常';
-    if (value <= std.overMax) return '超重';
-    return '肥胖';
+function getBmiLabel(value, gender, grade) { return getBmiCategory(value, gender, grade).label; }
+function getBmiLevel(value, gender, grade) { return getBmiCategory(value, gender, grade).level; }
+
+// 取锚点上 满分/优秀(90)/良好(80)/及格(60) 对应的实测值，用于展示标准线
+function getStdThresholds(item, grade, gender) {
+    const anchors = getScoreTable(item, grade, gender);
+    if (!anchors) return null;
+    const at = sc => { const a = anchors.find(x => x[0] === sc); return a ? a[1] : null; };
+    return { 满分: at(100), 优秀: at(90), 良好: at(80), 及格: at(60) };
 }
 
 function getOverallLevel(student) {
     const items = ['run50', 'skipRope', 'sitReach', 'sitUps'];
-    const levels = items.map(i => getScoreLevel(i, student[i], student.gender)).filter(l => l !== 'none');
+    const levels = items.map(i => getScoreLevel(i, student[i], student.gender, student.grade)).filter(l => l !== 'none');
     if (levels.length === 0) return 'none';
     if (levels.every(l => l === 'excellent')) return 'excellent';
     if (levels.every(l => l === 'excellent' || l === 'good')) return 'good';
@@ -410,33 +440,24 @@ function showStudentDetail(cls, no) {
         <div class="detail-section">
             <h4>体测成绩详情</h4>
             ${items.map(item => {
-                const level = getScoreLevel(item, student[item], student.gender);
-                const std = SCORE_STANDARDS[item]?.[student.gender];
+                const level = getScoreLevel(item, student[item], student.gender, student.grade);
+                const score100 = getScore100(item, student[item], student.gender, student.grade);
                 const lowerIsBetter = TEST_ITEMS[item]?.lowerIsBetter;
                 const val = student[item];
-                
-                // Calculate percentage for bar
-                let pct = 0;
-                if (val !== null && val !== undefined && val !== '' && !isNaN(val) && std) {
-                    if (lowerIsBetter) {
-                        // For time-based items, lower is better
-                        pct = Math.max(10, Math.min(100, ((std.及格 - val) / (std.及格 - std.满分)) * 60 + 40));
-                    } else {
-                        pct = Math.max(10, Math.min(100, ((val - std.及格) / (std.满分 - std.及格)) * 60 + 40));
-                    }
-                    pct = Math.max(10, Math.min(100, pct));
-                }
-                
+                const pct = (score100 != null) ? Math.max(2, Math.min(100, score100)) : 0;
+                const thr = getStdThresholds(item, student.grade, student.gender);
+                const stdText = thr ? `标准：满分 ${lowerIsBetter ? '≤' : '≥'}${thr.满分} | 优秀 ${lowerIsBetter ? '≤' : '≥'}${thr.优秀} | 良好 ${lowerIsBetter ? '≤' : '≥'}${thr.良好} | 及格 ${lowerIsBetter ? '≤' : '≥'}${thr.及格}` : '';
+
                 return `
                     <div class="score-bar">
                         <div class="score-bar-header">
                             <span class="score-bar-label">${TEST_ITEMS[item].icon} ${TEST_ITEMS[item].name}</span>
-                            <span class="score-bar-value">${val ?? '未测'} ${TEST_ITEMS[item].unit} <span class="badge badge-${level}" style="margin-left:8px">${LEVEL_LABELS[level]}</span></span>
+                            <span class="score-bar-value">${val ?? '未测'} ${TEST_ITEMS[item].unit} <span class="badge badge-${level}" style="margin-left:8px">${score100 != null ? score100 + ' 分' : LEVEL_LABELS[level]}</span></span>
                         </div>
                         <div class="score-bar-track">
                             <div class="score-bar-fill" style="width:${pct}%; background:${LEVEL_COLORS[level]}"></div>
                         </div>
-                        ${std ? `<div style="font-size:11px;color:var(--gray-400);margin-top:4px;">标准：优秀 ${lowerIsBetter ? '≤' : '≥'}${std.优秀} | 良好 ${lowerIsBetter ? '≤' : '≥'}${std.良好} | 及格 ${lowerIsBetter ? '≤' : '≥'}${std.及格} | 满分 ${std.满分}</div>` : ''}
+                        ${stdText ? `<div style="font-size:11px;color:var(--gray-400);margin-top:4px;">${stdText}</div>` : ''}
                     </div>
                 `;
             }).join('')}
@@ -457,8 +478,8 @@ function showStudentDetail(cls, no) {
 
 function getWeaknessAnalysis(student) {
     const items = ['run50', 'skipRope', 'sitReach', 'sitUps'];
-    const weaknesses = items.filter(i => getScoreLevel(i, student[i], student.gender) === 'weak');
-    const strengths = items.filter(i => getScoreLevel(i, student[i], student.gender) === 'excellent');
+    const weaknesses = items.filter(i => getScoreLevel(i, student[i], student.gender, student.grade) === 'weak');
+    const strengths = items.filter(i => getScoreLevel(i, student[i], student.gender, student.grade) === 'excellent');
     
     let text = '';
     if (weaknesses.length === 0) {
@@ -542,7 +563,7 @@ function renderBestRecords(student) {
         });
         
         if (bestVal !== null) {
-            const level = getScoreLevel(item, bestVal, student.gender);
+            const level = getScoreLevel(item, bestVal, student.gender, student.grade);
             html += `<div style="flex:1;min-width:120px;background:#FFF8E1;padding:8px 12px;border-radius:8px;border:1px solid #FFC107;text-align:center;">
                 <div style="font-size:11px;color:var(--gray-500);">${info.icon} ${info.name}</div>
                 <div style="font-size:18px;font-weight:700;color:#F57F17;">${bestVal}<span style="font-size:11px;color:var(--gray-500);">${info.unit}</span></div>
@@ -610,7 +631,7 @@ function renderHistoryTrend(student) {
             const val = rec[item];
             const lowerIsBetter = TEST_ITEMS[item]?.lowerIsBetter;
             const changeIcon = prev ? getChangeIcon(item, prev[item], val, lowerIsBetter) : '';
-            const level = getScoreLevel(item, val, student.gender);
+            const level = getScoreLevel(item, val, student.gender, student.grade);
             
             html += `<td style="text-align:center;">`;
             if (val !== null && val !== undefined) {
@@ -760,7 +781,7 @@ function renderOverview() {
 function renderDistributionChart(canvasId, title, students, item, color) {
     const levels = { excellent: 0, good: 0, pass: 0, weak: 0, none: 0 };
     students.forEach(s => {
-        const level = getScoreLevel(item, s[item], s.gender);
+        const level = getScoreLevel(item, s[item], s.gender, s.grade);
         levels[level]++;
     });
     
@@ -872,7 +893,7 @@ function renderStudentDetail(no) {
         <div class="detail-section">
             <h4>体测成绩与评级</h4>
             ${items.map(item => {
-                const level = getScoreLevel(item, student[item], student.gender);
+                const level = getScoreLevel(item, student[item], student.gender, student.grade);
                 const val = student[item];
                 return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-100);">
                     <span style="font-weight:600;">${TEST_ITEMS[item].icon} ${TEST_ITEMS[item].name}</span>
@@ -899,7 +920,7 @@ function renderWarnings() {
     
     const warnings = [];
     students.forEach(s => {
-        const weakItems = items.filter(i => getScoreLevel(i, s[i], s.gender) === 'weak');
+        const weakItems = items.filter(i => getScoreLevel(i, s[i], s.gender, s.grade) === 'weak');
         if (weakItems.length > 0) {
             warnings.push({ student: s, items: weakItems });
         }
@@ -1104,11 +1125,11 @@ function renderSeEntryTable() {
         const isLeave = !!seState.leaveMap[s.no];
         const val = s[project];
         const rawVal = (val === null || val === undefined) ? '' : val;
-        const score100 = (!isLeave && rawVal !== '') ? getScore100(project, parseFloat(rawVal), s.gender) : null;
+        const score100 = (!isLeave && rawVal !== '') ? getScore100(project, parseFloat(rawVal), s.gender, s.grade) : null;
         const band = scoreBand(score100);
         const scoreTxt = score100 == null ? '—' : `${score100} 分`;
         const bmiTag = (project === 'bmi' && rawVal !== '' && !isLeave)
-            ? `<span class="se-bmi-tag">${getBmiLabel(parseFloat(rawVal), s.gender)}</span>` : '';
+            ? `<span class="se-bmi-tag">${getBmiLabel(parseFloat(rawVal), s.gender, s.grade)}</span>` : '';
         return `<tr data-no="${s.no}" class="${isLeave ? 'se-row-leave' : ''}">
             <td class="se-col-idx">${idx + 1}</td>
             <td class="se-col-name" title="${esc(s.name)} · ${esc(s.gender)}">${esc(s.name)}</td>
@@ -1134,7 +1155,7 @@ function seOnScore(no, value) {
     saveAppData();
     const tr = document.querySelector(`tr[data-no="${no}"]`);
     if (tr) {
-        const score100 = (seState.leaveMap[no] || value === '' || value == null) ? null : getScore100(seState.project, parseFloat(value), s.gender);
+        const score100 = (seState.leaveMap[no] || value === '' || value == null) ? null : getScore100(seState.project, parseFloat(value), s.gender, s.grade);
         const band = scoreBand(score100);
         const cell = tr.querySelector('.se-level');
         if (cell) {
@@ -1143,7 +1164,7 @@ function seOnScore(no, value) {
         }
         if (seState.project === 'bmi' && value !== '') {
             const tag = tr.querySelector('.se-bmi-tag');
-            if (tag) tag.textContent = getBmiLabel(parseFloat(value), s.gender);
+            if (tag) tag.textContent = getBmiLabel(parseFloat(value), s.gender, s.grade);
         }
     }
     updateSeProgress();
@@ -1186,7 +1207,7 @@ function seExportCurrent() {
     list.forEach((s, idx) => {
         const isLeave = !!seState.leaveMap[s.no];
         const val = s[seState.project];
-        const score100 = (isLeave || val == null) ? null : getScore100(seState.project, parseFloat(val), s.gender);
+        const score100 = (isLeave || val == null) ? null : getScore100(seState.project, parseFloat(val), s.gender, s.grade);
         const scoreTxt = isLeave ? '请假' : (val == null ? '未录入' : `${score100} 分`);
         rows.push([idx + 1, s.name, s.gender, val == null ? '' : val, scoreTxt]);
     });
@@ -1924,7 +1945,7 @@ function openTrackingModal() {
         <div class="detail-section">
             <h4>⚠️ 需关注学生（体能薄弱）</h4>
             ${weakStudents.length > 0 ? weakStudents.map(s => {
-                const weakItems = items.filter(i => getScoreLevel(i, s[i], s.gender) === 'weak');
+                const weakItems = items.filter(i => getScoreLevel(i, s[i], s.gender, s.grade) === 'weak');
                 return `<div style="padding:8px 0;border-bottom:1px solid var(--gray-100);"><strong>${s.name}</strong> — 薄弱项：${weakItems.map(i => TEST_ITEMS[i].name).join('、')}</div>`;
             }).join('') : '<div style="color:var(--gray-500);">暂无薄弱学生 ✅</div>'}
         </div>
@@ -2129,7 +2150,7 @@ function selectExistingStudent(cls, no) {
     const hint = document.getElementById('selectedStudentHint');
     const items = ['run50', 'skipRope', 'sitReach', 'sitUps'];
     const levels = items.map(i => {
-        const level = getScoreLevel(i, student[i], student.gender);
+        const level = getScoreLevel(i, student[i], student.gender, student.grade);
         const val = student[i] !== null && student[i] !== undefined ? student[i] : '未测';
         return `${TEST_ITEMS[i].name}: ${val}${TEST_ITEMS[i].unit}（${LEVEL_LABELS[level]}）`;
     });
@@ -2380,7 +2401,7 @@ function updateQeEntryPanel() {
     const project = qeSelectedProject;
     const item = TEST_ITEMS[project];
     const oldVal = student[project];
-    const oldLevel = getScoreLevel(project, oldVal, student.gender);
+    const oldLevel = getScoreLevel(project, oldVal, student.gender, student.grade);
     const hasOldVal = oldVal !== null && oldVal !== undefined && oldVal !== '';
 
     document.getElementById('qeStudentCard').innerHTML = `
@@ -2435,8 +2456,8 @@ function saveQuickEntry() {
     if (document.getElementById('page-analysis').classList.contains('active')) renderAnalysis();
 
     // Show success feedback
-    const newLevel = getScoreLevel(project, score, student.gender);
-    const oldLevel = hasOldData ? getScoreLevel(project, oldVal, student.gender) : 'none';
+    const newLevel = getScoreLevel(project, score, student.gender, student.grade);
+    const oldLevel = hasOldData ? getScoreLevel(project, oldVal, student.gender, student.grade) : 'none';
     const lowerIsBetter = item.lowerIsBetter;
     let changeText = '';
     if (hasOldData && oldVal !== score) {
