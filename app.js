@@ -139,7 +139,7 @@ function getScoreLevel(item, value, gender) {
     if (!std || !std[gender]) return 'none';
     const s = std[gender];
     const lowerIsBetter = TEST_ITEMS[item]?.lowerIsBetter;
-    
+
     if (lowerIsBetter) {
         if (value <= s.优秀) return 'excellent';
         if (value <= s.良好) return 'good';
@@ -151,6 +151,53 @@ function getScoreLevel(item, value, gender) {
         if (value >= s.及格) return 'pass';
         return 'weak';
     }
+}
+
+// 百分制得分：5 档内线性插值
+//   未达标 = 50，及格段 60-79，良好段 80-89，优秀段 90-99，满分 = 100
+//   越小越好（run50/run50x8）和 越大越好（其他）都通用
+function getScore100(item, value, gender) {
+    if (value === null || value === undefined || value === '' || isNaN(value)) return null;
+    const std = SCORE_STANDARDS[item];
+    if (!std || !std[gender]) return null;
+    const s = std[gender];
+    const lowerIsBetter = !!TEST_ITEMS[item]?.lowerIsBetter;
+    const safeDiv = (a, b) => b === 0 ? 1 : b;
+
+    if (lowerIsBetter) {
+        if (value <= s.满分) return 100;
+        if (value <= s.优秀) {
+            const span = safeDiv(s.优秀 - s.满分, s.优秀 - s.满分);
+            return Math.round(90 + 10 * (s.优秀 - value) / (s.优秀 - s.满分 || 1));
+        }
+        if (value <= s.良好) {
+            return Math.round(80 + 10 * (s.良好 - value) / (s.良好 - s.优秀 || 1));
+        }
+        if (value <= s.及格) {
+            return Math.round(60 + 20 * (s.及格 - value) / (s.及格 - s.良好 || 1));
+        }
+        return 50;
+    }
+    if (value >= s.满分) return 100;
+    if (value >= s.优秀) {
+        return Math.round(90 + 10 * (value - s.优秀) / (s.满分 - s.优秀 || 1));
+    }
+    if (value >= s.良好) {
+        return Math.round(80 + 10 * (value - s.良好) / (s.优秀 - s.良好 || 1));
+    }
+    if (value >= s.及格) {
+        return Math.round(60 + 20 * (value - s.及格) / (s.良好 - s.及格 || 1));
+    }
+    return 50;
+}
+
+// 按百分制得分反查"段位"（用于颜色和等级）
+function scoreBand(score100) {
+    if (score100 == null) return 'none';
+    if (score100 >= 90) return 'excellent';
+    if (score100 >= 80) return 'good';
+    if (score100 >= 60) return 'pass';
+    return 'weak';
 }
 
 // BMI 分级：偏瘦=weak, 正常=good, 超重=weak, 肥胖=weak
@@ -1057,14 +1104,14 @@ function renderSeEntryTable() {
         const isLeave = !!seState.leaveMap[s.no];
         const val = s[project];
         const rawVal = (val === null || val === undefined) ? '' : val;
-        const level = (!isLeave && rawVal !== '') ? getScoreLevel(project, parseFloat(rawVal), s.gender) : 'none';
-        const levelTxt = SE_LEVEL_TEXT[level];
+        const score100 = (!isLeave && rawVal !== '') ? getScore100(project, parseFloat(rawVal), s.gender) : null;
+        const band = scoreBand(score100);
+        const scoreTxt = score100 == null ? '—' : `${score100} 分`;
         const bmiTag = (project === 'bmi' && rawVal !== '' && !isLeave)
             ? `<span class="se-bmi-tag">${getBmiLabel(parseFloat(rawVal), s.gender)}</span>` : '';
         return `<tr data-no="${s.no}" class="${isLeave ? 'se-row-leave' : ''}">
             <td class="se-col-idx">${idx + 1}</td>
-            <td class="se-col-name">${esc(s.name)}</td>
-            <td>${esc(s.gender)}</td>
+            <td class="se-col-name" title="${esc(s.name)} · ${esc(s.gender)}">${esc(s.name)}</td>
             <td class="se-col-score">
                 <div class="se-score-wrap">
                     <input type="number" step="${projInfo.step}" min="${projInfo.min}" max="${projInfo.max}" class="se-score-input" value="${rawVal}" data-no="${s.no}" onchange="seOnScore(${s.no}, this.value)" ${isLeave ? 'disabled' : ''} placeholder="—">
@@ -1072,7 +1119,7 @@ function renderSeEntryTable() {
                     ${bmiTag}
                 </div>
             </td>
-            <td class="se-col-level"><span class="se-level se-level-${level}">${levelTxt}</span></td>
+            <td class="se-col-level"><span class="se-level se-level-${band}">${scoreTxt}</span></td>
         </tr>`;
     }).join('');
     updateSeProgress();
@@ -1087,11 +1134,12 @@ function seOnScore(no, value) {
     saveAppData();
     const tr = document.querySelector(`tr[data-no="${no}"]`);
     if (tr) {
-        const level = (seState.leaveMap[no] || value === '') ? 'none' : getScoreLevel(seState.project, parseFloat(value), s.gender);
+        const score100 = (seState.leaveMap[no] || value === '' || value == null) ? null : getScore100(seState.project, parseFloat(value), s.gender);
+        const band = scoreBand(score100);
         const cell = tr.querySelector('.se-level');
         if (cell) {
-            cell.className = `se-level se-level-${level}`;
-            cell.textContent = SE_LEVEL_TEXT[level];
+            cell.className = `se-level se-level-${band}`;
+            cell.textContent = score100 == null ? '—' : `${score100} 分`;
         }
         if (seState.project === 'bmi' && value !== '') {
             const tag = tr.querySelector('.se-bmi-tag');
@@ -1134,13 +1182,13 @@ function seExportCurrent() {
     if (!klass) return;
     const projInfo = SE_PROJECTS.find(p => p.code === seState.project);
     const list = appData.students[klass] || [];
-    const rows = [['序号','姓名','性别','成绩','得分']];
+    const rows = [['序号','姓名','性别','成绩','得分(百分制)']];
     list.forEach((s, idx) => {
         const isLeave = !!seState.leaveMap[s.no];
         const val = s[seState.project];
-        const lvl = (!isLeave && val != null) ? getScoreLevel(seState.project, parseFloat(val), s.gender) : 'none';
-        const lvlTxt = isLeave ? '请假' : (val == null ? '未录入' : SE_LEVEL_TEXT[lvl]);
-        rows.push([idx + 1, s.name, s.gender, val == null ? '' : val, lvlTxt]);
+        const score100 = (isLeave || val == null) ? null : getScore100(seState.project, parseFloat(val), s.gender);
+        const scoreTxt = isLeave ? '请假' : (val == null ? '未录入' : `${score100} 分`);
+        rows.push([idx + 1, s.name, s.gender, val == null ? '' : val, scoreTxt]);
     });
     const csv = '\uFEFF' + rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });

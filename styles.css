@@ -1878,12 +1878,12 @@ body.page-scoreentry-active .fab-btn {
 .se-table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 600px;
+    min-width: 360px;
     font-size: 14px;
 }
 .se-table th {
     background: #FAFAFA;
-    padding: 10px 8px;
+    padding: 9px 6px;
     text-align: left;
     font-weight: 600;
     color: var(--gray-700, #555);
@@ -1891,15 +1891,23 @@ body.page-scoreentry-active .fab-btn {
     position: sticky;
     top: 0;
     z-index: 1;
+    white-space: nowrap;
 }
 .se-table td {
-    padding: 8px;
+    padding: 7px 6px;
     border-bottom: 1px solid #F0F0F0;
+    vertical-align: middle;
 }
-.se-col-idx { width: 36px; text-align: center; color: #999; }
-.se-col-name { font-weight: 600; }
-.se-col-score { min-width: 108px; }
-.se-col-level { width: 80px; text-align: center; }
+.se-col-idx { width: 32px; text-align: center; color: #999; }
+.se-col-name {
+    font-weight: 600;
+    max-width: 92px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.se-col-score { min-width: 110px; }
+.se-col-level { width: 64px; text-align: center; }
 .se-row-leave { opacity: 0.5; background: #FAFAFA; }
 .se-row-leave .se-lane { background: #FFCDD2 !important; color: #C62828 !important; }
 
@@ -1953,12 +1961,13 @@ body.page-scoreentry-active .fab-btn {
 
 .se-level {
     display: inline-block;
-    padding: 3px 10px;
+    padding: 3px 8px;
     border-radius: 10px;
     font-size: 12px;
     font-weight: 700;
     min-width: 50px;
     text-align: center;
+    white-space: nowrap;
 }
 .se-level-excellent { background: #E8F5E9; color: #2E7D32; }
 .se-level-good { background: #E3F2FD; color: #1565C0; }
