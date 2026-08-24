@@ -239,6 +239,14 @@ function getScoreLevel(item, value, gender, grade) {
 function getBmiLabel(value, gender, grade) { return getBmiCategory(value, gender, grade).label; }
 function getBmiLevel(value, gender, grade) { return getBmiCategory(value, gender, grade).level; }
 
+// 由身高(cm) + 体重(kg) 计算 BMI（保留 1 位），缺一项返回 null
+function calcBmi(s) {
+    if (s.height == null || s.height === '' || s.weight == null || s.weight === '') return null;
+    const h = parseFloat(s.height), w = parseFloat(s.weight);
+    if (isNaN(h) || isNaN(w) || h <= 0) return null;
+    return +(w / Math.pow(h / 100, 2)).toFixed(1);
+}
+
 // 取锚点上 满分/优秀(90)/良好(80)/及格(60) 对应的实测值，用于展示标准线
 function getStdThresholds(item, grade, gender) {
     const anchors = getScoreTable(item, grade, gender);
@@ -959,7 +967,7 @@ function fillSelect(id, arr) {
 
 // ===== Score Entry =====
 const SE_PROJECTS = [
-    { code: 'bmi',      name: '体重指数(BMI)',   icon: '⚖️',  unit: '',  inputType: 'number', step: '0.1', min: '0', max: '60' },
+    { code: 'bmi',      name: '身高体重(BMI)',   icon: '⚖️',  unit: '',  inputType: 'bmi', step: '0.1', min: '0', max: '60' },
     { code: 'lung',     name: '肺活量',          icon: '🫁',  unit: 'ml', inputType: 'number', step: '1',   min: '0', max: '9999' },
     { code: 'run50',    name: '50米跑',          icon: '🏃',  unit: '秒', inputType: 'number', step: '0.01', min: '0', max: '60' },
     { code: 'sitReach', name: '坐位体前屈',      icon: '🤸',  unit: 'cm', inputType: 'number', step: '0.1', min: '-30', max: '50' },
@@ -1123,23 +1131,36 @@ function renderSeEntryTable() {
     const tbody = document.getElementById('seTbody');
     tbody.innerHTML = list.map((s, idx) => {
         const isLeave = !!seState.leaveMap[s.no];
-        const val = s[project];
-        const rawVal = (val === null || val === undefined) ? '' : val;
+        const isBmi = project === 'bmi';
+        const bmiVal = isBmi ? calcBmi(s) : null;
+        const rawVal = isBmi ? (bmiVal == null ? '' : bmiVal) : ((s[project] === null || s[project] === undefined) ? '' : s[project]);
         const score100 = (!isLeave && rawVal !== '') ? getScore100(project, parseFloat(rawVal), s.gender, s.grade) : null;
         const band = scoreBand(score100);
         const scoreTxt = score100 == null ? '—' : `${score100} 分`;
-        const bmiTag = (project === 'bmi' && rawVal !== '' && !isLeave)
-            ? `<span class="se-bmi-tag">${getBmiLabel(parseFloat(rawVal), s.gender, s.grade)}</span>` : '';
+
+        let scoreCell;
+        if (isBmi) {
+            const cat = bmiVal != null ? getBmiLabel(bmiVal, s.gender, s.grade) : '';
+            const bmiOut = bmiVal != null
+                ? `BMI <b>${bmiVal}</b> <span class="se-bmi-tag">${cat}</span>`
+                : `填身高/体重自动算`;
+            scoreCell = `<div class="se-score-wrap se-score-bmi">
+                <div class="se-bmi-row">
+                    <label class="se-bmi-input"><input type="number" step="0.1" min="50" max="220" value="${s.height ?? ''}" data-no="${s.no}" data-field="height" onchange="seOnBmi(${s.no},'height',this.value)" ${isLeave ? 'disabled' : ''} placeholder="身高"><span>cm</span></label>
+                    <label class="se-bmi-input"><input type="number" step="0.1" min="10" max="200" value="${s.weight ?? ''}" data-no="${s.no}" data-field="weight" onchange="seOnBmi(${s.no},'weight',this.value)" ${isLeave ? 'disabled' : ''} placeholder="体重"><span>kg</span></label>
+                </div>
+                <div class="se-bmi-out ${bmiVal != null ? '' : 'se-bmi-out-empty'}">${bmiOut}</div>
+            </div>`;
+        } else {
+            scoreCell = `<div class="se-score-wrap">
+                <input type="number" step="${projInfo.step}" min="${projInfo.min}" max="${projInfo.max}" class="se-score-input" value="${rawVal}" data-no="${s.no}" onchange="seOnScore(${s.no}, this.value)" ${isLeave ? 'disabled' : ''} placeholder="—">
+                ${projInfo.unit ? `<span class="se-score-unit">${projInfo.unit}</span>` : ''}
+            </div>`;
+        }
         return `<tr data-no="${s.no}" class="${isLeave ? 'se-row-leave' : ''}">
             <td class="se-col-idx">${idx + 1}</td>
             <td class="se-col-name" title="${esc(s.name)} · ${esc(s.gender)}">${esc(s.name)}</td>
-            <td class="se-col-score">
-                <div class="se-score-wrap">
-                    <input type="number" step="${projInfo.step}" min="${projInfo.min}" max="${projInfo.max}" class="se-score-input" value="${rawVal}" data-no="${s.no}" onchange="seOnScore(${s.no}, this.value)" ${isLeave ? 'disabled' : ''} placeholder="—">
-                    ${projInfo.unit ? `<span class="se-score-unit">${projInfo.unit}</span>` : ''}
-                    ${bmiTag}
-                </div>
-            </td>
+            <td class="se-col-score">${scoreCell}</td>
             <td class="se-col-level"><span class="se-level se-level-${band}">${scoreTxt}</span></td>
         </tr>`;
     }).join('');
@@ -1170,6 +1191,39 @@ function seOnScore(no, value) {
     updateSeProgress();
 }
 
+// BMI 项：录入身高/体重，自动算 BMI + 得分（同步写 height/weight/bmi 三个字段）
+function seOnBmi(no, field, value) {
+    const klass = seState.klass;
+    if (!klass) return;
+    const s = (appData.students[klass] || []).find(x => x.no === no);
+    if (!s) return;
+    s[field] = (value === '' || isNaN(parseFloat(value))) ? null : parseFloat(value);
+    s.bmi = calcBmi(s);
+    saveAppData();
+    const tr = document.querySelector(`tr[data-no="${no}"]`);
+    if (tr) {
+        const bmiVal = calcBmi(s);
+        const out = tr.querySelector('.se-bmi-out');
+        if (out) {
+            if (bmiVal != null) {
+                out.classList.remove('se-bmi-out-empty');
+                out.innerHTML = `BMI <b>${bmiVal}</b> <span class="se-bmi-tag">${getBmiLabel(bmiVal, s.gender, s.grade)}</span>`;
+            } else {
+                out.classList.add('se-bmi-out-empty');
+                out.textContent = '填身高/体重自动算';
+            }
+        }
+        const score100 = bmiVal == null ? null : getScore100('bmi', bmiVal, s.gender, s.grade);
+        const band = scoreBand(score100);
+        const cell = tr.querySelector('.se-level');
+        if (cell) {
+            cell.className = `se-level se-level-${band}`;
+            cell.textContent = score100 == null ? '—' : `${score100} 分`;
+        }
+    }
+    updateSeProgress();
+}
+
 function seToggleLeave(no) {
     const klass = seState.klass;
     if (!klass) return;
@@ -1177,7 +1231,8 @@ function seToggleLeave(no) {
     if (!s) return;
     seState.leaveMap[no] = !seState.leaveMap[no];
     if (seState.leaveMap[no]) {
-        s[seState.project] = null;
+        if (seState.project === 'bmi') { s.height = null; s.weight = null; s.bmi = null; }
+        else s[seState.project] = null;
         saveAppData();
     }
     renderSeEntryTable();
@@ -1190,7 +1245,9 @@ function updateSeProgress() {
     let done = 0, leave = 0;
     list.forEach(s => {
         if (seState.leaveMap[s.no]) leave++;
-        else if (s[seState.project] != null && s[seState.project] !== '') done++;
+        else if (seState.project === 'bmi'
+            ? (s.height != null && s.height !== '' && s.weight != null && s.weight !== '')
+            : (s[seState.project] != null && s[seState.project] !== '')) done++;
     });
     const pct = total ? Math.round(((done + leave) / total) * 100) : 0;
     document.getElementById('seProgress').style.width = pct + '%';
@@ -1206,6 +1263,14 @@ function seExportCurrent() {
     const rows = [['序号','姓名','性别','成绩','得分(百分制)']];
     list.forEach((s, idx) => {
         const isLeave = !!seState.leaveMap[s.no];
+        if (seState.project === 'bmi') {
+            const bmiVal = calcBmi(s);
+            const score100 = (isLeave || bmiVal == null) ? null : getScore100('bmi', bmiVal, s.gender, s.grade);
+            const scoreTxt = isLeave ? '请假' : (bmiVal == null ? '未录入' : `${score100} 分`);
+            const mark = `身高${s.height ?? ''}cm/体重${s.weight ?? ''}kg/BMI${bmiVal ?? ''}`;
+            rows.push([idx + 1, s.name, s.gender, mark, scoreTxt]);
+            return;
+        }
         const val = s[seState.project];
         const score100 = (isLeave || val == null) ? null : getScore100(seState.project, parseFloat(val), s.gender, s.grade);
         const scoreTxt = isLeave ? '请假' : (val == null ? '未录入' : `${score100} 分`);
@@ -1226,7 +1291,10 @@ function seSaveAndNext() {
     const list = appData.students[klass] || [];
     let saved = 0;
     list.forEach(s => {
-        if (s[seState.project] != null && s[seState.project] !== '') {
+        const entered = seState.project === 'bmi'
+            ? (s.height != null && s.height !== '' && s.weight != null && s.weight !== '')
+            : (s[seState.project] != null && s[seState.project] !== '');
+        if (entered) {
             archiveCurrentScores(s);
             saved++;
         }

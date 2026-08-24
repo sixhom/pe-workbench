@@ -1906,7 +1906,7 @@ body.page-scoreentry-active .fab-btn {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.se-col-score { min-width: 110px; }
+.se-col-score { min-width: 132px; }
 .se-col-level { width: 64px; text-align: center; }
 .se-row-leave { opacity: 0.5; background: #FAFAFA; }
 .se-row-leave .se-lane { background: #FFCDD2 !important; color: #C62828 !important; }
@@ -1958,6 +1958,30 @@ body.page-scoreentry-active .fab-btn {
     font-size: 11px;
     font-weight: 600;
 }
+
+/* BMI 录入：身高 + 体重 双输入 + 自动算 BMI */
+.se-score-bmi { flex-direction: column; align-items: flex-start; gap: 4px; }
+.se-bmi-row { display: flex; gap: 6px; }
+.se-bmi-input { display: inline-flex; align-items: center; gap: 2px; }
+.se-bmi-input input {
+    width: 54px;
+    padding: 5px 4px;
+    border: 1px solid #DDD;
+    border-radius: 6px;
+    font-size: 13px;
+    text-align: center;
+    font-family: inherit;
+}
+.se-bmi-input input:focus {
+    outline: none;
+    border-color: var(--primary, #4CAF50);
+    box-shadow: 0 0 0 2px rgba(76,175,80,0.15);
+}
+.se-bmi-input input:disabled { background: #F5F5F5; cursor: not-allowed; }
+.se-bmi-input span { font-size: 11px; color: #888; }
+.se-bmi-out { font-size: 12px; color: #555; line-height: 1.4; }
+.se-bmi-out b { color: #222; }
+.se-bmi-out-empty { color: #AAA; font-style: italic; }
 
 .se-level {
     display: inline-block;
