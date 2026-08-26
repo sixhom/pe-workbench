@@ -31,9 +31,8 @@ input,textarea{font-family:inherit;}
 .cls-picker{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;margin:2px 0 14px;}
 .cp-label{color:var(--muted);font-size:17px;}
 .cp-row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
-.cp-btn{background:var(--card2);border:2px solid var(--border);border-radius:14px;color:var(--dim);font-size:21px;padding:13px 28px;display:flex;align-items:baseline;gap:9px;transition:transform .12s;}
+.cp-btn{background:var(--card2);border:2px solid var(--border);border-radius:14px;color:var(--dim);font-size:21px;padding:13px 22px;display:inline-flex;align-items:center;justify-content:center;transition:transform .12s;}
 .cp-btn:active{transform:scale(.96);opacity:.85;}
-.cp-btn .n{color:var(--muted);font-size:14px;}
 .cp-btn.sel{border-color:var(--teal);color:var(--teal);}
 .cp-mini{background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--teal);font-size:15px;padding:8px 18px;}
 .cp-mini:active{opacity:.8;}
@@ -508,7 +507,7 @@ function renderClassRow(){
   var html = '';
   for(var k in PRESET_CLASSES){
     var sel = state.className===k;
-    html += '<button class="cp-btn'+(sel?' sel':'')+'" onclick="pickClass(\''+k+'\')">'+k+'<span class="n">'+PRESET_CLASSES[k].length+'人</span></button>';
+    html += '<button class="cp-btn'+(sel?' sel':'')+'" onclick="pickClass(\''+k+'\')">'+k+'</button>';
   }
   row.innerHTML = html;
 }
