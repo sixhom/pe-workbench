@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>室内体育大屏工作台</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;}
+:root{
+  --bg:#14162B;--card:#1E2140;--card2:#232647;--border:#3A3F6E;--deep:#0E1022;
+  --text:#FFFFFF;--muted:#9EA3C7;--dim:#C9CDEB;
+  --coral:#F0997B;--teal:#5DCAA5;--blue:#85B7EB;--pink:#ED93B1;--amber:#FAC775;--red:#E24B4A;--green:#4CAF6D;
+}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif;}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+input,textarea{font-family:inherit;}
+#topbar{position:fixed;top:0;left:0;right:0;height:64px;background:var(--deep);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:100;}
+#topbar .tb-left{display:flex;align-items:center;gap:16px;min-width:0;}
+#btnHome{background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--dim);font-size:17px;padding:9px 18px;}
+#pageTitle{font-size:20px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tb-right{display:flex;gap:10px;}
+.tb-icon{background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--dim);font-size:15px;padding:9px 14px;white-space:nowrap;}
+.tb-icon.off{color:var(--muted);opacity:.6;}
+.page{position:fixed;top:64px;left:0;right:0;bottom:0;display:none;flex-direction:column;overflow:auto;padding:22px;}
+.page.active{display:flex;}
+.page-pad{max-width:1100px;width:100%;margin:0 auto;}
+.home-head{text-align:center;margin-bottom:20px;}
+.home-head .cls{font-size:clamp(22px,3vw,32px);font-weight:500;}
+.home-head .sub{color:var(--muted);font-size:15px;margin-top:6px;}
+.home-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;flex:1;align-content:center;}
+.home-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:26px 24px;display:flex;flex-direction:column;gap:8px;text-align:left;transition:transform .12s;}
+.home-card:active{transform:scale(.97);}
+.home-card .hc-name{font-size:clamp(20px,2.4vw,28px);font-weight:500;}
+.home-card .hc-desc{color:var(--muted);font-size:15px;line-height:1.5;}
+.home-card.c-coral{border-top:4px solid var(--coral);}
+.home-card.c-teal{border-top:4px solid var(--teal);}
+.home-card.c-blue{border-top:4px solid var(--blue);}
+.home-card.c-pink{border-top:4px solid var(--pink);}
+.home-card.c-amber{border-top:4px solid var(--amber);}
+.home-card.c-red{border-top:4px solid var(--red);}
+.sec-title{font-size:18px;color:var(--dim);margin:0 0 14px;font-weight:500;}
+.chal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
+.chal-item{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:18px 16px;text-align:center;transition:border-color .15s;}
+.chal-item .ci-name{font-size:20px;font-weight:500;}
+.chal-item .ci-dur{color:var(--muted);font-size:14px;margin-top:6px;}
+.chal-item .ci-tip{color:var(--muted);font-size:12px;margin-top:4px;line-height:1.4;}
+.chal-item.sel{border-color:var(--coral);background:#2A2438;}
+.dur-row{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0;}
+.dur-btn,.broad-btn{background:var(--card2);border:2px solid var(--border);border-radius:12px;color:var(--dim);font-size:18px;padding:12px 22px;}
+.dur-btn.sel{border-color:var(--amber);color:var(--amber);}
+.broad-btn.primary{background:var(--coral);border-color:var(--coral);color:#3A1E12;font-size:22px;font-weight:500;padding:16px 40px;}
+.broad-btn.ghost{font-size:16px;padding:12px 26px;}
+.broad-btn:active{opacity:.8;}
+.chal-stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;}
+.stage-project{font-size:clamp(28px,4vw,46px);font-weight:500;}
+.stage-time{font-size:clamp(110px,20vw,260px);font-weight:500;line-height:1;font-variant-numeric:tabular-nums;}
+.stage-time.warn{color:var(--red);}
+.stage-count{font-size:clamp(140px,26vw,320px);font-weight:500;line-height:1;}
+.stage-bar{width:min(80%,640px);height:14px;background:var(--card2);border-radius:7px;overflow:hidden;}
+.stage-bar .fill{height:100%;background:var(--coral);border-radius:7px;transition:width .3s linear;}
+.stage-done{font-size:clamp(40px,7vw,80px);font-weight:500;color:var(--teal);}
+.stage-tip{color:var(--muted);font-size:18px;}
+.wheel-tabs{display:flex;gap:10px;margin-bottom:18px;}
+.wheel-tab{background:var(--card2);border:2px solid var(--border);border-radius:12px;color:var(--muted);font-size:17px;padding:10px 24px;}
+.wheel-tab.sel{border-color:var(--teal);color:var(--teal);}
+.wheel-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+#wheelBox{position:relative;width:min(56vh,86vw,520px);}
+#wheelBox svg{width:100%;height:auto;display:block;}
+#wheelG{transform-origin:150px 150px;}
+.wheel-pointer{position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:16px solid transparent;border-right:16px solid transparent;border-top:30px solid #fff;filter:drop-shadow(0 2px 2px rgba(0,0,0,.4));}
+.wheel-result{min-height:90px;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.wheel-result .wr-label{color:var(--muted);font-size:17px;}
+.wheel-result .wr-name{font-size:clamp(40px,7vw,72px);font-weight:500;color:var(--amber);}
+.slot-face{background:var(--deep);border:2px solid var(--border);border-radius:20px;width:min(90vw,700px);height:200px;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.slot-name{font-size:clamp(50px,9vw,96px);font-weight:500;color:var(--amber);white-space:nowrap;}
+.slot-info{color:var(--muted);font-size:16px;}
+.slot-picked{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:900px;}
+.picked-chip{background:var(--card2);border:1px solid var(--border);border-radius:999px;color:var(--dim);font-size:14px;padding:5px 14px;}
+.picked-chip.done{color:var(--teal);border-color:var(--teal);}
+.score-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;flex:1;align-content:center;}
+.team-card{background:var(--card);border:2px solid var(--border);border-radius:18px;padding:20px;display:flex;flex-direction:column;align-items:center;gap:12px;}
+.team-card.t-red{border-color:#7A3535;}
+.team-card.t-blue{border-color:#3A4E7A;}
+.team-card.t-yellow{border-color:#7A6635;}
+.team-card.t-green{border-color:#35704A;}
+.team-card.lead{box-shadow:inset 0 0 0 2px currentColor;}
+.team-name{font-size:20px;font-weight:500;color:var(--dim);}
+.team-card.t-red .team-name{color:#F0997B;}
+.team-card.t-blue .team-name{color:#85B7EB;}
+.team-card.t-yellow .team-name{color:#FAC775;}
+.team-card.t-green .team-name{color:#5DCAA5;}
+.team-score{font-size:clamp(60px,8vw,110px);font-weight:500;line-height:1;font-variant-numeric:tabular-nums;}
+.team-btns{display:flex;gap:10px;}
+.tb-btn{width:72px;height:56px;border-radius:12px;background:var(--card2);border:1px solid var(--border);font-size:24px;color:var(--dim);}
+.tb-btn.minus{color:var(--red);}
+.tb-btn.plus{color:var(--teal);}
+.beat-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
+.beat-eighth{color:var(--muted);font-size:clamp(18px,2.4vw,24px);}
+.beat-eighth b{color:var(--amber);font-weight:500;}
+.beat-num{font-size:clamp(120px,20vw,240px);font-weight:500;line-height:1;}
+.beat-dots{display:flex;gap:14px;}
+.bdot{width:20px;height:20px;border-radius:50%;background:var(--card2);border:1px solid var(--border);}
+.bdot.on{background:var(--teal);border-color:var(--teal);}
+.beat-ctrl{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:center;}
+.bpm-box{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 16px;}
+.bpm-box .bpm-val{font-size:26px;font-weight:500;min-width:74px;text-align:center;color:var(--amber);}
+.bpm-box button{font-size:22px;color:var(--dim);background:var(--card2);border-radius:8px;width:44px;height:44px;}
+.game-tabs{display:flex;gap:10px;margin-bottom:18px;}
+.game-area{flex:1;display:flex;flex-direction:column;}
+.tl-face{flex:1;min-height:340px;border-radius:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:var(--card);border:2px solid var(--border);transition:background .25s;}
+.tl-face.g{background:#1D5E3A;border-color:var(--teal);}
+.tl-face.r{background:#6E2222;border-color:var(--red);}
+.tl-word{font-size:clamp(80px,16vw,190px);font-weight:500;line-height:1;}
+.tl-face.g .tl-word{color:#B8F2D6;}
+.tl-face.r .tl-word{color:#F5C1C1;}
+.tl-sub{font-size:20px;color:rgba(255,255,255,.85);}
+.arrow-face{flex:1;min-height:340px;border-radius:20px;background:var(--deep);border:2px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+.arrow-big{font-size:clamp(120px,22vw,260px);font-weight:500;line-height:1;color:var(--amber);}
+.arrow-act{color:var(--muted);font-size:clamp(18px,2.4vw,26px);}
+.speed-row{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0;}
+.speed-btn{background:var(--card2);border:2px solid var(--border);border-radius:12px;color:var(--muted);font-size:17px;padding:10px 20px;}
+.speed-btn.sel{border-color:var(--pink);color:var(--pink);}
+.plan-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px 24px;margin-bottom:18px;}
+.plan-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
+.plan-name{font-size:22px;font-weight:500;}
+.plan-tag{border-radius:999px;font-size:13px;padding:5px 14px;}
+.flow-list{display:flex;flex-direction:column;gap:0;}
+.flow-step{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px dashed var(--border);}
+.flow-step:last-child{border-bottom:none;}
+.flow-time{min-width:86px;text-align:center;background:var(--deep);border-radius:10px;padding:8px 6px;font-size:16px;color:var(--amber);font-variant-numeric:tabular-nums;}
+.flow-body{flex:1;}
+.flow-name{font-size:17px;font-weight:500;}
+.flow-desc{color:var(--muted);font-size:14px;margin-top:3px;}
+.flow-go{background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--dim);font-size:14px;padding:8px 14px;white-space:nowrap;}
+.modal-mask{position:fixed;inset:0;background:rgba(6,7,16,.72);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-mask.show{display:flex;}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:18px;width:min(94vw,560px);max-height:86vh;overflow:auto;padding:26px;}
+.modal h3{font-size:20px;margin-bottom:18px;font-weight:500;}
+.form-row{margin-bottom:18px;}
+.form-row label{display:block;color:var(--dim);font-size:15px;margin-bottom:8px;}
+.form-row input[type=text],.form-row textarea{width:100%;background:var(--deep);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;padding:12px 14px;user-select:text;}
+.form-row textarea{height:180px;resize:vertical;line-height:1.7;}
+.form-row .hint{color:var(--muted);font-size:13px;margin-top:6px;}
+.modal-btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;}
+.toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);background:var(--card2);border:1px solid var(--border);color:var(--dim);border-radius:999px;font-size:16px;padding:12px 26px;z-index:300;display:none;}
+.toast.show{display:block;}
+.center-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="tb-left">
+    <button id="btnHome" onclick="goHome()">◀ 主页</button>
+    <div id="pageTitle">室内体育大屏</div>
+  </div>
+  <div class="tb-right">
+    <button id="btnSound" class="tb-icon" onclick="toggleSound()">音效开</button>
+    <button id="btnFull" class="tb-icon" onclick="toggleFull()">全屏</button>
+    <button id="btnSettings" class="tb-icon" onclick="openSettings()">设置</button>
+  </div>
+</div>
+
+<div id="page-home" class="page active">
+  <div class="page-pad" style="display:flex;flex-direction:column;flex:1;">
+    <div class="home-head">
+      <div class="cls" id="homeClassName">四年级(2)班</div>
+      <div class="sub">室内体育大屏工作台 · 下雨天也能上出精彩的体育课</div>
+    </div>
+    <div class="home-grid">
+      <button class="home-card c-coral" onclick="showPage('challenge')">
+        <div class="hc-name">⏱ 全班挑战台</div>
+        <div class="hc-desc">平板支撑、开合跳、深蹲…超大倒计时 + 哨声，全班同时开练</div>
+      </button>
+      <button class="home-card c-teal" onclick="showPage('wheel')">
+        <div class="hc-name">🎡 幸运大转盘</div>
+        <div class="hc-desc">转盘随机选项目 · 摇号随机点将，公平又刺激</div>
+      </button>
+      <button class="home-card c-blue" onclick="showPage('score')">
+        <div class="hc-name">🆚 小组计分板</div>
+        <div class="hc-desc">红蓝黄绿四队对抗，触屏加减分，纪律积分两不误</div>
+      </button>
+      <button class="home-card c-amber" onclick="showPage('beat')">
+        <div class="hc-name">🎵 节拍跟练台</div>
+        <div class="hc-desc">室内操节拍器，4×8拍口令大字，热身课间操直接用</div>
+      </button>
+      <button class="home-card c-pink" onclick="showPage('game')">
+        <div class="hc-name">🚦 大屏反应游戏</div>
+        <div class="hc-desc">红绿灯（绿动红停）· 方向快闪，练反应练听口令</div>
+      </button>
+      <button class="home-card c-red" onclick="showPage('plan')">
+        <div class="hc-name">📋 一键雨天课包</div>
+        <div class="hc-desc">3套现成的40分钟室内课流程，跟着屏幕走就行</div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="page-challenge" class="page">
+  <div class="page-pad" style="display:flex;flex-direction:column;flex:1;">
+    <div id="chalPick">
+      <div class="sec-title">① 选一个挑战项目</div>
+      <div class="chal-grid" id="chalGrid"></div>
+      <div class="sec-title" style="margin-top:22px;">② 选时长（秒）</div>
+      <div class="dur-row" id="durRow"></div>
+      <div style="text-align:center;padding:10px 0 30px;">
+        <button class="broad-btn primary" onclick="startChallenge()">开始挑战</button>
+      </div>
+    </div>
+    <div id="chalStage" class="chal-stage" style="display:none;">
+      <div class="stage-project" id="stgProject">平板支撑</div>
+      <div class="stage-time" id="stgTime">01:00</div>
+      <div class="stage-bar"><div class="fill" id="stgFill" style="width:100%"></div></div>
+      <div class="stage-tip" id="stgTip">坚持住！动作标准最重要</div>
+      <button class="broad-btn ghost" onclick="stopChallenge()">结束本次</button>
+    </div>
+    <div id="chalCount" class="chal-stage" style="display:none;">
+      <div class="stage-tip">准备——</div>
+      <div class="stage-count" id="cntNum">3</div>
+    </div>
+    <div id="chalDone" class="chal-stage" style="display:none;">
+      <div class="stage-done">挑战完成！</div>
+      <div class="stage-tip" id="doneTip">全班都很棒</div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;">
+        <button class="broad-btn primary" onclick="startChallenge()">再来一次</button>
+        <button class="broad-btn ghost" onclick="backToPick()">换个项目</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="page-wheel" class="page">
+  <div class="page-pad" style="display:flex;flex-direction:column;flex:1;">
+    <div class="wheel-tabs">
+      <button class="wheel-tab sel" id="wtProj" onclick="wheelMode('proj')">🎡 转项目</button>
+      <button class="wheel-tab" id="wtName" onclick="wheelMode('name')">🎯 随机点将</button>
+    </div>
+    <div id="wheelProjView" class="wheel-wrap">
+      <div id="wheelBox">
+        <div class="wheel-pointer"></div>
+        <svg viewBox="0 0 300 300">
+          <circle cx="150" cy="150" r="148" fill="#0E1022"/>
+          <g id="wheelG"></g>
+          <circle cx="150" cy="150" r="22" fill="#14162B" stroke="#3A3F6E" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div class="wheel-result">
+        <div class="wr-label" id="wrLabel">点击下方按钮，转出今天的挑战</div>
+        <div class="wr-name" id="wrName">？</div>
+      </div>
+      <button class="broad-btn primary" id="spinBtn" onclick="spinWheel()">转！</button>
+    </div>
+    <div id="wheelNameView" class="wheel-wrap" style="display:none;">
+      <div class="slot-info" id="slotInfo">先在右上角「设置」里录入班级名单</div>
+      <div class="slot-face"><div class="slot-name" id="slotName">？</div></div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;">
+        <button class="broad-btn primary" onclick="spinName()">点将！</button>
+        <button class="broad-btn ghost" onclick="resetPicked()">重置点名</button>
+      </div>
+      <div class="slot-info">
+        <label style="cursor:pointer;"><input type="checkbox" id="noRepeat" checked style="width:18px;height:18px;vertical-align:-3px;"> 不重复点人（点完全班自动重来）</label>
+      </div>
+      <div class="slot-picked" id="pickedChips"></div>
+    </div>
+  </div>
+</div>
+
+<div id="page-score" class="page">
+  <div class="page-pad" style="display:flex;flex-direction:column;flex:1;">
+    <div class="sec-title" style="text-align:center;">点击队名可改名 · 点击分数可直接输入 · 数据自动保存</div>
+    <div class="score-grid" id="scoreGrid"></div>
+    <div style="text-align:center;padding:16px 0 8px;">
+      <button class="broad-btn ghost" onclick="resetScores()">全部清零</button>
+    </div>
+  </div>
+</div>
+
+<div id="page-beat" class="page">
+  <div class="page-pad" style="display:flex;flex-direction:column;flex:1;">
+    <div class="beat-wrap">
+      <div class="beat-eighth" id="beatEighth">第 <b>1</b> 个 8 拍</div>
+      <div class="beat-num" id="beatNum">1</div>
+      <div class="beat-dots" id="beatDots"></div>
+      <div class="beat-ctrl">
+        <button class="broad-btn primary" id="beatBtn" onclick="toggleBeat()">开始</button>
+        <div class="bpm-box">
+          <button onclick="stepBpm(-5)">−</button>
+          <div><div class="bpm-val" id="bpmVal">100</div><div style="color:var(--muted);font-size:12px;text-align:center;">BPM</div></div>
+          <button onclick="stepBpm(5)">＋</button>
+        </div>
+        <button class="broad-btn ghost" onclick="setBpm(80)">慢 80</button>
+        <button class="broad-btn ghost" onclick="setBpm(100)">中 100</button>
+        <button class="broad-btn ghost" onclick="setBpm(120)">快 120</button>
+      </div>
+      <div class="stage-tip">每个 8 拍的第 1 拍是重音 · 跟着大字数拍做动作</div>
+    </div>
+  </div>
+</div>
+
+<div id="page-game" class="page">
+  <div class="page-pad" style="display:flex;flex-direction:column;flex:1;">
+    <div class="game-tabs">
+      <button class="wheel-tab sel" id="gtTL" onclick="gameTab('tl')">🚦 红绿灯</button>
+      <button class="wheel-tab" id="gtArrow" onclick="gameTab('arrow')">➡️ 方向快闪</button>
+    </div>
+    <div id="gameTL" class="game-area">
+      <div class="tl-face" id="tlFace">
+        <div class="tl-word" id="tlWord">红绿灯</div>
+        <div class="tl-sub" id="tlSub">绿=动（原地跑/开合跳） 红=马上定住！</div>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;padding-top:14px;">
+        <button class="broad-btn primary" id="tlBtn" onclick="toggleTL()">开始游戏</button>
+        <button class="broad-btn ghost" id="tlModeBtn" onclick="toggleTLMode()">模式：自动</button>
+        <button class="broad-btn ghost" onclick="manualTL()" id="tlManualBtn" style="display:none;">变！</button>
+      </div>
+    </div>
+    <div id="gameArrow" class="game-area" style="display:none;">
+      <div class="arrow-face">
+        <div class="arrow-big" id="arrowBig">↑</div>
+        <div class="arrow-act" id="arrowAct">上 = 原地纵跳 · 下 = 快速下蹲 · 左/右 = 向侧单脚跳</div>
+      </div>
+      <div class="speed-row">
+        <button class="speed-btn" data-ms="3000" onclick="pickSpeed(this)">慢速 3秒</button>
+        <button class="speed-btn sel" data-ms="2000" onclick="pickSpeed(this)">中速 2秒</button>
+        <button class="speed-btn" data-ms="1300" onclick="pickSpeed(this)">快速 1.3秒</button>
+        <button class="speed-btn" data-ms="900" onclick="pickSpeed(this)">魔鬼 0.9秒</button>
+      </div>
+      <div style="text-align:center;padding-bottom:10px;">
+        <button class="broad-btn primary" id="arrowBtn" onclick="toggleArrow()">开始游戏</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="page-plan" class="page">
+  <div class="page-pad">
+    <div class="sec-title">下雨天不用愁 · 三套现成方案，点「前往」直达对应工具</div>
+
+    <div class="plan-card">
+      <div class="plan-head">
+        <div class="plan-name">课包一 · 经典素质课</div>
+        <div class="plan-tag" style="background:#2A2438;color:var(--coral);">适合：全班整齐练素质</div>
+      </div>
+      <div class="flow-list">
+        <div class="flow-step"><div class="flow-time">5 分钟</div><div class="flow-body"><div class="flow-name">热身 · 节拍跟练</div><div class="flow-desc">100 BPM 原地踏步摆臂，2个8拍换一个动作（踏步→开合→弓步走）</div></div><button class="flow-go" onclick="showPage('beat')">前往</button></div>
+        <div class="flow-step"><div class="flow-time">8 分钟</div><div class="flow-body"><div class="flow-name">红绿灯反应游戏</div><div class="flow-desc">绿动红停，练反应练纪律，犯规的下场当裁判</div></div><button class="flow-go" onclick="showPage('game')">前往</button></div>
+        <div class="flow-step"><div class="flow-time">15 分钟</div><div class="flow-body"><div class="flow-name">挑战台素质循环</div><div class="flow-desc">开合跳30秒×3组、深蹲45秒×3组、平板支撑60秒×2组，组间休息30秒</div></div><button class="flow-go" onclick="showPage('challenge')">前往</button></div>
+        <div class="flow-step"><div class="flow-time">8 分钟</div><div class="flow-body"><div class="flow-name">方向快闪</div><div class="flow-desc">从慢速开始玩到快速，最后1分钟魔鬼模式，全班沸腾</div></div><button class="flow-go" onclick="showPage('game')">前往</button></div>
+        <div class="flow-step"><div class="flow-time">4 分钟</div><div class="flow-body"><div class="flow-name">放松拉伸</div><div class="flow-desc">坐姿体前屈、大腿前侧拉伸、深呼吸，跟着节拍台慢速80做</div></div><button class="flow-go" onclick="showPage('beat')">前往</button></div>
+      </div>
+    </div>
+
+    <div class="plan-card">
+      <div class="plan-head">
+        <div class="plan-name">课包二 · 小组竞技课</div>
+        <div class="plan-tag" style="background:#1B3A4A;color:var(--blue);">适合：想炒热气氛</div>
+      </div>
+      <div class="flow-list">
+        <div class="flow-step"><div class="flow-time">5 分钟</div><div class="flow-body"><div class="flow-name">分组 + 计分板开台</div><div class="flow-desc">按座位分四队，打开计分板，宣布规则：赢的队加分，违纪扣分</div></div><button class="flow-go" onclick="showPage('score')">前往</button></div>
+        <div class="flow-step"><div class="flow-time">5 分钟</div><div class="flow-body"><div class="flow-name">热身 · 节拍跟练</div><div class="flow-desc">120 BPM 快节奏热身，跟不上的队扣1分</div></div><button class="flow-go" onclick="showPage('beat')">前往</button></div>
+        <div class="flow-step"><div class="flow-time">20 分钟</div><div class="flow-body"><div class="flow-name">大转盘 + 挑战台对抗</div><div class="flow-desc">转盘选出项目 → 每队派代表上台挑战 → 按坚持时长给全队加分</div></div><button class="flow-go" onclick="showPage('wheel')">前往</button></div>
+        <div class="flow-step"><div class="flow-time">6 分钟</div><div class="flow-body"><div class="flow-name">随机点将 · 知识问答</div><div class="flow-desc">摇号点将答体育健康小知识，答对+2分（题你来出：如"蹲起时膝盖能不能超脚尖"）</div></div><button class="flow-go" onclick="showPage('wheel')">前往</button></div>
+        <div class="flow-step"><div class="flow-time">4 分钟</div><div class="flow-body"><div class="flow-name">宣布冠军 + 放松</div><div class="flow-desc">冠军队起立接受欢呼，全班拉伸放松收尾</div></div><button class="flow-go" onclick="showPage('score')">前往</button></div>
+      </div>
+    </div>
+
+    <div class="plan-card">
+      <div class="plan-head">
+        <div class="plan-name">课包三 · 静悄悄素质课</div>
+        <div class="plan-tag" style="background:#1B3A2E;color:var(--teal);">适合：隔壁班考试/楼层限制</div>
+      </div>
+      <div class="flow-list">
+        <div class="flow-step"><div class="flow-time">5 分钟</div><div class="flow-body"><div class="flow-name">坐姿热身（无跳跃）</div><div class="flow-desc">头颈环绕、肩绕环、手腕脚踝激活，跟着节拍台80慢速做</div></div><button class="flow-go" onclick="showPage('beat')">前往</button></div>
+        <div class="flow-step"><div class="flow-time">12 分钟</div><div class="flow-body"><div class="flow-name">静音素质挑战</div><div class="flow-desc">靠墙静蹲60秒×3、平板支撑60秒×2、坐姿举腿30秒×3（关闭音效，用大屏倒计时）</div></div><button class="flow-go" onclick="showPage('challenge')">前往</button></div>
+        <div class="flow-step"><div class="flow-time">10 分钟</div><div class="flow-body"><div class="flow-name">坐姿游戏 · 石头剪刀布锦标赛</div><div class="flow-desc">同桌对战→小组冠军→全班总决赛，输的做5个坐姿举腿</div></div><button class="flow-go" onclick="showPage('score')">前往</button></div>
+        <div class="flow-step"><div class="flow-time">8 分钟</div><div class="flow-body"><div class="flow-name">拉伸 + 呼吸放松</div><div class="flow-desc">坐姿体前屈保持、闭眼深呼吸10次，安静收尾</div></div><button class="flow-go" onclick="showPage('beat')">前往</button></div>
+      </div>
+    </div>
+    <div style="height:20px;"></div>
+  </div>
+</div>
+
+<div class="modal-mask" id="settingsMask">
+  <div class="modal">
+    <h3>⚙️ 设置</h3>
+    <div class="form-row">
+      <label>班级名称（显示在主页）</label>
+      <input type="text" id="setClassName" placeholder="如：四年级(2)班">
+    </div>
+    <div class="form-row">
+      <label>班级学生名单（一行一个名字，用于随机点将）</label>
+      <textarea id="setStudents" placeholder="张三&#10;李四&#10;王五"></textarea>
+      <div class="hint">在电脑或手机上粘贴名单更方便，保存后希沃上直接用</div>
+    </div>
+    <div class="modal-btns">
+      <button class="broad-btn primary" onclick="saveSettings()">保存</button>
+      <button class="broad-btn ghost" onclick="closeSettings()">取消</button>
+      <button class="broad-btn ghost" onclick="exportData()">⬇ 导出备份</button>
+      <button class="broad-btn ghost" onclick="document.getElementById('importFile').click()">⬆ 导入恢复</button>
+      <button class="broad-btn ghost" onclick="clearAll()">清空全部数据</button>
+    </div>
+    <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importData(this)">
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var STORAGE_KEY = 'class_pe_screen_v1';
+var CHALLENGES = [
+  {name:'平板支撑', dur:60, tip:'手肘撑地，身体一条直线，屁股别翘'},
+  {name:'靠墙静蹲', dur:60, tip:'背贴墙滑下，大腿与地面平行'},
+  {name:'开合跳', dur:30, tip:'跳起手脚打开，落地轻一点'},
+  {name:'深蹲', dur:45, tip:'屁股往后坐，膝盖对脚尖方向'},
+  {name:'高抬腿', dur:30, tip:'大腿抬平，快速交替，原地做'},
+  {name:'俯卧撑', dur:30, tip:'做不了标准的可以跪姿'},
+  {name:'波比跳', dur:30, tip:'蹲-撑-跳一气呵成，量力而行'},
+  {name:'弓步蹲', dur:45, tip:'两腿交替，前面膝盖弯到90度'},
+  {name:'坐姿举腿', dur:30, tip:'坐地上双腿并拢抬起放下，练肚子'},
+  {name:'金鸡独立', dur:60, tip:'单脚站直，双手侧平举，比谁稳'}
+];
+var WHEEL_ITEMS = ['开合跳','深蹲','平板支撑','高抬腿','波比跳','靠墙蹲','弓步蹲','金鸡独立'];
+var WHEEL_COLORS = ['#F0997B','#5DCAA5','#85B7EB','#ED93B1','#FAC775','#E24B4A'];
+var TEAM_DEFS = [
+  {key:'red', name:'红队', cls:'t-red'},
+  {key:'blue', name:'蓝队', cls:'t-blue'},
+  {key:'yellow', name:'黄队', cls:'t-yellow'},
+  {key:'green', name:'绿队', cls:'t-green'}
+];
+var TITLES = {home:'室内体育大屏', challenge:'全班挑战台', wheel:'幸运大转盘', score:'小组计分板', beat:'节拍跟练台', game:'大屏反应游戏', plan:'一键雨天课包'};
+
+var state = load();
+var currentPage = 'home';
+var chalSel = 0, chalDur = 60;
+var chalTimer = null, chalRemain = 0, chalTotal = 60;
+var wheelRot = 0, wheelSpinning = false;
+var slotTimer = null;
+var beatRun = false, beatCount = 0, beatTimer = null, bpm = 100;
+var tlRun = false, tlTimer = null, tlAuto = true, tlState = 'g';
+var arrowRun = false, arrowTimer = null, arrowMs = 2000;
+
+function load(){
+  var def = {className:'四年级(2)班', students:[], scores:[0,0,0,0], teamNames:['红队','蓝队','黄队','绿队'], soundOn:true, picked:[]};
+  try{
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      var s = JSON.parse(raw);
+      for(var k in def){ if(s[k]===undefined){ s[k]=def[k]; } }
+      return s;
+    }
+  }catch(e){}
+  return def;
+}
+function save(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){} }
+function toast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._tm);
+  t._tm = setTimeout(function(){ t.classList.remove('show'); }, 2200);
+}
+
+/* ---------- 音效引擎 ---------- */
+var Sound = {
+  ctx:null,
+  ensure:function(){
+    if(!this.ctx){
+      try{ this.ctx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){}
+    }
+    if(this.ctx && this.ctx.state==='suspended'){ this.ctx.resume(); }
+  },
+  play:function(freq,dur,type,vol,when){
+    if(!state.soundOn){ return; }
+    this.ensure();
+    if(!this.ctx){ return; }
+    var t = this.ctx.currentTime + (when||0);
+    var o = this.ctx.createOscillator();
+    var g = this.ctx.createGain();
+    o.type = type||'sine';
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(vol||0.3, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t+dur);
+    o.connect(g); g.connect(this.ctx.destination);
+    o.start(t); o.stop(t+dur+0.05);
+  },
+  beep:function(){ this.play(880,0.12,'sine',0.3); },
+  count:function(){ this.play(660,0.15,'square',0.18); },
+  go:function(){ this.play(1047,0.45,'sine',0.35); },
+  whistle:function(){
+    for(var i=0;i<5;i++){ this.play(2100,0.1,'square',0.16,i*0.09); }
+  },
+  cheer:function(){
+    var arr = [523,659,784,1047];
+    for(var i=0;i<arr.length;i++){ this.play(arr[i],0.18,'triangle',0.28,i*0.13); }
+  },
+  tick:function(hi){ this.play(hi?1320:880, hi?0.1:0.06,'sine', hi?0.32:0.2); },
+  red:function(){ this.play(220,0.3,'sawtooth',0.22); },
+  green:function(){ this.play(880,0.2,'sine',0.28); }
+};
+document.addEventListener('click', function(){ Sound.ensure(); }, {once:true});
+
+function toggleSound(){
+  state.soundOn = !state.soundOn;
+  save();
+  var b = document.getElementById('btnSound');
+  b.textContent = state.soundOn ? '音效开' : '音效关';
+  if(state.soundOn){ b.classList.remove('off'); Sound.beep(); } else { b.classList.add('off'); }
+  toast(state.soundOn ? '音效已开启' : '已静音（隔壁班考试可用）');
+}
+function toggleFull(){
+  try{
+    if(document.fullscreenElement){ document.exitFullscreen(); }
+    else{ document.documentElement.requestFullscreen(); }
+  }catch(e){ toast('当前浏览器不支持全屏'); }
+}
+
+/* ---------- 页面切换 ---------- */
+function goHome(){ showPage('home'); }
+function showPage(id){
+  stopAll();
+  currentPage = id;
+  var pages = document.querySelectorAll('.page');
+  for(var i=0;i<pages.length;i++){ pages[i].classList.remove('active'); }
+  var p = document.getElementById('page-'+id);
+  if(p){ p.classList.add('active'); }
+  document.getElementById('pageTitle').textContent = TITLES[id]||'';
+  if(id==='home'){ document.getElementById('homeClassName').textContent = state.className; }
+  if(id==='score'){ renderScores(); }
+  if(id==='wheel'){ renderPickedChips(); }
+}
+function stopAll(){
+  clearChalTimer();
+  chalPickMode();
+  stopSlot();
+  stopBeat();
+  stopTL();
+  stopArrow();
+}
+
+/* ---------- 挑战台 ---------- */
+function renderChal(){
+  var g = document.getElementById('chalGrid');
+  var html = '';
+  for(var i=0;i<CHALLENGES.length;i++){
+    var c = CHALLENGES[i];
+    html += '<button class="chal-item'+(i===chalSel?' sel':'')+'" onclick="pickChal('+i+')">'
+      +'<div class="ci-name">'+c.name+'</div>'
+      +'<div class="ci-dur">'+c.dur+' 秒</div>'
+      +'<div class="ci-tip">'+c.tip+'</div>'
+      +'</button>';
+  }
+  g.innerHTML = html;
+  var dur = document.getElementById('durRow');
+  var opts = [30,45,60,90,120,180];
+  var hh = '';
+  for(var j=0;j<opts.length;j++){
+    hh += '<button class="dur-btn'+(opts[j]===chalDur?' sel':'')+'" onclick="pickDur('+opts[j]+')">'+opts[j]+'</button>';
+  }
+  dur.innerHTML = hh;
+}
+function pickChal(i){ chalSel = i; chalDur = CHALLENGES[i].dur; renderChal(); }
+function pickDur(d){ chalDur = d; renderChal(); }
+function chalPickMode(){
+  document.getElementById('chalPick').style.display = '';
+  document.getElementById('chalStage').style.display = 'none';
+  document.getElementById('chalCount').style.display = 'none';
+  document.getElementById('chalDone').style.display = 'none';
+}
+function clearChalTimer(){
+  if(chalTimer){ clearInterval(chalTimer); chalTimer = null; }
+}
+function startChallenge(){
+  var c = CHALLENGES[chalSel];
+  clearChalTimer();
+  document.getElementById('chalPick').style.display = 'none';
+  document.getElementById('chalStage').style.display = 'none';
+  document.getElementById('chalDone').style.display = 'none';
+  document.getElementById('chalCount').style.display = '';
+  var numEl = document.getElementById('cntNum');
+  var n = 3;
+  numEl.textContent = n;
+  Sound.count();
+  var iv = setInterval(function(){
+    n--;
+    if(n > 0){ numEl.textContent = n; Sound.count(); }
+    else{
+      clearInterval(iv);
+      document.getElementById('chalCount').style.display = 'none';
+      Sound.go();
+      runChallenge();
+    }
+  }, 1000);
+  chalTimer = iv;
+}
+function runChallenge(){
+  var c = CHALLENGES[chalSel];
+  chalTotal = chalDur; chalRemain = chalDur;
+  document.getElementById('stgProject').textContent = c.name;
+  document.getElementById('stgTip').textContent = c.tip;
+  document.getElementById('chalStage').style.display = '';
+  paintChal();
+  chalTimer = setInterval(function(){
+    chalRemain--;
+    paintChal();
+    if(chalRemain <= 0){ finishChallenge(); }
+    else if(chalRemain <= 5){ Sound.beep(); }
+  }, 1000);
+}
+function paintChal(){
+  var m = Math.floor(chalRemain/60), s = chalRemain%60;
+  document.getElementById('stgTime').textContent = (m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+  var pct = chalTotal>0 ? Math.round(chalRemain/chalTotal*100) : 0;
+  document.getElementById('stgFill').style.width = pct+'%';
+  document.getElementById('stgTime').className = 'stage-time'+(chalRemain<=10?' warn':'');
+}
+function finishChallenge(){
+  clearChalTimer();
+  Sound.whistle();
+  setTimeout(function(){ Sound.cheer(); }, 600);
+  document.getElementById('chalStage').style.display = 'none';
+  document.getElementById('doneTip').textContent = CHALLENGES[chalSel].name+' 坚持 '+chalTotal+' 秒，全班鼓掌！';
+  document.getElementById('chalDone').style.display = '';
+}
+function stopChallenge(){ finishChallenge(); }
+function backToPick(){ clearChalTimer(); chalPickMode(); }
+
+/* ---------- 大转盘（项目） ---------- */
+function buildWheel(){
+  var g = document.getElementById('wheelG');
+  var n = WHEEL_ITEMS.length;
+  var seg = 360/n;
+  var html = '';
+  for(var i=0;i<n;i++){
+    var a0 = (i*seg-90)*Math.PI/180;
+    var a1 = ((i+1)*seg-90)*Math.PI/180;
+    var x0 = 150+140*Math.cos(a0), y0 = 150+140*Math.sin(a0);
+    var x1 = 150+140*Math.cos(a1), y1 = 150+140*Math.sin(a1);
+    var large = seg>180 ? 1 : 0;
+    html += '<path d="M150,150 L'+x0.toFixed(1)+','+y0.toFixed(1)+' A140,140 0 '+large+' 1 '+x1.toFixed(1)+','+y1.toFixed(1)+' Z" fill="'+WHEEL_COLORS[i%WHEEL_COLORS.length]+'" stroke="#14162B" stroke-width="2"/>';
+  }
+  for(var k=0;k<n;k++){
+    var mid = (k*seg+seg/2-90)*Math.PI/180;
+    var tx = 150+95*Math.cos(mid), ty = 150+95*Math.sin(mid);
+    html += '<text x="'+tx.toFixed(1)+'" y="'+ty.toFixed(1)+'" text-anchor="middle" dominant-baseline="central" font-size="'+(n>8?12:14)+'" font-weight="500" fill="#14162B" transform="rotate('+(k*seg+seg/2)+' 150 150)">'+WHEEL_ITEMS[k]+'</text>';
+  }
+  g.innerHTML = html;
+  g.style.transform = 'rotate(0deg)';
+  wheelRot = 0;
+}
+function spinWheel(){
+  if(wheelSpinning){ return; }
+  wheelSpinning = true;
+  Sound.beep();
+  document.getElementById('wrLabel').textContent = '转盘旋转中……';
+  document.getElementById('wrName').textContent = '？';
+  var n = WHEEL_ITEMS.length;
+  var seg = 360/n;
+  var target = Math.floor(Math.random()*n);
+  var targetCenter = target*seg + seg/2;
+  var jitter = (Math.random()-0.5)*seg*0.6;
+  var cur = ((wheelRot%360)+360)%360;
+  var need = (360 - targetCenter - cur + 720)%360;
+  var final = wheelRot + 360*5 + need + jitter;
+  var g = document.getElementById('wheelG');
+  g.style.transition = 'transform 4.2s cubic-bezier(0.12,0.8,0.2,1)';
+  g.style.transform = 'rotate('+final+'deg)';
+  wheelRot = final;
+  setTimeout(function(){
+    wheelSpinning = false;
+    var result = WHEEL_ITEMS[target];
+    document.getElementById('wrLabel').textContent = '恭喜！抽中了——';
+    document.getElementById('wrName').textContent = result;
+    Sound.cheer();
+  }, 4400);
+}
+function wheelMode(m){
+  document.getElementById('wtProj').classList.toggle('sel', m==='proj');
+  document.getElementById('wtName').classList.toggle('sel', m==='name');
+  document.getElementById('wheelProjView').style.display = m==='proj' ? '' : 'none';
+  document.getElementById('wheelNameView').style.display = m==='name' ? '' : 'none';
+}
+
+/* ---------- 随机点将（老虎机） ---------- */
+function stopSlot(){
+  if(slotTimer){ clearTimeout(slotTimer); slotTimer = null; }
+}
+function spinName(){
+  var st = state.students||[];
+  if(st.length===0){ toast('请先在右上角「设置」里录入班级名单'); return; }
+  var noRep = document.getElementById('noRepeat').checked;
+  var pool = [];
+  for(var i=0;i<st.length;i++){
+    if(!noRep || state.picked.indexOf(i)<0){ pool.push(i); }
+  }
+  if(pool.length===0){
+    state.picked = [];
+    save();
+    pool = [];
+    for(var j=0;j<st.length;j++){ pool.push(j); }
+    toast('全班都点过啦，自动重新开始');
+  }
+  var finalIdx = pool[Math.floor(Math.random()*pool.length)];
+  var nameEl = document.getElementById('slotName');
+  var delay = 55;
+  var steps = 0;
+  stopSlot();
+  Sound.beep();
+  function step(){
+    var showIdx = Math.floor(Math.random()*st.length);
+    nameEl.textContent = st[showIdx];
+    steps++;
+    if(delay < 300){
+      delay = delay*1.13;
+      slotTimer = setTimeout(step, delay);
+    } else {
+      nameEl.textContent = st[finalIdx];
+      if(state.picked.indexOf(finalIdx)<0){ state.picked.push(finalIdx); }
+      save();
+      renderPickedChips();
+      Sound.cheer();
+      toast('请 '+st[finalIdx]+' 起立！');
+    }
+  }
+  slotTimer = setTimeout(step, delay);
+}
+function resetPicked(){
+  state.picked = [];
+  save();
+  renderPickedChips();
+  toast('点名已重置，全员待命');
+}
+function renderPickedChips(){
+  var st = state.students||[];
+  var box = document.getElementById('pickedChips');
+  var info = document.getElementById('slotInfo');
+  if(st.length===0){ info.textContent = '先在右上角「设置」里录入班级名单'; box.innerHTML=''; return; }
+  info.textContent = '已点 '+state.picked.length+' / '+st.length+' 人';
+  var html = '';
+  for(var i=0;i<st.length;i++){
+    html += '<span class="picked-chip'+(state.picked.indexOf(i)>=0?' done':'')+'">'+st[i]+'</span>';
+  }
+  box.innerHTML = html;
+}
+
+/* ---------- 计分板 ---------- */
+function renderScores(){
+  var g = document.getElementById('scoreGrid');
+  var html = '';
+  var max = Math.max.apply(null, state.scores.concat([0]));
+  for(var i=0;i<4;i++){
+    var lead = state.scores[i]>0 && state.scores[i]===max;
+    html += '<div class="team-card '+TEAM_DEFS[i].cls+(lead?' lead':'')+'">'
+      +'<div class="team-name" onclick="renameTeam('+i+')" style="cursor:pointer;">'+state.teamNames[i]+'</div>'
+      +'<div class="team-score" onclick="setScore('+i+')" style="cursor:pointer;">'+state.scores[i]+'</div>'
+      +'<div class="team-btns">'
+      +'<button class="tb-btn minus" onclick="addScore('+i+',-1)">−1</button>'
+      +'<button class="tb-btn plus" onclick="addScore('+i+',1)">＋1</button>'
+      +'<button class="tb-btn plus" onclick="addScore('+i+',5)">＋5</button>'
+      +'</div></div>';
+  }
+  g.innerHTML = html;
+}
+function addScore(i,d){
+  state.scores[i] = state.scores[i]+d;
+  if(state.scores[i]<0){ state.scores[i]=0; }
+  save();
+  renderScores();
+  if(d>0){ Sound.tick(true); } else { Sound.tick(false); }
+}
+function renameTeam(i){
+  var v = prompt('给队伍改个名字：', state.teamNames[i]);
+  if(v && v.trim()){ state.teamNames[i]=v.trim(); save(); renderScores(); }
+}
+function setScore(i){
+  var v = prompt('直接输入 '+state.teamNames[i]+' 的分数：', state.scores[i]);
+  if(v!==null && v!==''){
+    var n = parseInt(v,10);
+    if(!isNaN(n) && n>=0){ state.scores[i]=n; save(); renderScores(); }
+    else{ toast('请输入大于等于0的数字'); }
+  }
+}
+function resetScores(){
+  if(confirm('确定四队分数全部清零吗？')){
+    state.scores=[0,0,0,0]; save(); renderScores(); Sound.beep();
+  }
+}
+
+/* ---------- 节拍跟练台 ---------- */
+function initBeatDots(){
+  var d = '';
+  for(var i=0;i<8;i++){ d += '<div class="bdot"></div>'; }
+  document.getElementById('beatDots').innerHTML = d;
+}
+function paintBeat(){
+  var beatInEight = beatCount%8;
+  document.getElementById('beatNum').textContent = beatInEight+1;
+  document.getElementById('beatEighth').innerHTML = '第 <b>'+(Math.floor(beatCount/8)+1)+'</b> 个 8 拍';
+  var dots = document.getElementById('beatDots').children;
+  for(var i=0;i<8;i++){ dots[i].className = 'bdot'+(i<=beatInEight?' on':''); }
+}
+function beatStep(){
+  var beatInEight = beatCount%8;
+  Sound.tick(beatInEight===0);
+  paintBeat();
+  beatCount++;
+  beatTimer = setTimeout(beatStep, 60000/bpm);
+}
+function toggleBeat(){
+  if(beatRun){ stopBeat(); }
+  else{
+    beatRun = true;
+    beatCount = 0;
+    document.getElementById('beatBtn').textContent = '停止';
+    Sound.ensure();
+    beatStep();
+  }
+}
+function stopBeat(){
+  if(beatTimer){ clearTimeout(beatTimer); beatTimer=null; }
+  beatRun = false;
+  document.getElementById('beatBtn').textContent = '开始';
+}
+function setBpm(v){ bpm=v; document.getElementById('bpmVal').textContent=v; }
+function stepBpm(d){
+  var v = bpm+d;
+  if(v<40){ v=40; }
+  if(v>200){ v=200; }
+  setBpm(v);
+}
+
+/* ---------- 红绿灯 ---------- */
+function gameTab(t){
+  document.getElementById('gtTL').classList.toggle('sel', t==='tl');
+  document.getElementById('gtArrow').classList.toggle('sel', t==='arrow');
+  document.getElementById('gameTL').style.display = t==='tl' ? '' : 'none';
+  document.getElementById('gameArrow').style.display = t==='arrow' ? '' : 'none';
+  stopTL();
+  stopArrow();
+}
+function setTL(s){
+  tlState = s;
+  var f = document.getElementById('tlFace');
+  var w = document.getElementById('tlWord');
+  var sub = document.getElementById('tlSub');
+  if(s==='g'){
+    f.className = 'tl-face g';
+    w.textContent = '动！';
+    sub.textContent = '原地跑 / 开合跳，动起来！';
+    Sound.green();
+  } else {
+    f.className = 'tl-face r';
+    w.textContent = '停！';
+    sub.textContent = '马上定住！谁动了下场当裁判';
+    Sound.red();
+  }
+}
+function tlToggleAuto(){
+  setTL(tlState==='g' ? 'r' : 'g');
+  if(tlRun && tlAuto){
+    if(tlTimer){ clearTimeout(tlTimer); }
+    tlTimer = setTimeout(tlToggleAuto, 2000+Math.random()*2500);
+  }
+}
+function toggleTL(){
+  if(tlRun){ stopTL(); }
+  else{
+    tlRun = true;
+    document.getElementById('tlBtn').textContent = '结束游戏';
+    Sound.ensure();
+    setTL('g');
+    if(tlAuto){
+      tlTimer = setTimeout(tlToggleAuto, 2000+Math.random()*2500);
+    }
+  }
+}
+function stopTL(){
+  if(tlTimer){ clearTimeout(tlTimer); tlTimer=null; }
+  tlRun = false;
+  document.getElementById('tlBtn').textContent = '开始游戏';
+  var f = document.getElementById('tlFace');
+  f.className = 'tl-face';
+  document.getElementById('tlWord').textContent = '红绿灯';
+  document.getElementById('tlSub').textContent = '绿=动（原地跑/开合跳） 红=马上定住！';
+}
+function toggleTLMode(){
+  tlAuto = !tlAuto;
+  document.getElementById('tlModeBtn').textContent = '模式：'+(tlAuto?'自动':'手动');
+  document.getElementById('tlManualBtn').style.display = tlAuto ? 'none' : '';
+  if(tlTimer){ clearTimeout(tlTimer); tlTimer=null; }
+  if(tlRun && tlAuto){ tlTimer = setTimeout(tlToggleAuto, 2000+Math.random()*2500); }
+  toast(tlAuto ? '自动模式：屏幕自动切换' : '手动模式：点「变！」切换');
+}
+function manualTL(){ if(tlRun){ tlToggleAuto(); } }
+
+/* ---------- 方向快闪 ---------- */
+var ARROWS = [
+  {ch:'↑', act:'上 = 原地纵跳'},
+  {ch:'↓', act:'下 = 快速下蹲'},
+  {ch:'←', act:'左 = 向左单脚跳'},
+  {ch:'→', act:'右 = 向右单脚跳'}
+];
+function pickSpeed(btn){
+  var btns = document.querySelectorAll('.speed-btn');
+  for(var i=0;i<btns.length;i++){ btns[i].classList.remove('sel'); }
+  btn.classList.add('sel');
+  arrowMs = parseInt(btn.getAttribute('data-ms'),10);
+  if(arrowRun){
+    if(arrowTimer){ clearTimeout(arrowTimer); }
+    arrowTimer = setTimeout(nextArrow, arrowMs);
+  }
+}
+function nextArrow(){
+  var a = ARROWS[Math.floor(Math.random()*4)];
+  document.getElementById('arrowBig').textContent = a.ch;
+  document.getElementById('arrowAct').textContent = a.act;
+  Sound.tick(true);
+  arrowTimer = setTimeout(nextArrow, arrowMs);
+}
+function toggleArrow(){
+  if(arrowRun){ stopArrow(); }
+  else{
+    arrowRun = true;
+    document.getElementById('arrowBtn').textContent = '结束游戏';
+    Sound.ensure();
+    nextArrow();
+  }
+}
+function stopArrow(){
+  if(arrowTimer){ clearTimeout(arrowTimer); arrowTimer=null; }
+  arrowRun = false;
+  document.getElementById('arrowBtn').textContent = '开始游戏';
+  document.getElementById('arrowBig').textContent = '↑';
+  document.getElementById('arrowAct').textContent = '上 = 原地纵跳 · 下 = 快速下蹲 · 左/右 = 向侧单脚跳';
+}
+
+/* ---------- 设置 ---------- */
+function openSettings(){
+  document.getElementById('setClassName').value = state.className;
+  document.getElementById('setStudents').value = (state.students||[]).join('\n');
+  document.getElementById('settingsMask').classList.add('show');
+}
+function closeSettings(){ document.getElementById('settingsMask').classList.remove('show'); }
+function saveSettings(){
+  state.className = document.getElementById('setClassName').value.trim() || '我的班级';
+  var txt = document.getElementById('setStudents').value;
+  var arr = [];
+  var lines = txt.split(/\r?\n/);
+  for(var i=0;i<lines.length;i++){
+    var n = lines[i].trim();
+    if(n){ arr.push(n); }
+  }
+  state.students = arr;
+  state.picked = [];
+  save();
+  closeSettings();
+  document.getElementById('homeClassName').textContent = state.className;
+  renderPickedChips();
+  toast('已保存：'+state.className+' · '+arr.length+' 名学生');
+}
+function exportData(){
+  var blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '班级体育大屏备份.json';
+  a.click();
+  toast('备份文件已下载，请妥善保存');
+}
+function importData(input){
+  var f = input.files[0];
+  if(!f){ return; }
+  var r = new FileReader();
+  r.onload = function(){
+    try{
+      var s = JSON.parse(r.result);
+      if(!s || typeof s !== 'object'){ throw new Error('bad'); }
+      if(s.className===undefined || s.students===undefined){ throw new Error('bad'); }
+      state = s;
+      save();
+      document.getElementById('homeClassName').textContent = state.className;
+      renderScores();
+      renderPickedChips();
+      toast('导入成功！');
+    }catch(e){ toast('文件格式不对，导入失败'); }
+    input.value = '';
+  };
+  r.readAsText(f);
+}
+function clearAll(){
+  if(confirm('确定清空全部数据吗？（班级名单、分数、点名记录都会没了）')){
+    localStorage.removeItem(STORAGE_KEY);
+    state = load();
+    document.getElementById('homeClassName').textContent = state.className;
+    renderScores();
+    renderPickedChips();
+    closeSettings();
+    toast('已恢复出厂状态');
+  }
+}
+
+/* ---------- 初始化 ---------- */
+(function init(){
+  if(!state.soundOn){
+    document.getElementById('btnSound').textContent = '音效关';
+    document.getElementById('btnSound').classList.add('off');
+  }
+  document.getElementById('homeClassName').textContent = state.className;
+  renderChal();
+  buildWheel();
+  initBeatDots();
+  renderPickedChips();
+})();
+</script>
+</body>
+</html>
