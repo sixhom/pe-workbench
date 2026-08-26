@@ -1310,7 +1310,8 @@ function parseClassName(klass) {
     if (cm) {
         const entry = cm[1] === '小学' ? 1 : 7;
         const g = entry + (REF_SCHOOL_YEAR - parseInt(cm[2], 10));
-        return { grade: (g >= 1 && g <= 9) ? g : null, num: parseInt(cm[3], 10), display: cm[0] };
+        // 不在 display 里带"班"，避免选择器拼接后出现"XX班班"重复字
+        return { grade: (g >= 1 && g <= 9) ? g : null, num: parseInt(cm[3], 10), display: cm[1] + cm[2] + '级' + cm[3] };
     }
     const cnMap = { '一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9 };
     let m = klass.match(/^([一二三四五六七八九])(\d+)班?$/);
