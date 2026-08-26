@@ -2181,8 +2181,73 @@ function initToolbox() {
 
     renderGames();
     renderComms();
+    renderWarmup();
     renderLogHistory();
     updateLogShould();
+}
+
+function renderWarmup() {
+    const el = document.getElementById('warmupContent');
+    if (!el || !window.WARMUP) return;
+    const w = WARMUP;
+    let html = `<div class="warmup-head">
+        <h3>${esc(w.title)}</h3>
+        <p>🎯 目的：${esc(w.purpose)}</p>
+        <p>📋 ${esc(w.general)}</p>
+    </div>
+    <div class="warmup-toolbar">
+        <button class="btn" onclick="copyWarmup()">📋 复制清单</button>
+        <button class="btn btn-outline" onclick="printWarmup()">🖨️ 打印 / 导出PDF</button>
+    </div>`;
+    w.sections.forEach(sec => {
+        html += `<div class="warmup-section-title">${esc(sec.title)}</div><div class="warmup-grid">`;
+        sec.drills.forEach(d => {
+            html += `<div class="warmup-card">
+                <div class="w-title"><span class="w-no">${d.no}</span><span class="w-name">${esc(d.name)}</span></div>
+                <div class="w-standard">${esc(d.standard)}</div>
+                <div class="w-sets">🏋️ ${esc(d.sets)}</div>
+            </div>`;
+        });
+        html += `</div>`;
+    });
+    el.innerHTML = html;
+}
+
+function warmupToText() {
+    const w = WARMUP;
+    let t = `${w.title}\n目的：${w.purpose}\n${w.general}\n\n`;
+    w.sections.forEach(sec => {
+        t += `${sec.title}\n`;
+        sec.drills.forEach(d => {
+            t += `${d.no}. ${d.name}\n   标准：${d.standard}\n   组数：${d.sets}\n`;
+        });
+        t += '\n';
+    });
+    return t;
+}
+
+function copyWarmup() {
+    copyText(warmupToText());
+}
+
+function printWarmup() {
+    const w = WARMUP;
+    let body = `<h3 style="text-align:center;margin:0 0 6px">${esc(w.title)}</h3>
+        <p style="text-align:center;color:#555;font-size:13px;margin:0 0 14px">目的：${esc(w.purpose)}<br>${esc(w.general)}</p>`;
+    w.sections.forEach(sec => {
+        body += `<h4 style="margin:14px 0 6px;color:#388E3C">${esc(sec.title)}</h4><table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead><tr style="background:#F1F8E9"><th style="border:1px solid #ddd;padding:6px;text-align:left;width:26px">#</th><th style="border:1px solid #ddd;padding:6px;text-align:left">动作</th><th style="border:1px solid #ddd;padding:6px;text-align:left">动作标准</th><th style="border:1px solid #ddd;padding:6px;text-align:left;width:120px">组数</th></tr></thead><tbody>`;
+        sec.drills.forEach(d => {
+            body += `<tr><td style="border:1px solid #ddd;padding:6px">${d.no}</td><td style="border:1px solid #ddd;padding:6px;font-weight:600">${esc(d.name)}</td><td style="border:1px solid #ddd;padding:6px">${esc(d.standard)}</td><td style="border:1px solid #ddd;padding:6px">${esc(d.sets)}</td></tr>`;
+        });
+        body += `</tbody></table>`;
+    });
+    const html = `<html><head><meta charset="utf-8"><title>${esc(w.title)}</title>
+        <style>body{font-family:'Microsoft YaHei',sans-serif;padding:24px;color:#222;line-height:1.6}
+        @media print{body{padding:0}}</style></head><body>${body}<script>window.onload=function(){window.print();}<\/script></body></html>`;
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
 }
 
 function switchToolboxTab(ttab) {
@@ -2193,6 +2258,7 @@ function switchToolboxTab(ttab) {
 function renderToolbox() {
     renderGames();
     renderComms();
+    renderWarmup();
     renderLogHistory();
 }
 

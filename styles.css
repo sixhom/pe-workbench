@@ -1712,6 +1712,20 @@ body.page-scoreentry-active .fab-btn {
 .comms-text { font-size: 13px; color: var(--gray-700); line-height: 1.7; flex: 1; }
 .comms-card .btn { align-self: flex-start; }
 
+/* 动态热身清单 */
+.warmup-head { background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 14px; box-shadow: var(--shadow); }
+.warmup-head h3 { margin: 0 0 8px; font-size: 16px; color: var(--gray-800); }
+.warmup-head p { margin: 4px 0; font-size: 13px; color: var(--gray-600); line-height: 1.6; }
+.warmup-toolbar { display: flex; gap: 8px; margin-bottom: 6px; }
+.warmup-section-title { font-size: 15px; font-weight: 700; color: var(--primary-dark); margin: 16px 0 10px; padding-left: 10px; border-left: 4px solid var(--primary); }
+.warmup-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.warmup-card { background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 14px; }
+.warmup-card .w-title { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.warmup-card .w-no { flex: 0 0 auto; width: 22px; height: 22px; line-height: 22px; text-align: center; background: var(--primary); color: #fff; border-radius: 50%; font-size: 12px; font-weight: 600; }
+.warmup-card .w-name { font-weight: 600; font-size: 14px; color: var(--gray-800); }
+.warmup-card .w-standard { font-size: 13px; color: var(--gray-600); line-height: 1.6; margin-bottom: 8px; }
+.warmup-card .w-sets { font-size: 13px; color: var(--primary-dark); font-weight: 600; }
+
 .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin: 10px 0 18px; }
 .detail-grid div { font-size: 13px; color: var(--gray-700); }
 .detail-grid b { display: block; color: var(--gray-500); font-size: 12px; font-weight: 600; margin-bottom: 2px; }
