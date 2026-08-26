@@ -2,7 +2,9 @@
 let appData = { students: {}, currentClass: null, charts: {}, logs: [] };
 
 // 内置数据版本：每次大批量更新花名册后递增，使老用户本地存储自动重新播种最新数据
-const DATA_VERSION = 20260826;
+const DATA_VERSION = 20260827;
+// 体测年级参照学年：按 2026-09 开学（2026~2027 学年）推算各届学生当前年级
+const REF_SCHOOL_YEAR = 2026;
 
 // ===== Init =====
 document.addEventListener('DOMContentLoaded', () => {
@@ -1300,6 +1302,13 @@ const SE_LEVEL_TEXT = { excellent: '优秀', good: '良好', pass: '及格', wea
 let seState = { step: 1, klass: null, groupSize: 4, project: 'run50', leaveMap: {}, groupMode: 'default' };
 
 function parseClassName(klass) {
+    // 优先识别「小学/初中 + 入学年届 + 级」命名，如 小学2024级1班（2024年入学，2026-09 为 3 年级）
+    const cm = String(klass).match(/(小学|初中)(\d{4})级(\d+)班?/);
+    if (cm) {
+        const entry = cm[1] === '小学' ? 1 : 7;
+        const g = entry + (REF_SCHOOL_YEAR - parseInt(cm[2], 10));
+        return { grade: (g >= 1 && g <= 9) ? g : null, num: parseInt(cm[3], 10), display: cm[0] };
+    }
     const cnMap = { '一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9 };
     let m = klass.match(/^([一二三四五六七八九])(\d+)班?$/);
     if (m) return { grade: cnMap[m[1]], num: parseInt(m[2]), display: m[1] + m[2] };
@@ -1325,6 +1334,19 @@ function gradeFromNo(v) {
     const n = parseFloat(v);
     if (isNaN(n)) return null;
     return GN_MAP[n] != null ? GN_MAP[n] : null;
+}
+// 由班级名中的「入学年届」推算当前年级（小学1年级入学、初中7年级入学）。
+// 返回 null = 无法识别；返回 > 9 = 已升高中（不录入）。
+function cohortYearFromClass(cls) {
+    const m = String(cls).match(/(小学|初中)(\d{4})级/);
+    if (!m) return null;
+    return { type: m[1], year: parseInt(m[2], 10) };
+}
+function currentGradeFromClass(cls) {
+    const c = cohortYearFromClass(cls);
+    if (!c) return null;
+    const entry = c.type === '小学' ? 1 : 7;
+    return entry + (REF_SCHOOL_YEAR - c.year);
 }
 function mapGender(v) {
     if (v == null) return '';
@@ -3185,12 +3207,18 @@ function handleExcelImport(e) {
                     else if (colMap.classCol != null && row[colMap.classCol] != null && String(row[colMap.classCol]).trim() !== '') cls = String(row[colMap.classCol]).trim();
                     if (!cls) cls = sheetName;
 
+                    // 年级：优先按班级名中的入学年届推算（2026-09 当前学年）；无届则回退 年级编号
+                    let grade = currentGradeFromClass(cls);
+                    if (grade == null) grade = gradeFromNo(colMap.gradeNo != null ? row[colMap.gradeNo] : '');
+                    // 已升高中（年级 > 9）或无效 → 跳过，不录入
+                    if (grade == null || grade < 1 || grade > 9) continue;
+
                     if (!newStudents[cls]) newStudents[cls] = [];
                     const st = {
                         no: newStudents[cls].length + 1,
                         name,
                         gender: mapGender(colMap.gender != null ? row[colMap.gender] : ''),
-                        grade: gradeFromNo(colMap.gradeNo != null ? row[colMap.gradeNo] : ''),
+                        grade: grade,
                         height: parseNum(colMap.height != null ? row[colMap.height] : ''),
                         weight: parseNum(colMap.weight != null ? row[colMap.weight] : ''),
                         lung: colMap.lung != null ? parseNum(row[colMap.lung]) : null,
