@@ -2192,37 +2192,80 @@ function renderWarmup() {
     const w = WARMUP;
     let html = `<div class="warmup-head">
         <h3>${esc(w.title)}</h3>
-        <p>🎯 目的：${esc(w.purpose)}</p>
-        <p>📋 ${esc(w.general)}</p>
+        <p class="warmup-sub">📘 ${esc(w.subtitle)}</p>
+        <p class="warmup-flow">🔄 ${esc(w.flow)}</p>
     </div>
     <div class="warmup-toolbar">
         <button class="btn" onclick="copyWarmup()">📋 复制清单</button>
         <button class="btn btn-outline" onclick="printWarmup()">🖨️ 打印 / 导出PDF</button>
     </div>`;
-    w.sections.forEach(sec => {
-        html += `<div class="warmup-section-title">${esc(sec.title)}</div><div class="warmup-grid">`;
-        sec.drills.forEach(d => {
-            html += `<div class="warmup-card">
-                <div class="w-title"><span class="w-no">${d.no}</span><span class="w-name">${esc(d.name)}</span></div>
-                <div class="w-standard">${esc(d.standard)}</div>
-                <div class="w-sets">🏋️ ${esc(d.sets)}</div>
-            </div>`;
+
+    w.parts.forEach(part => {
+        html += `<div class="warmup-part">
+            <div class="warmup-part-title">${esc(part.title)}</div>`;
+        if (part.purpose) html += `<div class="warmup-meta">🎯 ${esc(part.purpose)}</div>`;
+        if (part.rule) html += `<div class="warmup-meta">📋 ${esc(part.rule)}</div>`;
+        if (part.principles && part.principles.length) {
+            html += `<div class="warmup-principles"><b>⚠️ 训练总原则：</b>` +
+                part.principles.map(p => `<span>${esc(p)}</span>`).join('') + `</div>`;
+        }
+        part.groups.forEach(g => {
+            html += `<div class="warmup-group-title">${esc(g.title)}</div><div class="warmup-grid">`;
+            g.drills.forEach((d, i) => {
+                html += `<div class="warmup-card">
+                    <div class="w-title"><span class="w-no">${i + 1}</span><span class="w-name">${esc(d.name)}</span></div>
+                    <div class="w-standard">${esc(d.standard)}</div>
+                    <div class="w-sets">🏋️ ${esc(d.sets)}</div>
+                </div>`;
+            });
+            html += `</div>`;
         });
         html += `</div>`;
     });
+
+    // 万能 8 分钟标准流程
+    if (w.standardFlow) {
+        html += `<div class="warmup-flow-box">
+            <div class="warmup-part-title">${esc(w.standardFlow.title)}</div>
+            <ol class="warmup-flow-steps">` +
+            w.standardFlow.steps.map(s => `<li>${esc(s)}</li>`).join('') + `</ol>
+        </div>`;
+    }
+
+    // 禁止动作（安全红线）
+    if (w.prohibited) {
+        html += `<div class="warmup-prohibit-box">
+            <div class="warmup-part-title">${esc(w.prohibited.title)}</div>
+            <ul class="warmup-prohibit-list">` +
+            w.prohibited.items.map(it => `<li>🚫 ${esc(it)}</li>`).join('') + `</ul>
+        </div>`;
+    }
+
     el.innerHTML = html;
 }
 
 function warmupToText() {
     const w = WARMUP;
-    let t = `${w.title}\n目的：${w.purpose}\n${w.general}\n\n`;
-    w.sections.forEach(sec => {
-        t += `${sec.title}\n`;
-        sec.drills.forEach(d => {
-            t += `${d.no}. ${d.name}\n   标准：${d.standard}\n   组数：${d.sets}\n`;
+    let t = `${w.title}\n${w.subtitle}\n${w.flow}\n\n`;
+    w.parts.forEach(part => {
+        t += `${part.title}\n`;
+        if (part.purpose) t += `· ${part.purpose}\n`;
+        if (part.rule) t += `· ${part.rule}\n`;
+        if (part.principles && part.principles.length) t += `· 训练总原则：${part.principles.join('；')}\n`;
+        part.groups.forEach(g => {
+            t += `  ${g.title}\n`;
+            g.drills.forEach((d, i) => {
+                t += `    ${i + 1}. ${d.name}\n      标准：${d.standard}\n      组数：${d.sets}\n`;
+            });
         });
         t += '\n';
     });
+    if (w.standardFlow) {
+        t += `${w.standardFlow.title}\n` + w.standardFlow.steps.map((s, i) => `  ${i + 1}. ${s}`).join('\n') + '\n\n';
+    }
+    if (w.prohibited) {
+        t += `${w.prohibited.title}\n` + w.prohibited.items.map((it, i) => `  ${i + 1}. ${it}`).join('\n') + '\n';
+    }
     return t;
 }
 
@@ -2232,18 +2275,33 @@ function copyWarmup() {
 
 function printWarmup() {
     const w = WARMUP;
-    let body = `<h3 style="text-align:center;margin:0 0 6px">${esc(w.title)}</h3>
-        <p style="text-align:center;color:#555;font-size:13px;margin:0 0 14px">目的：${esc(w.purpose)}<br>${esc(w.general)}</p>`;
-    w.sections.forEach(sec => {
-        body += `<h4 style="margin:14px 0 6px;color:#388E3C">${esc(sec.title)}</h4><table style="width:100%;border-collapse:collapse;font-size:13px">
-            <thead><tr style="background:#F1F8E9"><th style="border:1px solid #ddd;padding:6px;text-align:left;width:26px">#</th><th style="border:1px solid #ddd;padding:6px;text-align:left">动作</th><th style="border:1px solid #ddd;padding:6px;text-align:left">动作标准</th><th style="border:1px solid #ddd;padding:6px;text-align:left;width:120px">组数</th></tr></thead><tbody>`;
-        sec.drills.forEach(d => {
-            body += `<tr><td style="border:1px solid #ddd;padding:6px">${d.no}</td><td style="border:1px solid #ddd;padding:6px;font-weight:600">${esc(d.name)}</td><td style="border:1px solid #ddd;padding:6px">${esc(d.standard)}</td><td style="border:1px solid #ddd;padding:6px">${esc(d.sets)}</td></tr>`;
+    let body = `<h3 style="text-align:center;margin:0 0 4px">${esc(w.title)}</h3>
+        <p style="text-align:center;color:#555;font-size:12px;margin:0 0 4px">${esc(w.subtitle)}</p>
+        <p style="text-align:center;color:#777;font-size:12px;margin:0 0 14px">${esc(w.flow)}</p>`;
+    w.parts.forEach(part => {
+        body += `<h4 style="margin:16px 0 6px;color:#388E3C;border-bottom:2px solid #388E3C;padding-bottom:4px">${esc(part.title)}</h4>`;
+        if (part.purpose) body += `<p style="font-size:12px;color:#444;margin:4px 0">🎯 ${esc(part.purpose)}</p>`;
+        if (part.rule) body += `<p style="font-size:12px;color:#444;margin:4px 0">📋 ${esc(part.rule)}</p>`;
+        if (part.principles && part.principles.length) body += `<p style="font-size:12px;color:#C62828;margin:4px 0">⚠️ 训练总原则：${esc(part.principles.join('；'))}</p>`;
+        part.groups.forEach(g => {
+            body += `<h5 style="margin:10px 0 4px;color:#555">${esc(g.title)}</h5><table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px">
+                <thead><tr style="background:#F1F8E9"><th style="border:1px solid #ccc;padding:5px;text-align:left;width:24px">#</th><th style="border:1px solid #ccc;padding:5px;text-align:left">动作</th><th style="border:1px solid #ccc;padding:5px;text-align:left">动作标准</th><th style="border:1px solid #ccc;padding:5px;text-align:left;width:110px">组数</th></tr></thead><tbody>`;
+            g.drills.forEach((d, i) => {
+                body += `<tr><td style="border:1px solid #ccc;padding:5px">${i + 1}</td><td style="border:1px solid #ccc;padding:5px;font-weight:600;white-space:nowrap">${esc(d.name)}</td><td style="border:1px solid #ccc;padding:5px">${esc(d.standard)}</td><td style="border:1px solid #ccc;padding:5px;white-space:nowrap">${esc(d.sets)}</td></tr>`;
+            });
+            body += `</tbody></table>`;
         });
-        body += `</tbody></table>`;
     });
+    if (w.standardFlow) {
+        body += `<h4 style="margin:16px 0 6px;color:#1565C0;border-bottom:2px solid #1565C0;padding-bottom:4px">${esc(w.standardFlow.title)}</h4><ol style="margin:6px 0 6px 20px;font-size:13px">` +
+            w.standardFlow.steps.map(s => `<li>${esc(s)}</li>`).join('') + `</ol>`;
+    }
+    if (w.prohibited) {
+        body += `<h4 style="margin:16px 0 6px;color:#C62828;border-bottom:2px solid #C62828;padding-bottom:4px">${esc(w.prohibited.title)}</h4><ul style="margin:6px 0 6px 20px;font-size:13px">` +
+            w.prohibited.items.map(it => `<li>${esc(it)}</li>`).join('') + `</ul>`;
+    }
     const html = `<html><head><meta charset="utf-8"><title>${esc(w.title)}</title>
-        <style>body{font-family:'Microsoft YaHei',sans-serif;padding:24px;color:#222;line-height:1.6}
+        <style>body{font-family:'Microsoft YaHei',sans-serif;padding:22px;color:#222;line-height:1.55}
         @media print{body{padding:0}}</style></head><body>${body}<script>window.onload=function(){window.print();}<\/script></body></html>`;
     const win = window.open('', '_blank');
     win.document.write(html);

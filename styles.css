@@ -1726,6 +1726,24 @@ body.page-scoreentry-active .fab-btn {
 .warmup-card .w-standard { font-size: 13px; color: var(--gray-600); line-height: 1.6; margin-bottom: 8px; }
 .warmup-card .w-sets { font-size: 13px; color: var(--primary-dark); font-weight: 600; }
 
+/* 标准化手册：章节 / 分组 / 原则 / 流程 / 红线 */
+.warmup-sub { color: var(--primary-dark) !important; font-weight: 600; }
+.warmup-flow { color: #555 !important; }
+.warmup-part { background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px; box-shadow: var(--shadow); }
+.warmup-part-title { font-size: 15px; font-weight: 700; color: var(--primary-dark); margin: 0 0 8px; padding-left: 10px; border-left: 4px solid var(--primary); }
+.warmup-group-title { font-size: 13.5px; font-weight: 700; color: var(--gray-700); margin: 12px 0 8px; }
+.warmup-meta { font-size: 12.5px; color: var(--gray-600); margin: 2px 0; }
+.warmup-principles { font-size: 12.5px; color: #C62828; background: #FFF3E0; border-radius: 8px; padding: 8px 10px; margin: 8px 0; line-height: 1.8; }
+.warmup-principles b { margin-right: 4px; }
+.warmup-principles span { display: inline-block; margin-right: 10px; }
+.warmup-flow-box, .warmup-prohibit-box { border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px; }
+.warmup-flow-box { background: #E3F2FD; border: 1px solid #BBDEFB; }
+.warmup-flow-box .warmup-part-title { color: #1565C0; border-left-color: #1565C0; }
+.warmup-flow-steps { margin: 8px 0 0 22px; font-size: 13.5px; color: var(--gray-700); line-height: 1.9; }
+.warmup-prohibit-box { background: #FFEBEE; border: 1px solid #FFCDD2; }
+.warmup-prohibit-box .warmup-part-title { color: #C62828; border-left-color: #C62828; }
+.warmup-prohibit-list { margin: 8px 0 0 22px; font-size: 13.5px; color: #B71C1C; line-height: 1.9; }
+
 .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin: 10px 0 18px; }
 .detail-grid div { font-size: 13px; color: var(--gray-700); }
 .detail-grid b { display: block; color: var(--gray-500); font-size: 12px; font-weight: 600; margin-bottom: 2px; }
