@@ -1,6 +1,9 @@
 // ===== Global State =====
 let appData = { students: {}, currentClass: null, charts: {}, logs: [] };
 
+// 内置数据版本：每次大批量更新花名册后递增，使老用户本地存储自动重新播种最新数据
+const DATA_VERSION = 20260826;
+
 // ===== Init =====
 document.addEventListener('DOMContentLoaded', () => {
     // Load data from localStorage or use default
@@ -21,31 +24,39 @@ document.addEventListener('DOMContentLoaded', () => {
 // ===== Data Management =====
 function loadAppData() {
     const saved = localStorage.getItem('pe_workbench_data');
-    if (saved) {
-        try {
-            const parsed = JSON.parse(saved);
-            appData.students = parsed.students || {};
-            appData.currentClass = parsed.currentClass || Object.keys(appData.students)[0];
-            appData.logs = parsed.logs || [];
-        } catch(e) {
-            appData.students = JSON.parse(JSON.stringify(STUDENT_DATA));
-            appData.currentClass = Object.keys(appData.students)[0];
-            appData.logs = [];
-        }
-    } else {
+    const seed = () => {
         appData.students = JSON.parse(JSON.stringify(STUDENT_DATA));
         appData.currentClass = Object.keys(appData.students)[0];
         appData.logs = [];
+        saveAppData();
+    };
+    if (saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            if (parsed && parsed.version === DATA_VERSION && parsed.students) {
+                appData.students = parsed.students;
+                appData.currentClass = parsed.currentClass || Object.keys(appData.students)[0];
+                appData.logs = parsed.logs || [];
+            } else {
+                // 版本不一致（如本次全校花名册大批量导入）→ 以最新内置数据重新播种
+                seed();
+            }
+        } catch(e) {
+            seed();
+        }
+    } else {
+        seed();
     }
-    // 每个学生补上 grade（由班级名解析），供逐年级评分使用
+    // 每个学生补上 grade（导入时已写入则保留，否则由班级名解析），供逐年级评分使用
     Object.keys(appData.students).forEach(k => {
-        const g = parseClassName(k).grade;
+        const g = gradeOfClass(k);
         (appData.students[k] || []).forEach(s => { if (s.grade == null) s.grade = g; });
     });
 }
 
 function saveAppData() {
     localStorage.setItem('pe_workbench_data', JSON.stringify({
+        version: DATA_VERSION,
         students: appData.students,
         currentClass: appData.currentClass,
         logs: appData.logs,
@@ -265,14 +276,16 @@ const NATION_WEIGHTS = {
   6: { bmi: 15, lung: 15, run50: 20, sitReach: 10, sitUps: 20, run50x8: 10, skipRope: 10 },
 };
 // 某年级实际参与评分的项目（含肺活量；5-6年级含 50×8 折返跑）
+// 初中(7/8/9)等暂无国标评分标准的年级返回空数组，界面显示「待补充评分标准」
 function getActiveItems(grade) {
-  const g = (NATION_WEIGHTS[grade] ? grade : 4);
-  return Object.keys(NATION_WEIGHTS[g]);
+  if (!NATION_WEIGHTS[grade]) return [];
+  return Object.keys(NATION_WEIGHTS[grade]);
 }
 // 计算加权总分与等级；缺项时按已测项权重归一化得「预估总分」并标注
 function getOverallScore(student) {
   const grade = student.grade;
-  const w = NATION_WEIGHTS[grade] || NATION_WEIGHTS[4];
+  const w = NATION_WEIGHTS[grade];
+  if (!w) return { total: null, level: 'unsupported', complete: false, missing: [], unsupported: true };
   let sum = 0, wSum = 0; const missing = [];
   for (const item of Object.keys(w)) {
     const val = (item === 'bmi') ? calcBmi(student) : student[item];
@@ -296,8 +309,8 @@ function getOverallLevel(student) {
     return getOverallScore(student).level;
 }
 
-const LEVEL_LABELS = { excellent: '优秀', good: '良好', pass: '及格', weak: '薄弱', none: '未测', excused: '免测' };
-const LEVEL_COLORS = { excellent: '#4CAF50', good: '#2196F3', pass: '#FF9800', weak: '#f44336', none: '#9E9E9E', excused: '#8E24AA' };
+const LEVEL_LABELS = { excellent: '优秀', good: '良好', pass: '及格', weak: '薄弱', none: '未测', unsupported: '待补充标准', excused: '免测' };
+const LEVEL_COLORS = { excellent: '#4CAF50', good: '#2196F3', pass: '#FF9800', weak: '#f44336', none: '#9E9E9E', unsupported: '#9E9E9E', excused: '#8E24AA' };
 
 // ===== Home Stats =====
 function initHomeStats() {
@@ -408,7 +421,7 @@ function renderRoster() {
     const excellent = filtered.filter(s => getOverallLevel(s) === 'excellent').length;
     const weak = filtered.filter(s => getOverallLevel(s) === 'weak').length;
     const excused = filtered.filter(s => s.excused).length;
-    const grade = parseClassName(cls).grade;
+    const grade = gradeOfClass(cls);
     const showX8 = grade != null && grade >= 5;
     
     document.getElementById('rosterSummary').innerHTML = `
@@ -885,7 +898,7 @@ function renderStudentReport(cls, no) {
       <h1>学生体质健康报告</h1>
       <div class="meta">
         <span>姓名：${student.name}</span><span>性别：${student.gender}</span>
-        <span>班级：${cls}</span><span>年级：${parseClassName(cls).grade} 年级</span>
+        <span>班级：${cls}</span><span>年级：${gradeOfClass(cls)} 年级</span>
         <span>身高：${student.height ?? '—'} cm</span><span>体重：${student.weight ?? '—'} kg</span>
         <span>BMI：${bmi ?? '—'}</span>
       </div>
@@ -910,7 +923,7 @@ function renderStudentReport(cls, no) {
 function exportUploadXlsx() {
     const cls = appData.currentClass;
     if (!cls) { showToast('请先选择班级', 'error'); return; }
-    const grade = parseClassName(cls).grade;
+    const grade = gradeOfClass(cls);
     const items = getActiveItems(grade);
     const students = appData.students[cls] || [];
     if (!students.length) { showToast('当前班级无学生数据', 'error'); return; }
@@ -1015,7 +1028,7 @@ function initAnalysis() {
     });
     
     // Project selector（按当前班级年级显示实际项目：含肺活量、5-6年级含50×8）
-    const curGrade = parseClassName(appData.currentClass).grade;
+    const curGrade = gradeOfClass(appData.currentClass);
     const projects = getActiveItems(curGrade);
     document.getElementById('projectSelector').innerHTML = projects.map((p, i) => 
         `<div class="project-btn ${i === 0 ? 'active' : ''}" data-project="${p}">${TEST_ITEMS[p].icon} ${TEST_ITEMS[p].name}</div>`
@@ -1299,6 +1312,38 @@ function parseClassName(klass) {
     return { grade: null, num: null, display: klass.replace('班','') };
 }
 
+// 国家体测网「年级编号」→ 实际年级：11小一…16小六，21初一…23初三
+const GN_MAP = { 11:1, 12:2, 13:3, 14:4, 15:5, 16:6, 21:7, 22:8, 23:9 };
+// 取班级的年级：优先用该班首名学生的 grade（导入时已写入），否则回退按班级名解析
+function gradeOfClass(klass) {
+    const list = appData.students[klass];
+    if (list && list.length && list[0].grade != null) return list[0].grade;
+    return parseClassName(klass).grade;
+}
+function gradeFromNo(v) {
+    if (v == null || v === '') return null;
+    const n = parseFloat(v);
+    if (isNaN(n)) return null;
+    return GN_MAP[n] != null ? GN_MAP[n] : null;
+}
+function mapGender(v) {
+    if (v == null) return '';
+    const s = String(v).trim().replace('.0', '');
+    if (s === '1' || s === '男') return '男';
+    if (s === '2' || s === '女') return '女';
+    return s;
+}
+// Excel 序列日期（1900 系统）→ YYYY-MM-DD
+function excelDateToStr(v) {
+    if (v == null || v === '') return '';
+    const n = parseFloat(v);
+    if (isNaN(n)) return String(v);
+    const d = new Date((n - 25569) * 86400 * 1000);
+    if (isNaN(d.getTime())) return String(v);
+    const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
 function initScoreEntry() {
     renderSeTestGrid();
 }
@@ -1312,7 +1357,7 @@ function populateSeGradeClass() {
     const groups = {};
     Object.keys(appData.students).forEach(k => {
         const p = parseClassName(k);
-        const g = p.grade || 0;
+        const g = gradeOfClass(k);
         groups[g] = groups[g] || [];
         groups[g].push({ name: k, num: p.num, display: p.display });
     });
@@ -1468,8 +1513,8 @@ function seGroupProgress(students) {
 
 // 按分组方式把全班拆成若干组
 function buildSeGroups(list, mode) {
-    const byHDesc = (a, b) => (b.height ?? -1) - (a.height ?? -1);
     const byHAsc = (a, b) => (a.height ?? 999) - (b.height ?? 999);
+    const byHDesc = (a, b) => (b.height ?? -1) - (a.height ?? -1);
     if (mode === 'default') return [{ icon: '📋', title: '全班', students: list.slice() }];
     if (mode === 'gender') {
         const boys = list.filter(s => s.gender === '男').sort(byHDesc);
@@ -1479,37 +1524,47 @@ function buildSeGroups(list, mode) {
         if (girls.length) g.push({ icon: '👧', title: '女生', students: girls });
         return g;
     }
-    // 身高分档：按本班身高排序后取三分位，分为 矮/中/高
-    const hs = list.map(x => x.height).filter(h => h != null).sort((a, b) => a - b);
-    const lo = hs.length ? hs[Math.floor(hs.length * 0.34)] : null;
-    const hi = hs.length ? hs[Math.floor(hs.length * 0.67)] : null;
-    const tierOf = s => {
-        if (s.height == null) return '中';
-        if (lo != null && s.height <= lo) return '矮';
-        if (hi != null && s.height >= hi) return '高';
-        return '中';
-    };
-    const tierMeta = [['矮', '📏', '矮个'], ['中', '📐', '中等个'], ['高', '📈', '高个']];
-    const makeGroups = arr => {
-        const tiers = { '矮': [], '中': [], '高': [] };
-        arr.forEach(s => tiers[tierOf(s)].push(s));
-        const out = [];
-        tierMeta.forEach(([k, ic, label]) => {
-            if (tiers[k].length) {
-                tiers[k].sort(byHAsc);
-                out.push({ icon: ic, title: label, students: tiers[k] });
-            }
-        });
-        return out;
-    };
-    if (mode === 'height') return makeGroups(list);
-    // gender-height：先分男女，组内再分身高档
-    const g = [];
-    const boys = list.filter(s => s.gender === '男');
-    const girls = list.filter(s => s.gender === '女');
-    if (boys.length) makeGroups(boys).forEach(x => g.push({ icon: '👦 ' + x.icon, title: '男生·' + x.title, students: x.students }));
-    if (girls.length) makeGroups(girls).forEach(x => g.push({ icon: '👧 ' + x.icon, title: '女生·' + x.title, students: x.students }));
-    return g;
+    if (mode === 'height') {
+        // 按身高连续递增排序（不再分矮/中/高三档）
+        const sorted = list.slice().sort(byHAsc);
+        return [{ icon: '📏', title: '按身高（矮 → 高）', students: sorted }];
+    }
+    if (mode === 'gender-height') {
+        // 2男2女组合：身高递增，每「2男 + 2女」成一组
+        const boys = list.filter(s => s.gender === '男').sort(byHAsc);
+        const girls = list.filter(s => s.gender === '女').sort(byHAsc);
+        const groups = [];
+        let i = 0;
+        while (i < boys.length || i < girls.length) {
+            const chunk = [];
+            for (let k = 0; k < 2 && i + k < boys.length; k++) chunk.push(boys[i + k]);
+            for (let k = 0; k < 2 && i + k < girls.length; k++) chunk.push(girls[i + k]);
+            if (chunk.length === 0) break;
+            groups.push({ icon: '👫', title: `第${groups.length + 1}组（2男2女）`, students: chunk });
+            i += 2;
+        }
+        return groups;
+    }
+    if (mode === 'lane-1234') {
+        // 1234 分组：男 1/3/5…、男 2/4/6…、女 1/3/5…、女 2/4/6…
+        const boys = list.filter(s => s.gender === '男').sort(byHAsc);
+        const girls = list.filter(s => s.gender === '女').sort(byHAsc);
+        const odd = arr => arr.filter((_, idx) => idx % 2 === 0);
+        const even = arr => arr.filter((_, idx) => idx % 2 === 1);
+        const g = [];
+        if (boys.length) {
+            const bOdd = odd(boys), bEven = even(boys);
+            if (bOdd.length) g.push({ icon: '1️⃣', title: '第1排 男生（身高 1/3/5…）', students: bOdd });
+            if (bEven.length) g.push({ icon: '2️⃣', title: '第2排 男生（身高 2/4/6…）', students: bEven });
+        }
+        if (girls.length) {
+            const gOdd = odd(girls), gEven = even(girls);
+            if (gOdd.length) g.push({ icon: '3️⃣', title: '第3排 女生（身高 1/3/5…）', students: gOdd });
+            if (gEven.length) g.push({ icon: '4️⃣', title: '第4排 女生（身高 2/4/6…）', students: gEven });
+        }
+        return g;
+    }
+    return [{ icon: '📋', title: '全班', students: list.slice() }];
 }
 
 // 生成单行 HTML（分组时复用，idx 为原名单序号）
@@ -1572,7 +1627,7 @@ function renderSeEntryTable() {
         gmSel.value = seState.groupMode;
     }
     const mode = seState.groupMode || 'default';
-    const showH = (mode === 'height' || mode === 'gender-height');
+    const showH = (mode === 'height' || mode === 'gender-height' || mode === 'lane-1234');
     const idxOf = {}; list.forEach((s, i) => idxOf[s.no] = i);
     const groups = buildSeGroups(list, mode);
 
@@ -2996,7 +3051,7 @@ function saveQuickEntry() {
 
 function exportRoster() {
     const cls = appData.currentClass;
-    const grade = parseClassName(cls).grade;
+    const grade = gradeOfClass(cls);
     const items = getActiveItems(grade);
     const students = appData.students[cls] || [];
 
@@ -3041,28 +3096,23 @@ function triggerImport() {
 }
 
 // 模板下载：生成含表头的 Excel 空模板
+// 模板下载：生成含「班级」列的国家体测网格式空模板
 function downloadTemplate() {
     const classes = Object.keys(appData.students);
-    const header = ['序号', '姓名', '性别', '身高(cm)', '体重(kg)', '肺活量(ml)', '50米跑(秒)', '1分钟跳绳(次)', '坐位体前屈(cm)', '1分钟仰卧起坐(次)', '50×8(秒)'];
+    const header = ['年级编号', '班级编号', '班级名称', '学籍号', '姓名', '性别', '出生日期', '身高(cm)', '体重(kg)', '肺活量(ml)', '50米跑(秒)', '坐位体前屈(cm)', '一分钟跳绳(次)', '一分钟仰卧起坐(次)', '50米×8往返跑(秒)'];
     const wb = XLSX.utils.book_new();
-
-    const sheetNames = classes.length > 0 ? classes : ['示例班级'];
-    sheetNames.forEach((cls, idx) => {
-        const sheetName = cls.length > 31 ? cls.substring(0, 31) : cls;
-        const ws = XLSX.utils.aoa_to_sheet([header]);
-        // 预留 3 行空白便于填写示例（含肺活量、50×8 列）
-        XLSX.utils.sheet_add_aoa(ws, [
-            [idx + 1, '', '男', '', '', '', '', '', '', '', ''],
-            ['', '', '女', '', '', '', '', '', '', '', ''],
-            ['', '', '', '', '', '', '', '', '', '', ''],
-        ], { origin: 'A2' });
-        // 设置列宽，方便填写
-        ws['!cols'] = header.map(h => ({ wch: Math.max(8, h.length * 2 + 2) }));
-        XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    });
-
+    const ws = XLSX.utils.aoa_to_sheet([header]);
+    // 示例行：班级与姓名填写即可，分数留空；性别用 1=男 / 2=女
+    const sampleCls = classes.length ? classes[0] : '小学2024级1班';
+    const examples = [
+        ['12', '2024101', sampleCls, '', '张三', '1', '2016-09-01', '', '', '', '', '', '', '', ''],
+        ['12', '2024101', sampleCls, '', '李四', '2', '2016-10-12', '', '', '', '', '', '', '', ''],
+    ];
+    XLSX.utils.sheet_add_aoa(ws, examples, { origin: 'A2' });
+    ws['!cols'] = header.map(h => ({ wch: Math.max(8, h.length * 2) }));
+    XLSX.utils.book_append_sheet(wb, ws, '体测录入模板');
     XLSX.writeFile(wb, `学生体测录入模板_${new Date().toLocaleDateString()}.xlsx`);
-    showToast('模板已下载，填写后可通过「导入新数据」上传', 'success');
+    showToast('模板已下载（含「班级名称/班级编号」列），填写后可通过「导入新数据」上传', 'success');
 }
 
 // 删除班级全部数据
@@ -3107,133 +3157,102 @@ function initExcelImport() {
 function handleExcelImport(e) {
     const file = e.target.files[0];
     if (!file) return;
-    
+
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = (ev) => {
         try {
-            const data = new Uint8Array(e.target.result);
+            const data = new Uint8Array(ev.target.result);
             const wb = XLSX.read(data, { type: 'array' });
-            
-            const newStudents = {};
+
+            const newStudents = {};   // className -> [students]
+
             wb.SheetNames.forEach(sheetName => {
                 const ws = wb.Sheets[sheetName];
                 const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-                
                 if (rows.length < 2) return;
-                
-                // Find header row (first row with column names)
-                const headerRow = rows[0];
-                const colMap = parseHeaderRow(headerRow);
-                
-                if (!colMap.name) return;
-                
-                const students = [];
+                const colMap = parseHeaderRow(rows[0]);
+                if (colMap.name == null) return;
+
                 for (let i = 1; i < rows.length; i++) {
                     const row = rows[i];
-                    if (!row[colMap.name] || String(row[colMap.name]).trim() === '') continue;
-                    
-                    students.push({
-                        no: row[colMap.no] || students.length + 1,
-                        name: String(row[colMap.name]).trim(),
-                        height: parseNum(row[colMap.height]),
-                        weight: parseNum(row[colMap.weight]),
-                        lung: colMap.lung !== undefined ? parseNum(row[colMap.lung]) : null,
-                        run50: parseNum(row[colMap.run50]),
-                        sitReach: parseNum(row[colMap.sitReach]),
-                        skipRope: parseNum(row[colMap.skipRope]),
-                        sitUps: parseNum(row[colMap.sitUps]),
-                        run50x8: colMap.run50x8 !== undefined ? parseNum(row[colMap.run50x8]) : null,
-                        gender: String(row[colMap.gender] || '').trim(),
-                    });
-                }
-                
-                if (students.length > 0) {
-                    newStudents[sheetName] = students;
+                    const name = (row[colMap.name] != null) ? String(row[colMap.name]).trim() : '';
+                    if (!name) continue;
+
+                    // 班级：优先 班级名称 → 班级编号 → 班级；都没有则退回工作表名（避免全班塞进一个班级）
+                    let cls = null;
+                    if (colMap.className != null && row[colMap.className] != null && String(row[colMap.className]).trim() !== '') cls = String(row[colMap.className]).trim();
+                    else if (colMap.classNo != null && row[colMap.classNo] != null && String(row[colMap.classNo]).trim() !== '') cls = String(row[colMap.classNo]).trim();
+                    else if (colMap.classCol != null && row[colMap.classCol] != null && String(row[colMap.classCol]).trim() !== '') cls = String(row[colMap.classCol]).trim();
+                    if (!cls) cls = sheetName;
+
+                    if (!newStudents[cls]) newStudents[cls] = [];
+                    const st = {
+                        no: newStudents[cls].length + 1,
+                        name,
+                        gender: mapGender(colMap.gender != null ? row[colMap.gender] : ''),
+                        grade: gradeFromNo(colMap.gradeNo != null ? row[colMap.gradeNo] : ''),
+                        height: parseNum(colMap.height != null ? row[colMap.height] : ''),
+                        weight: parseNum(colMap.weight != null ? row[colMap.weight] : ''),
+                        lung: colMap.lung != null ? parseNum(row[colMap.lung]) : null,
+                        run50: parseNum(colMap.run50 != null ? row[colMap.run50] : ''),
+                        sitReach: parseNum(colMap.sitReach != null ? row[colMap.sitReach] : ''),
+                        skipRope: parseNum(colMap.skipRope != null ? row[colMap.skipRope] : ''),
+                        sitUps: parseNum(colMap.sitUps != null ? row[colMap.sitUps] : ''),
+                        run50x8: colMap.run50x8 != null ? parseNum(row[colMap.run50x8]) : null,
+                        sid: colMap.sid != null ? String(row[colMap.sid] ?? '').trim() : '',
+                        birth: colMap.birth != null ? excelDateToStr(row[colMap.birth]) : '',
+                    };
+                    newStudents[cls].push(st);
                 }
             });
-            
+
             if (Object.keys(newStudents).length === 0) {
-                showToast('未找到有效数据，请检查Excel格式', 'error');
+                showToast('未找到有效数据，请检查Excel格式（需含姓名列）', 'error');
                 return;
             }
-            
-            // Merge with existing data - preserve history
+
+            // 合并：保留已有成绩与历史记录
             const now = new Date();
             const dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-            
+            const SCORE_FIELDS = ['run50', 'skipRope', 'sitReach', 'sitUps', 'lung', 'height', 'weight', 'run50x8'];
+
             Object.keys(newStudents).forEach(cls => {
-                if (!appData.students[cls]) {
-                    // New class - just add it
-                    appData.students[cls] = newStudents[cls];
-                    return;
-                }
-                
-                const existingStudents = appData.students[cls];
-                const newClassStudents = newStudents[cls];
-                
-                newClassStudents.forEach(newStudent => {
-                    // Find matching student by name
-                    const existingIdx = existingStudents.findIndex(s => s.name === newStudent.name);
-                    
-                    if (existingIdx >= 0) {
-                        const old = existingStudents[existingIdx];
-                        // Check if there's actual old data to save
-                        const hasOldData = old.run50 !== null && old.run50 !== undefined ||
-                                           old.skipRope !== null && old.skipRope !== undefined ||
-                                           old.sitReach !== null && old.sitReach !== undefined ||
-                                           old.sitUps !== null && old.sitUps !== undefined ||
-                                           old.lung !== null && old.lung !== undefined;
-                        
-                        if (hasOldData) {
+                if (!appData.students[cls]) { appData.students[cls] = newStudents[cls]; return; }
+                const existing = appData.students[cls];
+                newStudents[cls].forEach(ns => {
+                    const idx = existing.findIndex(s => s.name === ns.name);
+                    if (idx >= 0) {
+                        const old = existing[idx];
+                        const hasOld = SCORE_FIELDS.some(k => old[k] != null && old[k] !== '');
+                        if (hasOld) {
                             if (!old.history) old.history = [];
-                            // Check if there's a difference worth saving
-                            const hasNewData = newStudent.run50 !== null || newStudent.skipRope !== null || 
-                                               newStudent.sitReach !== null || newStudent.sitUps !== null;
-                            if (hasNewData) {
-                                const lastEntry = old.history[old.history.length - 1];
-                                if (!lastEntry || lastEntry.date !== dateStr) {
-                                    old.history.push({
-                                        date: dateStr,
-                                        run50: old.run50 ?? null,
-                                        skipRope: old.skipRope ?? null,
-                                        sitReach: old.sitReach ?? null,
-                                        sitUps: old.sitUps ?? null,
-                                    });
-                                }
+                            const hasNew = SCORE_FIELDS.some(k => ns[k] != null && ns[k] !== '');
+                            const last = old.history[old.history.length - 1];
+                            if (hasNew && (!last || last.date !== dateStr)) {
+                                old.history.push({
+                                    date: dateStr,
+                                    run50: old.run50 ?? null, skipRope: old.skipRope ?? null, sitReach: old.sitReach ?? null,
+                                    sitUps: old.sitUps ?? null, lung: old.lung ?? null, height: old.height ?? null,
+                                    weight: old.weight ?? null, run50x8: old.run50x8 ?? null,
+                                });
                             }
                         }
-                        
-                        // Update with new data, keeping old values where new is null
-                        if (newStudent.height !== null) old.height = newStudent.height;
-                        if (newStudent.weight !== null) old.weight = newStudent.weight;
-                        if (newStudent.run50 !== null) old.run50 = newStudent.run50;
-                        if (newStudent.skipRope !== null) old.skipRope = newStudent.skipRope;
-                        if (newStudent.sitReach !== null) old.sitReach = newStudent.sitReach;
-                        if (newStudent.sitUps !== null) old.sitUps = newStudent.sitUps;
-                        if (newStudent.lung !== null) old.lung = newStudent.lung;
-                        if (newStudent.run50x8 !== null) old.run50x8 = newStudent.run50x8;
-                        if (newStudent.gender) old.gender = newStudent.gender;
+                        ['height', 'weight', 'run50', 'skipRope', 'sitReach', 'sitUps', 'lung', 'run50x8', 'gender', 'grade', 'sid', 'birth'].forEach(k => {
+                            if (ns[k] != null && ns[k] !== '') old[k] = ns[k];
+                        });
                     } else {
-                        // New student - add to class
-                        existingStudents.push(newStudent);
+                        existing.push(ns);
                     }
                 });
             });
-            
-            appData.currentClass = Object.keys(appData.students)[0];
+
             saveAppData();
-            
-            // Refresh UI
-            initRoster();
-            initAnalysis();
-            initHomeStats();
-            renderRoster();
-            
-            const totalStudents = Object.values(newStudents).reduce((sum, list) => sum + list.length, 0);
-            const totalClasses = Object.keys(newStudents).length;
-            showToast(`✅ 成功导入 ${totalClasses} 个班级共 ${totalStudents} 名学生，旧成绩已存入历史记录`, 'success');
-            
-        } catch(err) {
+            initRoster(); initAnalysis(); initHomeStats(); renderRoster();
+
+            const total = Object.values(newStudents).reduce((a, l) => a + l.length, 0);
+            const clsN = Object.keys(newStudents).length;
+            showToast(`✅ 成功导入 ${clsN} 个班级共 ${total} 名学生（已按「班级」列自动分组，避免混淆）`, 'success');
+        } catch (err) {
             console.error(err);
             showToast('导入失败：' + err.message, 'error');
         }
@@ -3245,20 +3264,30 @@ function handleExcelImport(e) {
 function parseHeaderRow(header) {
     const map = {};
     header.forEach((h, i) => {
-        if (!h) return;
-        const hStr = String(h).trim().replace(/\r?\n/g, '');
-        if (hStr.includes('序号') || hStr.includes('编号')) map.no = i;
-        else if (hStr.includes('姓名') || hStr.includes('名字') || (hStr.length <= 4 && !hStr.includes('身高') && !hStr.includes('性别') && i === 1)) map.name = i;
-        else if (hStr.includes('身高')) map.height = i;
-        else if (hStr.includes('体重')) map.weight = i;
-        else if (hStr.includes('肺活量')) map.lung = i;
-        else if (hStr.includes('50米') || hStr.includes('五十米')) map.run50 = i;
-        else if (hStr.includes('体前屈')) map.sitReach = i;
-        else if (hStr.includes('跳绳')) map.skipRope = i;
-        else if (hStr.includes('仰卧') || hStr.includes('起坐')) map.sitUps = i;
-        else if (hStr.includes('50×8') || hStr.includes('折返')) map.run50x8 = i;
-        else if (hStr.includes('性别')) map.gender = i;
+        if (h == null) return;
+        const s = String(h).trim().replace(/\r?\n/g, '');
+        if (s.includes('班级名称')) map.className = i;
+        else if (s.includes('班级编号')) map.classNo = i;
+        else if (s === '班级' || (s.includes('班级') && !map.classCol && map.className == null)) map.classCol = i;
+        else if (s.includes('学籍号') || s.includes('学号')) map.sid = i;
+        else if (s.includes('年级编号')) map.gradeNo = i;
+        else if (s.includes('出生日期') || s.includes('出生') || s.includes('生日')) map.birth = i;
+        else if (s.includes('序号') || (s.includes('编号') && s.includes('学'))) map.no = i;
+        else if (s.includes('姓名') || s.includes('名字')) map.name = i;
+        else if (s.includes('身高')) map.height = i;
+        else if (s.includes('体重')) map.weight = i;
+        else if (s.includes('肺活量')) map.lung = i;
+        else if (s.includes('50米') || s.includes('五十米')) map.run50 = i;
+        else if (s.includes('体前屈')) map.sitReach = i;
+        else if (s.includes('跳绳')) map.skipRope = i;
+        else if (s.includes('仰卧') || s.includes('起坐')) map.sitUps = i;
+        else if (s.includes('50×8') || s.includes('折返')) map.run50x8 = i;
+        else if (s.includes('性别')) map.gender = i;
     });
+    if (map.name == null) {
+        // 兜底：没有“姓名”列时，默认取第 2 列（序号之后通常是姓名）
+        if (header.length > 1) map.name = 1;
+    }
     return map;
 }
 
