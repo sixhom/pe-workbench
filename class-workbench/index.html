@@ -641,8 +641,8 @@ function buildWheel(){
   }
   for(var k=0;k<n;k++){
     var mid = (k*seg+seg/2-90)*Math.PI/180;
-    var tx = 150+95*Math.cos(mid), ty = 150+95*Math.sin(mid);
-    html += '<text x="'+tx.toFixed(1)+'" y="'+ty.toFixed(1)+'" text-anchor="middle" dominant-baseline="central" font-size="'+(n>8?12:14)+'" font-weight="500" fill="#14162B" transform="rotate('+(k*seg+seg/2)+' 150 150)">'+WHEEL_ITEMS[k]+'</text>';
+    var tx = 150+100*Math.cos(mid), ty = 150+100*Math.sin(mid);
+    html += '<text x="'+tx.toFixed(1)+'" y="'+ty.toFixed(1)+'" text-anchor="middle" dominant-baseline="central" font-size="'+(n>=8?13:15)+'" font-weight="600" fill="#14162B">'+WHEEL_ITEMS[k]+'</text>';
   }
   g.innerHTML = html;
   g.style.transform = 'rotate(0deg)';
