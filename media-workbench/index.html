@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>大鸿的自媒体工作台</title>
+<style>
+  :root{
+    --bg:#f6f7f9;
+    --card:#ffffff;
+    --text:#24303f;
+    --text2:#64748b;
+    --text3:#94a3b8;
+    --line:#e5e9ef;
+    --main:#e8590c;
+    --main-bg:#fff0e6;
+    --blue:#185fa5;
+    --blue-bg:#e6f1fb;
+    --green:#3b6d11;
+    --green-bg:#eaf3de;
+    --purple:#534ab7;
+    --purple-bg:#eeedfe;
+    --red:#a32d2d;
+    --red-bg:#fcebeb;
+    --radius:14px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg);color:var(--text);
+    font-size:15px;line-height:1.6;
+    padding-bottom:80px;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:0 14px}
+
+  /* ===== 顶部 ===== */
+  header{
+    background:linear-gradient(135deg,#1f2b3a 0%,#2c3e54 100%);
+    color:#fff;padding:22px 0 18px;
+  }
+  header .wrap{display:flex;align-items:center;gap:12px}
+  .logo{width:44px;height:44px;border-radius:12px;background:var(--main);
+    display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+  header h1{font-size:19px;font-weight:600}
+  header p{font-size:12px;opacity:.75;margin-top:2px}
+
+  /* ===== 导航 ===== */
+  nav{
+    position:sticky;top:0;z-index:50;background:rgba(255,255,255,.96);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line);
+  }
+  nav .wrap{display:flex;gap:6px;overflow-x:auto;padding:8px 14px}
+  nav button{
+    flex:1;min-width:82px;border:none;background:none;cursor:pointer;
+    padding:8px 6px;border-radius:10px;font-size:13px;color:var(--text2);
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+    transition:all .15s;white-space:nowrap;
+  }
+  nav button .ico{font-size:19px}
+  nav button.on{background:var(--main-bg);color:var(--main);font-weight:600}
+
+  /* ===== 通用 ===== */
+  .page{display:none;padding:16px 0 30px}
+  .page.on{display:block;animation:fadeIn .2s}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:14px;border:1px solid var(--line)}
+  .card h3{font-size:15px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+  .card h3 .tag{font-size:11px;font-weight:500;background:var(--main-bg);color:var(--main);padding:2px 8px;border-radius:20px}
+  .hint{font-size:12px;color:var(--text3);margin-bottom:10px}
+
+  input,select,textarea{
+    width:100%;border:1.5px solid var(--line);border-radius:10px;
+    padding:9px 12px;font-size:14px;font-family:inherit;background:#fff;
+    color:var(--text);outline:none;transition:border .15s;
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--main)}
+  textarea{resize:vertical;min-height:70px}
+  label{font-size:13px;font-weight:500;color:var(--text2);display:block;margin:10px 0 5px}
+
+  .btn{
+    border:none;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:600;
+    cursor:pointer;transition:all .15s;font-family:inherit;
+  }
+  .btn-main{background:var(--main);color:#fff}
+  .btn-main:active{transform:scale(.97)}
+  .btn-ghost{background:#fff;color:var(--text2);border:1.5px solid var(--line)}
+  .btn-sm{padding:5px 12px;font-size:12px;border-radius:8px}
+  .btn-block{width:100%}
+
+  .row{display:flex;gap:8px}
+  .row>*{flex:1}
+
+  .empty{text-align:center;color:var(--text3);font-size:13px;padding:26px 10px}
+
+  /* ===== 选题库 ===== */
+  .tagpick{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+  .tagpick span{
+    font-size:12px;padding:4px 12px;border-radius:20px;cursor:pointer;
+    background:#f1f3f7;color:var(--text2);border:1px solid transparent;transition:all .12s;
+  }
+  .tagpick span.on{background:var(--main-bg);color:var(--main);border-color:var(--main);font-weight:600}
+
+  .board{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .col{background:#f1f3f7;border-radius:12px;padding:10px}
+  .col h4{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+  .col h4 .cnt{font-size:11px;background:#fff;border-radius:10px;padding:1px 8px;color:var(--text3)}
+  .item{background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:8px;border:1px solid var(--line);font-size:13px}
+  .item .t{font-weight:500;margin-bottom:6px;word-break:break-all}
+  .item .meta{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:6px}
+  .chip{font-size:11px;padding:1px 8px;border-radius:10px;background:var(--blue-bg);color:var(--blue)}
+  .chip.date{background:var(--green-bg);color:var(--green)}
+  .item .ops{display:flex;gap:6px;flex-wrap:wrap}
+  .item .ops button{
+    border:none;background:#f1f3f7;color:var(--text2);font-size:11px;
+    padding:3px 10px;border-radius:6px;cursor:pointer;font-family:inherit;
+  }
+  .item .ops button.next{background:var(--main-bg);color:var(--main);font-weight:600}
+  .item .ops button.del{color:var(--red)}
+  .item.done .t{color:var(--text3);text-decoration:line-through}
+
+  /* ===== 文案工厂 ===== */
+  .formula{border:1.5px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;cursor:pointer;transition:all .15s}
+  .formula.on{border-color:var(--main);background:var(--main-bg)}
+  .formula .ft{font-size:14px;font-weight:600}
+  .formula .fe{font-size:12px;color:var(--text3);margin-top:3px}
+  .outbox{
+    background:#24303f;color:#e8edf3;border-radius:12px;padding:14px;
+    font-size:13px;white-space:pre-wrap;word-break:break-all;
+    max-height:380px;overflow-y:auto;display:none;line-height:1.8;
+  }
+  .outbox.on{display:block}
+  .copybar{display:flex;gap:8px;margin-top:10px}
+
+  /* ===== 数据看板 ===== */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 8px;text-align:center}
+  .stat .v{font-size:18px;font-weight:700;color:var(--main)}
+  .stat .k{font-size:11px;color:var(--text3);margin-top:2px}
+
+  .bars{display:flex;align-items:flex-end;gap:5px;height:120px;padding:10px 4px 0;overflow-x:auto}
+  .bar{flex:1;min-width:34px;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end;cursor:pointer}
+  .bar .b{width:100%;background:linear-gradient(180deg,#f0997b,#e8590c);border-radius:5px 5px 0 0;min-height:4px;transition:opacity .15s}
+  .bar.hot .b{background:linear-gradient(180deg,#f2c94c,#e8a513)}
+  .bar .n{font-size:9px;color:var(--text3);margin-top:5px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60px}
+
+  .nt{width:100%;border-collapse:collapse;font-size:12px}
+  .nt th{text-align:left;color:var(--text3);font-weight:500;padding:6px 6px;border-bottom:1px solid var(--line)}
+  .nt td{padding:8px 6px;border-bottom:1px solid var(--line)}
+  .nt .r{text-align:right}
+  .nt tr.hot td{background:#fffaf0}
+  .fire{font-size:11px}
+  .ntwrap{overflow-x:auto}
+  .nt .ops{cursor:pointer;color:var(--red)}
+
+  /* ===== 提示词 ===== */
+  .pcard{border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:10px;background:#fff}
+  .pcard .ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px}
+  .pcard .pt{font-size:14px;font-weight:600}
+  .pcard .pd{font-size:12px;color:var(--text3);margin-bottom:8px}
+  .pcard .pv{
+    background:#f6f7f9;border-radius:8px;padding:10px;font-size:12px;color:var(--text2);
+    max-height:100px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;
+  }
+
+  /* ===== 弹窗 & toast ===== */
+  .mask{position:fixed;inset:0;background:rgba(20,28,40,.5);z-index:100;display:none;align-items:center;justify-content:center;padding:16px}
+  .mask.on{display:flex}
+  .modal{background:#fff;border-radius:16px;padding:20px;max-width:420px;width:100%;max-height:80vh;overflow-y:auto}
+  .modal h3{font-size:16px;margin-bottom:12px}
+  .toast{
+    position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
+    background:#24303f;color:#fff;padding:10px 22px;border-radius:30px;font-size:13px;
+    opacity:0;transition:opacity .25s;pointer-events:none;z-index:200;white-space:nowrap;
+  }
+  .toast.on{opacity:1}
+
+  footer{text-align:center;font-size:11px;color:var(--text3);padding:10px 0 26px}
+
+  @media(max-width:480px){
+    .stats{grid-template-columns:repeat(2,1fr)}
+    nav button{min-width:74px;font-size:12px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="logo">💪</div>
+    <div>
+      <h1>大鸿的自媒体工作台</h1>
+      <p>选题 · 文案 · 数据 · 提示词，一条龙搞定</p>
+    </div>
+  </div>
+</header>
+
+<nav>
+  <div class="wrap">
+    <button class="on" data-p="topics"><span class="ico">📅</span>选题排期</button>
+    <button data-p="writer"><span class="ico">✍️</span>文案工厂</button>
+    <button data-p="data"><span class="ico">📊</span>数据看板</button>
+    <button data-p="prompts"><span class="ico">🤖</span>提示词库</button>
+  </div>
+</nav>
+
+<div class="wrap">
+
+<!-- ============ 选题排期 ============ -->
+<section class="page on" id="p-topics">
+  <div class="card">
+    <h3>💡 记个灵感 <span class="tag">随时记</span></h3>
+    <div class="hint">脑子里蹦出来的选题，先扔进来再说，别让它跑了</div>
+    <input id="topicInput" placeholder="比如：卧推100kg是什么体验" maxlength="60">
+    <div class="tagpick" id="tagPick"></div>
+    <div class="row">
+      <button class="btn btn-main btn-block" onclick="addTopic()">＋ 加入灵感池</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>🗂 选题看板 <span class="tag" id="topicStat"></span></h3>
+    <div class="hint">点「下一步」推进状态：灵感池 → 待拍 → 已拍 → 已剪 → 已发布</div>
+    <div class="board" id="board"></div>
+  </div>
+
+  <div class="card">
+    <h3>🗓 发布排期 <span class="tag">只看已约时间的</span></h3>
+    <div id="calendar"></div>
+  </div>
+
+  <div class="card">
+    <h3>💾 数据备份</h3>
+    <div class="hint">数据存在这台设备浏览器里，换手机前记得导出存一份</div>
+    <div class="row">
+      <button class="btn btn-ghost" onclick="exportData()">⬇ 导出备份</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('importFile').click()">⬆ 导入恢复</button>
+    </div>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(this)">
+  </div>
+</section>
+
+<!-- ============ 文案工厂 ============ -->
+<section class="page" id="p-writer">
+
+  <div class="card">
+    <h3>🔥 爆款标题生成器 <span class="tag">健身赛道专用</span></h3>
+    <div class="hint">选个套路 → 填空 → 生成一堆标题，挑顺眼的用</div>
+    <div id="formulaList"></div>
+    <div id="titleInputs"></div>
+    <button class="btn btn-main btn-block" style="margin-top:12px" onclick="genTitles()">生成标题</button>
+  </div>
+
+  <div class="card">
+    <h3>🎬 口语化脚本生成器 <span class="tag">短句+口头语</span></h3>
+    <div class="hint">先选脚本类型，填好信息，出来的是带钩子的框架初稿</div>
+    <select id="scriptType" onchange="renderScriptInputs()">
+      <option value="tutorial">干货教程类（教动作/教方法）</option>
+      <option value="record">训练记录类（练哪了/什么感受）</option>
+      <option value="warning">避雷警示类（纠错/避坑）</option>
+    </select>
+    <div id="scriptInputs"></div>
+    <button class="btn btn-main btn-block" style="margin-top:12px" onclick="genScript()">生成脚本</button>
+  </div>
+
+  <div class="card">
+    <h3>📋 生成结果</h3>
+    <div class="outbox" id="outBox"></div>
+    <div class="copybar" id="copyBar" style="display:none">
+      <button class="btn btn-main" style="flex:1" onclick="copyOut()">复制全文</button>
+      <button class="btn btn-ghost" onclick="clearOut()">清空</button>
+    </div>
+    <div class="empty" id="outEmpty">生成的标题/脚本会出现在这里</div>
+  </div>
+</section>
+
+<!-- ============ 数据看板 ============ -->
+<section class="page" id="p-data">
+  <div class="stats" id="stats"></div>
+
+  <div class="card">
+    <h3>📈 各笔记播放对比 <span class="tag">金色=爆款</span></h3>
+    <div class="bars" id="bars"></div>
+    <div class="empty" id="barsEmpty">还没有数据，先在下面录一条</div>
+  </div>
+
+  <div class="card">
+    <h3>➕ 录入笔记数据</h3>
+    <label>笔记标题</label>
+    <input id="nTitle" placeholder="比如：卧推100kg是什么体验" maxlength="50">
+    <div class="row">
+      <div><label>发布日期</label><input type="date" id="nDate"></div>
+      <div><label>播放</label><input type="number" id="nViews" placeholder="0" min="0"></div>
+    </div>
+    <div class="row">
+      <div><label>点赞</label><input type="number" id="nLikes" placeholder="0" min="0"></div>
+      <div><label>收藏</label><input type="number" id="nCollects" placeholder="0" min="0"></div>
+    </div>
+    <div class="row">
+      <div><label>评论</label><input type="number" id="nComments" placeholder="0" min="0"></div>
+      <div><label>涨粉</label><input type="number" id="nFans" placeholder="0" min="0"></div>
+    </div>
+    <button class="btn btn-main btn-block" style="margin-top:14px" onclick="addNote()">保存这条笔记</button>
+  </div>
+
+  <div class="card">
+    <h3>📋 笔记明细 <span class="tag" id="noteCnt"></span></h3>
+    <div class="hint">互动率 =(点赞+收藏+评论)÷播放，健身干货类超过 5% 就算能打</div>
+    <div class="ntwrap"><table class="nt" id="noteTable"></table></div>
+    <div class="empty" id="tableEmpty">暂无数据</div>
+  </div>
+</section>
+
+<!-- ============ 提示词库 ============ -->
+<section class="page" id="p-prompts">
+  <div class="card">
+    <h3>🤖 我的AI提示词 <span class="tag">点卡片复制</span></h3>
+    <div class="hint">这些都是给你定制好的，点「复制」后去 DeepSeek / 我这儿粘贴就能用</div>
+    <div id="promptList"></div>
+  </div>
+
+  <div class="card">
+    <h3>➕ 加一条自己的</h3>
+    <label>名字（干嘛用的）</label>
+    <input id="pName" placeholder="比如：小红书简介改写" maxlength="20">
+    <label>提示词内容</label>
+    <textarea id="pBody" placeholder="把你常用的提示词贴在这里" style="min-height:100px"></textarea>
+    <button class="btn btn-main btn-block" style="margin-top:12px" onclick="addPrompt()">保存提示词</button>
+  </div>
+</section>
+
+</div>
+
+<footer>数据保存在本机浏览器 · 大鸿的自媒体工作台 · 想到啥功能随时让AI给你加</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= 数据层 ================= */
+var KEY='dahong_media_workbench_v1';
+var DB={topics:[],notes:[],myPrompts:[]};
+try{var s=localStorage.getItem(KEY);if(s){var d=JSON.parse(s);DB.topics=d.topics||[];DB.notes=d.notes||[];DB.myPrompts=d.myPrompts||[];}}catch(e){}
+function save(){localStorage.setItem(KEY,JSON.stringify(DB));}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function toastMsg(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('on');setTimeout(function(){t.classList.remove('on');},1800);}
+function fmt(n){if(n>=10000)return (n/10000).toFixed(1)+'w';return n>=1000?(n/1000).toFixed(1)+'k':n;}
+function todayStr(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
+/* ================= 导航 ================= */
+var tabs=document.querySelectorAll('nav button');
+tabs.forEach(function(b){
+  b.onclick=function(){
+    tabs.forEach(function(x){x.classList.remove('on');});
+    b.classList.add('on');
+    document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on');});
+    document.getElementById('p-'+b.dataset.p).classList.add('on');
+    window.scrollTo(0,0);
+  };
+});
+
+/* ================= 选题库 ================= */
+var TAGS=['胸','背','腿','肩','手臂','核心','教学','饮食','日常vlog','干货科普'];
+var curTag='日常vlog';
+function renderTagPick(){
+  var el=document.getElementById('tagPick');
+  el.innerHTML='';
+  TAGS.forEach(function(t){
+    var s=document.createElement('span');
+    s.textContent=t;
+    if(t===curTag)s.classList.add('on');
+    s.onclick=function(){curTag=t;renderTagPick();};
+    el.appendChild(s);
+  });
+}
+var STATUS=[
+  {k:'idea',n:'💡 灵感池'},
+  {k:'wait',n:'🎥 待拍'},
+  {k:'shot',n:'📹 已拍'},
+  {k:'cut',n:'✂️ 已剪'},
+  {k:'done',n:'🚀 已发布'}
+];
+var NEXT={idea:'wait',wait:'shot',shot:'cut',cut:'done',done:null};
+var NEXTTXT={idea:'排上日程',wait:'开拍',shot:'剪完',cut:'发布'};
+function addTopic(){
+  var inp=document.getElementById('topicInput');
+  var t=inp.value.trim();
+  if(!t){toastMsg('先写点内容～');return;}
+  DB.topics.unshift({id:uid(),title:t,tag:curTag,status:'idea',date:''});
+  save();inp.value='';renderTopics();
+  toastMsg('灵感已入库 💡');
+}
+function moveTopic(id){
+  var t=DB.topics.find(function(x){return x.id===id;});
+  if(!t)return;
+  var nx=NEXT[t.status];
+  if(!nx)return;
+  if(nx==='wait'&&!t.date){t.date=todayStr();}
+  t.status=nx;save();renderTopics();
+}
+function delTopic(id){
+  if(!confirm('删掉这条选题？删了就没了'))return;
+  DB.topics=DB.topics.filter(function(x){return x.id!==id;});
+  save();renderTopics();
+}
+function schedTopic(id){
+  var t=DB.topics.find(function(x){return x.id===id;});
+  if(!t)return;
+  var d=prompt('定个发布日期（格式 2026-09-01）：',t.date||todayStr());
+  if(d===null)return;
+  d=d.trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){toastMsg('日期格式不对');return;}
+  t.date=d;if(t.status==='idea')t.status='wait';
+  save();renderTopics();
+}
+function renderTopics(){
+  var board=document.getElementById('board');
+  board.innerHTML='';
+  STATUS.forEach(function(st){
+    var list=DB.topics.filter(function(t){return t.status===st.k;});
+    var col=document.createElement('div');
+    col.className='col';
+    var h=document.createElement('h4');
+    h.innerHTML=st.n+' <span class="cnt">'+list.length+'</span>';
+    col.appendChild(h);
+    if(!list.length){var e=document.createElement('div');e.className='empty';e.style.padding='14px 4px';e.textContent='空';col.appendChild(e);}
+    list.forEach(function(t){
+      var it=document.createElement('div');
+      it.className='item'+(t.status==='done'?' done':'');
+      var meta='<span class="chip">'+esc(t.tag)+'</span>';
+      if(t.date)meta+='<span class="chip date">🗓 '+esc(t.date)+'</span>';
+      var ops='';
+      if(NEXT[t.status])ops+='<button class="next" onclick="moveTopic(\''+t.id+'\')">'+NEXTTXT[t.status]+' →</button>';
+      if(t.status!=='done')ops+='<button onclick="schedTopic(\''+t.id+'\')">改日期</button>';
+      ops+='<button class="del" onclick="delTopic(\''+t.id+'\')">删</button>';
+      it.innerHTML='<div class="t">'+esc(t.title)+'</div><div class="meta">'+meta+'</div><div class="ops">'+ops+'</div>';
+      col.appendChild(it);
+    });
+    board.appendChild(col);
+  });
+  var total=DB.topics.length;
+  var done=DB.topics.filter(function(t){return t.status==='done';}).length;
+  document.getElementById('topicStat').textContent='共'+total+'条 · 已发'+done+'条';
+  renderCalendar();
+}
+function renderCalendar(){
+  var el=document.getElementById('calendar');
+  var sched=DB.topics.filter(function(t){return t.date&&t.status!=='done';}).sort(function(a,b){return a.date<b.date?-1:1;});
+  var done=DB.topics.filter(function(t){return t.date&&t.status==='done';}).sort(function(a,b){return a.date<b.date?-1:1;});
+  if(!sched.length&&!done.length){el.innerHTML='<div class="empty">给选题定个日期，这里就会变成你的发布计划表</div>';return;}
+  var html='';
+  if(sched.length){
+    html+='<div style="font-size:13px;font-weight:600;color:var(--main);margin-bottom:8px">📌 待发布</div>';
+    sched.forEach(function(t){html+=calRow(t);});
+  }
+  if(done.length){
+    html+='<div style="font-size:13px;font-weight:600;color:var(--green);margin:12px 0 8px">✅ 已发布</div>';
+    done.slice(-5).reverse().forEach(function(t){html+=calRow(t);});
+  }
+  el.innerHTML=html;
+}
+function calRow(t){
+  return '<div class="item"><div class="t">'+esc(t.title)+'</div><div class="meta"><span class="chip">'+esc(t.tag)+'</span><span class="chip date">🗓 '+esc(t.date)+'</span></div></div>';
+}
+
+/* ================= 文案工厂：标题 ================= */
+var FORMULAS=[
+  {id:'identity',n:'身份反差型',e:'体育老师×壮汉×有腹肌，反差就是记忆点',
+   fields:[['who','你的身份/特点','体育老师的我'],['result','反差结果','为什么劝你别天天练腹肌']],
+   make:function(f){return[
+     f.who+'，'+f.result,
+     f.who+'告诉你：'+f.result+'（真心话）',
+     '当'+f.who.replace('的','')+'的第8年，才敢说这句：'+f.result,
+     f.who+'的大实话：'+f.result,
+     '别猜了，'+f.who+'来回答：'+f.result
+   ];}},
+  {id:'number',n:'数字盘点型',e:'数字自带信任感，练X年才知道的真相',
+   fields:[['years','练了几年','8年'],['n','几个真相','5个'],['topic','关于什么','增肌']],
+   make:function(f){return[
+     '练了'+f.years+'，才知道的'+f.n+'个'+f.topic+'真相',
+     f.n+'个'+f.topic+'真相，我用了'+f.years+'才搞明白',
+     '全部亲测：'+f.n+'个'+f.topic+'真相，第'+Math.min(3,parseInt(f.n)||3)+'个最扎心',
+     '练'+f.topic+'的兄弟看过来，这'+f.n+'个真相没人告诉你',
+     f.topic+'避坑清单：'+f.n+'条大实话，条条带学费'
+   ];}},
+  {id:'warning',n:'避雷警示型',e:'先吓一跳，再看内容，完播率神器',
+   fields:[['wrong','错误行为','天天练腹肌'],['bad','后果','腰迟早出问题']],
+   make:function(f){return[
+     '别再'+f.wrong+'了！'+f.bad,
+     '求你了，'+f.wrong+'真的会'+f.bad,
+     f.wrong+'='+f.bad+'？90%的人还蒙在鼓里',
+     '刷到这条的都有救：'+f.wrong+'的，赶紧停',
+     '我不许你再'+f.wrong+'！'+f.bad+'是真的'
+   ];}},
+  {id:'tutorial',n:'教程干货型',e:'动作+效果+细节，搜索流量主力',
+   fields:[['move','动作名','卧推'],['effect','想要的效果','胸肌增长']],
+   make:function(f){return[
+     f.move+'这样练，'+f.effect+'翻倍（细节都在这了）',
+     f.move+'的'+(f.effect.length>6?'关键细节':'3个细节')+'，改完'+f.effect+'肉眼可见',
+     '为什么你'+f.move+'没感觉？就差这一步',
+     f.move+'从入门到到位，一条视频讲透',
+     '练'+f.move+'没效果？先看这条再练'
+   ];}},
+  {id:'challenge',n:'挑战打卡型',e:'时间线+变化，天然有追更欲',
+   fields:[['what','挑战内容','每天100个俯卧撑'],['days','多少天','30天']],
+   make:function(f){return[
+     '我挑战'+f.what+'，'+f.days+'后的变化惊到我了',
+     f.days+'，'+f.what+'，我变成了这样',
+     f.what+'第'+f.days+'天打卡｜身材和心态都变了',
+     '敢不敢跟我一起？'+f.what+' '+f.days+'挑战',
+     '坚持'+f.what+' '+f.days+'，我收获了什么'
+   ];}},
+  {id:'suspense',n:'悬念钩子型',e:'最X的错误/最致命的一条，逼人看完',
+   fields:[['who','哪类人','新手'],['n','几个错误','3个']],
+   make:function(f){return[
+     f.who+'都在犯的'+f.n+'个错误，最后一个最致命',
+     f.n+'个信号，说明你'+f.who+'的练法全错了',
+     f.who+'必看：这'+f.n+'个坑我一个都没躲过',
+     '健身房'+f.who+'自查清单，'+f.n+'条你中了几条？',
+     '说句得罪人的话：'+f.n+'0%的'+f.who+'都白练了'
+   ];}},
+  {id:'vs',n:'对比测评型',e:'A vs B 实测，选择困难症最爱看',
+   fields:[['a','方案A','自重训练'],['b','方案B','器械训练'],['weeks','实测几周','8周']],
+   make:function(f){return[
+     f.a+' vs '+f.b+'，实测'+f.weeks+'，结果意外',
+     f.a+'和'+f.b+'到底选哪个？我拿自己试了'+f.weeks,
+     f.weeks+'实测：'+f.a+'赢了/'+f.b+'赢了（附数据）',
+     '别吵了，'+f.a+' vs '+f.b+'一次说清',
+     '用'+f.weeks+'时间告诉你，'+f.a+'和'+f.b+'的真相'
+   ];}},
+  {id:'emo',n:'情绪共鸣型',e:'谁懂啊体，评论区秒热',
+   fields:[['scene','痛点场景','练完第二天浑身酸痛还要上班'],['feeling','那感觉','谁懂']],
+   make:function(f){return[
+     f.scene+'，'+f.feeling+'啊！！',
+     f.scene+'，'+f.feeling+'？评论区集合',
+     '只有练铁的懂：'+f.scene,
+     f.scene+'，懂的都懂',
+     '有没有人跟我一样：'+f.scene
+   ];}}
+];
+var curFormula=FORMULAS[0];
+function renderFormulas(){
+  var el=document.getElementById('formulaList');
+  el.innerHTML='';
+  FORMULAS.forEach(function(f){
+    var d=document.createElement('div');
+    d.className='formula'+(f===curFormula?' on':'');
+    d.innerHTML='<div class="ft">'+f.n+'</div><div class="fe">'+f.e+'</div>';
+    d.onclick=function(){curFormula=f;renderFormulas();};
+    el.appendChild(d);
+  });
+  renderTitleInputs();
+}
+function renderTitleInputs(){
+  var el=document.getElementById('titleInputs');
+  el.innerHTML='';
+  curFormula.fields.forEach(function(fd){
+    var lb=document.createElement('label');lb.textContent=fd[1];
+    var ip=document.createElement('input');
+    ip.id='tf_'+fd[0];ip.placeholder='例：'+fd[2];
+    el.appendChild(lb);el.appendChild(ip);
+  });
+}
+function genTitles(){
+  var vals={};
+  var ok=true;
+  curFormula.fields.forEach(function(fd){
+    var v=document.getElementById('tf_'+fd[0]).value.trim();
+    if(!v){document.getElementById('tf_'+fd[0]).style.borderColor='var(--red)';ok=false;}
+    vals[fd[0]]=v;
+  });
+  if(!ok){toastMsg('把空都填上～');return;}
+  var titles=curFormula.make(vals);
+  var out='【'+curFormula.n+'】生成 '+titles.length+' 个标题，挑顺眼的用：\n\n';
+  titles.forEach(function(t,i){out+=(i+1)+'. '+t+'\n';});
+  out+='\n💡 小提示：标题里带数字、带身份、带悬念的，点击率普遍更高。发之前可以拿2个标题去搜一下小红书有没有同款，避开撞车。';
+  showOut(out);
+}
+
+/* ================= 文案工厂：脚本 ================= */
+var SCRIPTS={
+  tutorial:[
+    ['topic','这期教什么','卧推标准动作'],
+    ['pain','新手常犯的错','手肘打太开'],
+    ['p1','要点一','沉肩夹背'],
+    ['p2','要点二','杠铃落在乳头线'],
+    ['p3','要点三','脚踩实地面借力']
+  ],
+  record:[
+    ['day','练什么','胸+三头'],
+    ['feat','今天的亮点','卧推冲到100kg×3'],
+    ['feel','练完感受','胸快炸了'],
+    ['next','下步计划','下周冲105']
+  ],
+  warning:[
+    ['wrong','纠什么错','深蹲膝盖内扣'],
+    ['harm','不纠正的后果','膝盖迟早报废'],
+    ['right','正确做法','膝盖对准脚尖方向'],
+    ['extra','加一句叮嘱','重量别上头']
+  ]
+};
+function renderScriptInputs(){
+  var el=document.getElementById('scriptInputs');
+  el.innerHTML='';
+  SCRIPTS[document.getElementById('scriptType').value].forEach(function(fd){
+    var lb=document.createElement('label');lb.textContent=fd[1];
+    var ip=document.createElement('input');
+    ip.id='sf_'+fd[0];ip.placeholder='例：'+fd[2];
+    el.appendChild(lb);el.appendChild(ip);
+  });
+}
+function genScript(){
+  var type=document.getElementById('scriptType').value;
+  var v={};
+  var ok=true;
+  SCRIPTS[type].forEach(function(fd){
+    var x=document.getElementById('sf_'+fd[0]).value.trim();
+    if(!x){document.getElementById('sf_'+fd[0]).style.borderColor='var(--red)';ok=false;}
+    v[fd[0]]=x;
+  });
+  if(!ok){toastMsg('把空都填上～');return;}
+  var out='';
+  if(type==='tutorial'){
+    out='【干货教程类脚本】《'+v.topic+'》\n\n'+
+    '—— 0-3秒 钩子 ——\n"'+v.topic+'，90%的人第一步就错了，看完这条少走两年弯路。"\n\n'+
+    '—— 3-10秒 痛点 ——\n"很多人'+v.pain+'，练了半天没感觉，还容易受伤，对吧？今天一次给你讲透。"\n\n'+
+    '—— 10-45秒 干货主体 ——\n"第一个，'+v.p1+'。记住啊，这是根基，根基不稳重量再大都白搭。"\n"第二个，'+v.p2+'。这个位置很关键，找对了目标肌群才有感觉。"\n"第三个，'+v.p3+'。很多人忽略这个，但它决定你能不能上大重量。"\n\n'+
+    '—— 45-60秒 收尾 ——\n"就这三个点，练之前默念一遍。觉得有用的话，点赞收藏，下次进健身房翻出来照着做。关注我，下期讲XX。"\n\n'+
+    '💡 拍摄提示：每个要点配一个对比画面（错误 vs 正确），信息量直接翻倍。';
+  }else if(type==='record'){
+    out='【训练记录类脚本】《'+v.day+'》\n\n'+
+    '—— 开场 ——\n"兄弟们，今天练'+v.day+'，状态来了，走！"\n\n'+
+    '—— 正片 ——\n"（训练画面快剪，配劲爆BGM，每组之间插一句短感受）"\n"重点来了：'+v.feat+'！"\n\n'+
+    '—— 数据展示 ——\n"（屏幕打出今日训练清单：动作×组数×重量）"\n\n'+
+    '—— 收尾 ——\n"练完的感受就一个字：'+v.feel+'。"+v.next+"。一起加油，评论区报到！"\n\n'+
+    '💡 拍摄提示：训练前记得拍一段"进健身房"的开场素材，真实感拉满。';
+  }else{
+    out='【避雷警示类脚本】《别再'+v.wrong+'了》\n\n'+
+    '—— 0-3秒 狠话开场 ——\n"还在'+v.wrong+'的，停下来！'+v.harm+'不是开玩笑的。"\n\n'+
+    '—— 3-15秒 错误演示 ——\n"看好了，这就是典型的'+v.wrong+'（错误动作演示）。很多新手天天这么练，还纳闷怎么膝盖越来越不舒服。"\n\n'+
+    '—— 15-40秒 正确做法 ——\n"正确的来了：'+v.right+'。跟着我做一遍，感受一下差别。"\n（正确动作演示+慢放）\n\n'+
+    '—— 收尾 ——\n"最后一句叮嘱：'+v.extra+'。身体是自己的，别跟风上重量。这条视频转给身边练腿的兄弟，能救一个是一个。"\n\n'+
+    '💡 拍摄提示：错误示范要演得夸张一点，但务必打上"错误示范"字幕，免得被误学。';
+  }
+  showOut(out);
+}
+function showOut(text){
+  document.getElementById('outEmpty').style.display='none';
+  var box=document.getElementById('outBox');
+  box.textContent=text;box.classList.add('on');
+  document.getElementById('copyBar').style.display='flex';
+  box.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function clearOut(){
+  document.getElementById('outBox').classList.remove('on');
+  document.getElementById('outEmpty').style.display='block';
+  document.getElementById('copyBar').style.display='none';
+}
+function copyOut(){
+  var text=document.getElementById('outBox').textContent;
+  copyText(text);
+}
+
+/* ================= 数据看板 ================= */
+function addNote(){
+  var title=document.getElementById('nTitle').value.trim();
+  if(!title){toastMsg('先写标题～');return;}
+  var g=function(id){var v=document.getElementById(id).value;return v?parseInt(v)||0:0;};
+  DB.notes.push({
+    id:uid(),title:title,
+    date:document.getElementById('nDate').value||todayStr(),
+    views:g('nViews'),likes:g('nLikes'),collects:g('nCollects'),
+    comments:g('nComments'),fans:g('nFans')
+  });
+  save();renderData();
+  document.getElementById('nTitle').value='';
+  ['nViews','nLikes','nCollects','nComments','nFans'].forEach(function(id){document.getElementById(id).value='';});
+  toastMsg('笔记已记录 📊');
+}
+function delNote(id){
+  if(!confirm('删掉这条笔记数据？'))return;
+  DB.notes=DB.notes.filter(function(x){return x.id!==id;});
+  save();renderData();
+}
+function rate(n){return n.views?((n.likes+n.collects+n.comments)/n.views*100):0;}
+function renderData(){
+  var ns=DB.notes;
+  var tv=0,tl=0,tc=0,tm=0,tf=0;
+  ns.forEach(function(n){tv+=n.views;tl+=n.likes;tc+=n.collects;tm+=n.comments;tf+=n.fans;});
+  var avg=tv?((tl+tc+tm)/tv*100):0;
+  document.getElementById('stats').innerHTML=
+    '<div class="stat"><div class="v">'+fmt(tv)+'</div><div class="k">总播放</div></div>'+
+    '<div class="stat"><div class="v">'+fmt(tl+tc+tm)+'</div><div class="k">总互动</div></div>'+
+    '<div class="stat"><div class="v">'+tf+'</div><div class="k">总涨粉</div></div>'+
+    '<div class="stat"><div class="v">'+avg.toFixed(1)+'%</div><div class="k">平均互动率</div></div>';
+
+  var bars=document.getElementById('bars');
+  bars.innerHTML='';
+  var be=document.getElementById('barsEmpty');
+  if(!ns.length){be.style.display='block';}
+  else{
+    be.style.display='none';
+    var max=1;ns.forEach(function(n){if(n.views>max)max=n.views;});
+    var hot=avg;
+    ns.slice(-14).forEach(function(n){
+      var b=document.createElement('div');
+      b.className='bar'+(rate(n)>=Math.max(hot,3)?' hot':'');
+      var h=Math.max(4,Math.round(n.views/max*100));
+      b.innerHTML='<div class="b" style="height:'+h+'%"></div><div class="n">'+esc(n.title.slice(0,6))+'</div>';
+      b.title=n.title+'｜播放'+n.views+'｜互动率'+rate(n).toFixed(1)+'%';
+      bars.appendChild(b);
+    });
+  }
+
+  var table=document.getElementById('noteTable');
+  var te=document.getElementById('tableEmpty');
+  if(!ns.length){table.innerHTML='';te.style.display='block';document.getElementById('noteCnt').textContent='';}
+  else{
+    te.style.display='none';
+    document.getElementById('noteCnt').textContent=ns.length+'条';
+    var sorted=ns.slice().sort(function(a,b){return b.date<a.date?-1:1;}).reverse();
+    var html='<tr><th>标题</th><th class="r">播放</th><th class="r">赞</th><th class="r">藏</th><th class="r">评</th><th class="r">互动率</th><th></th></tr>';
+    sorted.forEach(function(n){
+      var r=rate(n);
+      var fire=r>=Math.max(avg,3)&&r>=3?'<span class="fire">🔥</span>':'';
+      html+='<tr class="'+(r>=Math.max(avg,3)&&r>=3?'hot':'')+'">'+
+        '<td>'+fire+esc(n.title.slice(0,14))+'</td>'+
+        '<td class="r">'+fmt(n.views)+'</td>'+
+        '<td class="r">'+fmt(n.likes)+'</td>'+
+        '<td class="r">'+fmt(n.collects)+'</td>'+
+        '<td class="r">'+fmt(n.comments)+'</td>'+
+        '<td class="r" style="font-weight:600;color:'+(r>=5?'var(--green)':r>=3?'var(--main)':'var(--text3)')+'">'+r.toFixed(1)+'%</td>'+
+        '<td class="ops" onclick="delNote(\''+n.id+'\')">删</td></tr>';
+    });
+    table.innerHTML=html;
+  }
+}
+
+/* ================= 提示词库 ================= */
+var PRESET_PROMPTS=[
+  {n:'爆款标题脑暴',d:'给笔记主题，一次出10个小红书风格标题',
+   v:'你是小红书爆款标题专家。我是健身博主「爱撸铁的大鸿」，人设：小学体育老师、186cm、100kg有腹肌、卧推100kg。\n\n我要发一条笔记，主题是：【在这里写主题】\n\n请给我10个标题，要求：\n1. 每个标题不超过20字\n2. 带数字或悬念钩子\n3. 口语化、有情绪，别书面腔\n4. 适当带1-2个emoji\n5. 每个标题标注用的套路（如：身份反差/数字盘点/避雷警示）'},
+  {n:'脚本口语化改写',d:'把书面稿改成能开口念的口语稿',
+   v:'你是我（健身博主大鸿）的短视频脚本助手。把下面的稿子改成口语化的口播稿：\n\n【把你的稿子贴这里】\n\n要求：\n1. 像跟兄弟聊天一样，加"对吧""你想想""就这么简单"这类口头语\n2. 句子全部改短，一句一口气\n3. 数字和重点放句尾强调\n4. 每段开头标注这一段大概几秒（视频总长60秒内）'},
+  {n:'封面大字文案',d:'给笔记出封面主标题+副标题',
+   v:'你是小红书封面文案专家。帮我的笔记设计封面文字：\n\n笔记主题：【写主题】\n\n请给我5组封面文案，每组包含：\n1. 主标题：6-10个字，大字，要有一眼看懂的冲击力\n2. 副标题：10-15个字，补充信息或钩子\n3. 说明为什么这样设计\n\n风格参考：健身干货类封面，字要大、信息要狠。'},
+  {n:'评论区回复助手',d:'高赞评论怎么回，人味儿拉满',
+   v:'我是健身博主大鸿（体育老师、100kg有腹肌）。粉丝在我的笔记下面评论了：【把评论贴这里】\n\n请给我3条回复，要求：\n1. 有人味儿，别客服腔\n2. 带点幽默或真诚\n3. 顺便引导对方继续互动（比如反问一句）\n4. 每条不超过40字'},
+  {n:'选题灵感挖掘',d:'围绕一个方向扩展出20个选题',
+   v:'你是小红书健身赛道选题策划。我的人设：小学体育老师、186cm、100kg有腹肌、力量训练8年、卧推100kg。\n\n我这段时间想围绕【写方向，如：胸肌训练】出内容。\n\n请给我20个选题，分成4类：\n1. 干货教程类（教动作）\n2. 训练记录类（真实日常）\n3. 避雷纠错类（新手常犯错误）\n4. 人设反差类（体育老师身份）\n\n每个选题给一句标题雏形。'},
+  {n:'笔记数据复盘',d:'把后台数据贴给它，帮你分析啥内容能打',
+   v:'你是小红书数据分析顾问。下面是我最近几条笔记的数据：\n\n【把数据贴这里，格式：标题、播放、点赞、收藏、评论】\n\n请帮我分析：\n1. 哪类内容数据最好？好在哪里（标题/选题/形式）\n2. 哪条低于预期？可能的原因\n3. 接下来该多发什么、少发什么\n4. 给我下一条笔记的具体建议（选题+标题）'}
+];
+function renderPrompts(){
+  var el=document.getElementById('promptList');
+  el.innerHTML='';
+  var all=PRESET_PROMPTS.map(function(p,i){p._id='pre'+i;return p;})
+    .concat(DB.myPrompts);
+  all.forEach(function(p){
+    var d=document.createElement('div');
+    d.className='pcard';
+    var delBtn=p._id?'':'<button class="btn btn-ghost btn-sm" onclick="delPrompt(\''+p.id+'\')">删</button>';
+    d.innerHTML='<div class="ph"><div class="pt">'+(p._id?'⭐ ':'✍️ ')+esc(p.n)+'</div>'+delBtn+'</div>'+
+      '<div class="pd">'+esc(p.d)+'</div>'+
+      '<div class="pv">'+esc(p.v)+'</div>'+
+      '<button class="btn btn-main btn-sm" style="margin-top:8px" onclick="copyPrompt(this)">复制提示词</button>';
+    d.dataset.v=p.v;
+    el.appendChild(d);
+  });
+  if(!all.length)el.innerHTML='<div class="empty">还没有提示词</div>';
+}
+function copyPrompt(btn){
+  copyText(btn.parentElement.dataset.v);
+}
+function addPrompt(){
+  var n=document.getElementById('pName').value.trim();
+  var v=document.getElementById('pBody').value.trim();
+  if(!n||!v){toastMsg('名字和内容都要填～');return;}
+  DB.myPrompts.push({id:uid(),n:n,d:'我自己存的',v:v});
+  save();renderPrompts();
+  document.getElementById('pName').value='';
+  document.getElementById('pBody').value='';
+  toastMsg('已加入你的提示词库 ✍️');
+}
+function delPrompt(id){
+  if(!confirm('删掉这条自定义提示词？'))return;
+  DB.myPrompts=DB.myPrompts.filter(function(x){return x.id!==id;});
+  save();renderPrompts();
+}
+
+/* ================= 复制 & 备份 ================= */
+function copyText(text){
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){toastMsg('已复制，去粘贴吧 📋');},function(){fallbackCopy(text);});
+  }else{fallbackCopy(text);}
+}
+function fallbackCopy(text){
+  var ta=document.createElement('textarea');
+  ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
+  document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');toastMsg('已复制，去粘贴吧 📋');}
+  catch(e){toastMsg('复制失败，长按文字手动复制');}
+  document.body.removeChild(ta);
+}
+function exportData(){
+  var blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='大鸿自媒体工作台备份_'+todayStr()+'.json';
+  a.click();
+  toastMsg('备份文件已下载 💾');
+}
+function importData(input){
+  var file=input.files[0];
+  if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(){
+    try{
+      var d=JSON.parse(reader.result);
+      if(!d.topics&&!d.notes&&!d.myPrompts)throw new Error();
+      if(confirm('导入会覆盖当前所有数据，确定继续？')){
+        DB={topics:d.topics||[],notes:d.notes||[],myPrompts:d.myPrompts||[]};
+        save();renderAll();
+        toastMsg('数据已恢复 ✅');
+      }
+    }catch(e){toastMsg('文件不对，导入失败');}
+    input.value='';
+  };
+  reader.readAsText(file,'utf-8');
+}
+
+/* ================= 工具 ================= */
+function esc(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ================= 启动 ================= */
+function renderAll(){
+  renderTagPick();renderTopics();
+  renderFormulas();renderScriptInputs();
+  renderData();renderPrompts();
+}
+document.getElementById('nDate').value=todayStr();
+document.getElementById('topicInput').addEventListener('keydown',function(e){if(e.key==='Enter')addTopic();});
+renderAll();
+</script>
+</body>
+</html>
