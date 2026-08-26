@@ -209,6 +209,10 @@ html, body {
 .btn-sm { padding: 6px 14px; font-size: 12px; }
 .btn-outline { background: transparent; color: var(--primary); border: 1px solid var(--primary); }
 .btn-outline:hover { background: var(--primary-bg); }
+.btn-music { background: #FFF3E0; color: #E65100; border: 1px solid #FFCCBC; }
+.btn-music:hover { background: #FFE0B2; }
+.btn-music.playing { background: #E8F5E9; color: #2E7D32; border-color: #A5D6A7; animation: ropePulse 1s ease-in-out infinite; }
+@keyframes ropePulse { 0%,100% { box-shadow: 0 0 0 0 rgba(46,125,50,.35); } 50% { box-shadow: 0 0 0 6px rgba(46,125,50,0); } }
 
 /* ===== Home Page ===== */
 .home-section { margin-bottom: 32px; }
@@ -411,6 +415,25 @@ html, body {
 .badge-good { background: #E3F2FD; color: #1565C0; }
 .badge-pass { background: #FFF8E1; color: #F57F17; }
 .badge-weak { background: #FFEBEE; color: #C62828; }
+.badge-none { background: #F5F5F5; color: #9E9E9E; }
+.badge-excused { background: #F3E5F5; color: #8E24AA; }
+
+/* ===== 体质报告（页面内弹窗，可打印）===== */
+.report-doc { max-width: 760px; margin: 0 auto; color: #222; padding: 4px 4px 8px; }
+.report-doc h1 { font-size: 22px; border-bottom: 3px solid #1565C0; padding-bottom: 8px; margin: 8px 0 14px; }
+.report-doc .meta { display: flex; gap: 24px; flex-wrap: wrap; font-size: 14px; margin: 12px 0; color: #444; }
+.report-doc .score-big { font-size: 40px; font-weight: 800; line-height: 1; }
+.report-doc table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+.report-doc th, .report-doc td { border: 1px solid #ddd; padding: 7px 9px; text-align: left; }
+.report-doc th { background: #1565C0; color: #fff; }
+.report-doc .box { background: #f5f7fa; border-radius: 8px; padding: 12px 14px; margin-top: 14px; font-size: 13px; line-height: 1.7; }
+.report-doc .foot { margin-top: 22px; font-size: 11px; color: #999; }
+@media print {
+    body * { visibility: hidden; }
+    #reportBody, #reportBody * { visibility: visible; }
+    #reportBody { position: absolute; left: 0; top: 0; width: 100%; padding: 0 20px; }
+    .modal-close, .no-print { display: none !important; }
+}
 
 /* ===== Analysis ===== */
 .analysis-tabs {

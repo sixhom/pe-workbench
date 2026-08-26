@@ -255,18 +255,49 @@ function getStdThresholds(item, grade, gender) {
     return { 满分: at(100), 优秀: at(90), 良好: at(80), 及格: at(60) };
 }
 
-function getOverallLevel(student) {
-    const items = ['run50', 'skipRope', 'sitReach', 'sitUps'];
-    const levels = items.map(i => getScoreLevel(i, student[i], student.gender, student.grade)).filter(l => l !== 'none');
-    if (levels.length === 0) return 'none';
-    if (levels.every(l => l === 'excellent')) return 'excellent';
-    if (levels.every(l => l === 'excellent' || l === 'good')) return 'good';
-    if (levels.some(l => l === 'weak')) return 'weak';
-    return 'pass';
+// 国标加权总分（国家学生体质健康标准·小学）：总分 = Σ(单项得分 × 权重)
+const NATION_WEIGHTS = {
+  1: { bmi: 15, lung: 15, run50: 20, sitReach: 30, skipRope: 20 },
+  2: { bmi: 15, lung: 15, run50: 20, sitReach: 30, skipRope: 20 },
+  3: { bmi: 15, lung: 15, run50: 20, sitReach: 20, sitUps: 20, skipRope: 10 },
+  4: { bmi: 15, lung: 15, run50: 20, sitReach: 20, sitUps: 20, skipRope: 10 },
+  5: { bmi: 15, lung: 15, run50: 20, sitReach: 10, sitUps: 20, run50x8: 10, skipRope: 10 },
+  6: { bmi: 15, lung: 15, run50: 20, sitReach: 10, sitUps: 20, run50x8: 10, skipRope: 10 },
+};
+// 某年级实际参与评分的项目（含肺活量；5-6年级含 50×8 折返跑）
+function getActiveItems(grade) {
+  const g = (NATION_WEIGHTS[grade] ? grade : 4);
+  return Object.keys(NATION_WEIGHTS[g]);
+}
+// 计算加权总分与等级；缺项时按已测项权重归一化得「预估总分」并标注
+function getOverallScore(student) {
+  const grade = student.grade;
+  const w = NATION_WEIGHTS[grade] || NATION_WEIGHTS[4];
+  let sum = 0, wSum = 0; const missing = [];
+  for (const item of Object.keys(w)) {
+    const val = (item === 'bmi') ? calcBmi(student) : student[item];
+    if (val == null || val === '' || isNaN(parseFloat(val))) { missing.push(item); continue; }
+    const sc = getScore100(item, parseFloat(val), student.gender, grade);
+    if (sc == null) { missing.push(item); continue; }
+    sum += sc * w[item]; wSum += w[item];
+  }
+  if (wSum === 0) return { total: null, level: 'none', complete: false, missing };
+  // 加权平均分 = Σ(单项得分×权重) / Σ(已测项权重)，缺项时按已测项自动归一化即为预估总分
+  const total = Math.round(sum / wSum);
+  let level = 'weak';
+  if (total >= 90) level = 'excellent';
+  else if (total >= 80) level = 'good';
+  else if (total >= 60) level = 'pass';
+  return { total, level, complete: missing.length === 0, missing };
 }
 
-const LEVEL_LABELS = { excellent: '优秀', good: '良好', pass: '及格', weak: '薄弱', none: '未测' };
-const LEVEL_COLORS = { excellent: '#4CAF50', good: '#2196F3', pass: '#FF9800', weak: '#f44336', none: '#9E9E9E' };
+function getOverallLevel(student) {
+    if (student.excused) return 'excused';
+    return getOverallScore(student).level;
+}
+
+const LEVEL_LABELS = { excellent: '优秀', good: '良好', pass: '及格', weak: '薄弱', none: '未测', excused: '免测' };
+const LEVEL_COLORS = { excellent: '#4CAF50', good: '#2196F3', pass: '#FF9800', weak: '#f44336', none: '#9E9E9E', excused: '#8E24AA' };
 
 // ===== Home Stats =====
 function initHomeStats() {
@@ -376,6 +407,9 @@ function renderRoster() {
     const femaleCount = filtered.filter(s => s.gender === '女').length;
     const excellent = filtered.filter(s => getOverallLevel(s) === 'excellent').length;
     const weak = filtered.filter(s => getOverallLevel(s) === 'weak').length;
+    const excused = filtered.filter(s => s.excused).length;
+    const grade = parseClassName(cls).grade;
+    const showX8 = grade != null && grade >= 5;
     
     document.getElementById('rosterSummary').innerHTML = `
         <div class="summary-item"><div class="sum-val">${filtered.length}</div><div class="sum-label">总人数</div></div>
@@ -383,6 +417,7 @@ function renderRoster() {
         <div class="summary-item"><div class="sum-val" style="color:#EC407A">${femaleCount}</div><div class="sum-label">女生</div></div>
         <div class="summary-item"><div class="sum-val" style="color:#4CAF50">${excellent}</div><div class="sum-label">体能优秀</div></div>
         <div class="summary-item"><div class="sum-val" style="color:#f44336">${weak}</div><div class="sum-label">体能薄弱</div></div>
+        ${excused ? `<div class="summary-item"><div class="sum-val" style="color:#8E24AA">${excused}</div><div class="sum-label">免测</div></div>` : ''}
     `;
     
     // Table
@@ -390,25 +425,31 @@ function renderRoster() {
     table.innerHTML = `
         <thead>
             <tr>
-                <th>序号</th><th>姓名</th><th>性别</th><th>身高(cm)</th><th>体重(kg)</th>
+                <th>序号</th><th>姓名</th><th>性别</th><th>身高(cm)</th><th>体重(kg)</th><th>肺活量(ml)</th>
                 <th>50米跑(秒)</th><th>跳绳(次)</th><th>体前屈(cm)</th><th>仰卧起坐(次)</th>
-                <th>体能水平</th>
+                ${showX8 ? '<th>50×8(秒)</th>' : ''}
+                <th>总分/等级</th>
             </tr>
         </thead>
         <tbody>
             ${filtered.map(s => {
                 const level = getOverallLevel(s);
+                const ov = getOverallScore(s);
+                const ovTxt = s.excused ? '免测' : (ov.total != null ? `${ov.total}<span style="font-size:11px;"> · ${LEVEL_LABELS[ov.level]}</span>` : '—');
+                const x8 = (s.run50x8 != null && s.run50x8 !== '') ? s.run50x8 : '-';
                 return `<tr>
                     <td data-label="序号">${s.no || ''}</td>
                     <td class="name-cell" data-label="姓名" onclick="showStudentDetail('${cls}', ${s.no})">${s.name}</td>
                     <td data-label="性别"><span class="badge ${s.gender === '男' ? 'badge-male' : 'badge-female'}">${s.gender}</span></td>
                     <td data-label="身高">${s.height ?? '-'} cm</td>
                     <td data-label="体重">${s.weight ?? '-'} kg</td>
+                    <td data-label="肺活量">${s.lung ?? '-'}</td>
                     <td data-label="50米跑">${s.run50 ?? '-'} 秒</td>
                     <td data-label="跳绳">${s.skipRope ?? '-'} 次</td>
                     <td data-label="体前屈">${s.sitReach ?? '-'} cm</td>
                     <td data-label="仰卧起坐">${s.sitUps ?? '-'} 次</td>
-                    <td data-label="体能水平"><span class="badge badge-${level}">${LEVEL_LABELS[level]}</span></td>
+                    ${showX8 ? `<td data-label="50×8">${x8}</td>` : ''}
+                    <td data-label="总分/等级"><span class="badge badge-${level}">${ovTxt}</span></td>
                 </tr>`;
             }).join('')}
         </tbody>
@@ -421,7 +462,7 @@ function showStudentDetail(cls, no) {
     
     document.getElementById('modalStudentName').textContent = `${student.name} - ${cls}`;
     
-    const items = ['run50', 'skipRope', 'sitReach', 'sitUps'];
+    const items = getActiveItems(student.grade);
     const bmi = (student.height && student.weight) 
         ? (student.weight / Math.pow(student.height / 100, 2)).toFixed(1) : '-';
     
@@ -478,6 +519,8 @@ function showStudentDetail(cls, no) {
         
         ${renderBestRecords(student)}
         ${(student.history && student.history.length > 0) ? renderHistoryTrend(student) : ''}
+        ${studentDetailScoreBlock(cls, student)}
+        ${studentDetailActions(cls, student)}
     `;
     
     document.getElementById('modalStudentBody').innerHTML = body;
@@ -485,7 +528,7 @@ function showStudentDetail(cls, no) {
 }
 
 function getWeaknessAnalysis(student) {
-    const items = ['run50', 'skipRope', 'sitReach', 'sitUps'];
+    const items = getActiveItems(student.grade);
     const weaknesses = items.filter(i => getScoreLevel(i, student[i], student.gender, student.grade) === 'weak');
     const strengths = items.filter(i => getScoreLevel(i, student[i], student.gender, student.grade) === 'excellent');
     
@@ -505,9 +548,9 @@ function getWeaknessAnalysis(student) {
 
 // ===== History Archive (shared) =====
 function archiveCurrentScores(student) {
+    const items = getActiveItems(student.grade);
     // Check if student has any existing scores worth archiving
-    const hasAnyScore = student.run50 != null || student.skipRope != null ||
-                        student.sitReach != null || student.sitUps != null;
+    const hasAnyScore = items.some(i => (i === 'bmi' ? (student.height != null && student.weight != null) : student[i] != null));
     if (!hasAnyScore) return;
     
     if (!student.history) student.history = [];
@@ -515,21 +558,13 @@ function archiveCurrentScores(student) {
     const now = new Date();
     const dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
     
-    const currentScores = {
-        date: dateStr,
-        run50: student.run50 ?? null,
-        skipRope: student.skipRope ?? null,
-        sitReach: student.sitReach ?? null,
-        sitUps: student.sitUps ?? null,
-    };
+    const currentScores = { date: dateStr };
+    items.forEach(i => { currentScores[i] = (i === 'bmi' ? calcBmi(student) : student[i]) ?? null; });
     
     // If last entry is from today with same scores, skip duplicate
     const last = student.history[student.history.length - 1];
-    if (last && last.date === dateStr &&
-        last.run50 === currentScores.run50 &&
-        last.skipRope === currentScores.skipRope &&
-        last.sitReach === currentScores.sitReach &&
-        last.sitUps === currentScores.sitUps) {
+    const same = last && last.date === dateStr && items.every(i => last[i] === currentScores[i]);
+    if (same) {
         return;
     }
     
@@ -543,18 +578,13 @@ function archiveCurrentScores(student) {
 
 // ===== History Best Records =====
 function renderBestRecords(student) {
-    const items = ['run50', 'skipRope', 'sitReach', 'sitUps'];
+    const items = getActiveItems(student.grade);
     const history = student.history || [];
     
     // Collect all records
-    const allRecs = [...history];
-    allRecs.push({
-        date: '当前',
-        run50: student.run50 ?? null,
-        skipRope: student.skipRope ?? null,
-        sitReach: student.sitReach ?? null,
-        sitUps: student.sitUps ?? null,
-    });
+    const curRec = { date: '当前' };
+    items.forEach(it => { curRec[it] = (it === 'bmi' ? calcBmi(student) : student[it]) ?? null; });
+    const allRecs = [...history, curRec];
     
     let html = '<div class="detail-section"><h4>🏆 历史最佳成绩</h4><div style="display:flex;flex-wrap:wrap;gap:10px;">';
     
@@ -587,20 +617,16 @@ function renderBestRecords(student) {
 
 // ===== History Trend =====
 function renderHistoryTrend(student) {
-    const items = ['run50', 'skipRope', 'sitReach', 'sitUps'];
+    const items = getActiveItems(student.grade);
     const history = student.history || [];
     
     // Build all records (history + current)
     const allRecords = [...history];
     const now = new Date();
     const dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-    allRecords.push({
-        date: dateStr,
-        run50: student.run50,
-        skipRope: student.skipRope,
-        sitReach: student.sitReach,
-        sitUps: student.sitUps,
-    });
+    const curRec = { date: dateStr };
+    items.forEach(it => { curRec[it] = (it === 'bmi' ? calcBmi(student) : student[it]) ?? null; });
+    allRecords.push(curRec);
     
     if (allRecords.length < 2) return '';
     
@@ -702,6 +728,268 @@ function renderHistoryTrend(student) {
     return html;
 }
 
+// ===== 学生详情：国标总分块 + 操作区 =====
+// 免测开关：切换后刷新花名册/概览/当前视图并持久化
+function setExcused(cls, no, val) {
+    const s = appData.students[cls] && appData.students[cls].find(x => x.no == no);
+    if (!s) return;
+    s.excused = !!val;
+    saveAppData();
+    renderRoster();
+    renderOverview();
+    const modal = document.getElementById('studentModal');
+    if (modal && modal.classList.contains('show')) {
+        showStudentDetail(cls, no);
+    } else {
+        const sel = document.getElementById('studentSelect');
+        if (sel && String(sel.value) == String(no)) renderStudentDetail(no);
+        else showStudentDetail(cls, no);
+    }
+    showToast(s.excused ? '已标记为免测（不计入及格率）' : '已取消免测', 'success');
+}
+
+// 国标加权总分 / 等级展示块
+function studentDetailScoreBlock(cls, student) {
+    if (student.excused) {
+        return `<div class="detail-section"><h4>国标总分与等级</h4>
+            <div style="padding:14px;background:#F3E5F5;border-radius:10px;text-align:center;">
+                <span class="badge badge-excused" style="font-size:14px;">免测 · 不参与评定</span>
+                <div style="font-size:12px;color:#6A1B9A;margin-top:8px;">该生已标记免测，按政策不计入总分评定与班级及格率统计。</div>
+            </div></div>`;
+    }
+    const ov = getOverallScore(student);
+    let html = '<div class="detail-section"><h4>国标总分与等级（加权）</h4>';
+    if (ov.total == null) {
+        html += '<div style="padding:12px;background:#F5F5F5;border-radius:8px;color:var(--gray-500);font-size:13px;">尚无足够体测数据计算总分，请先在「成绩录入」补充身高体重与项目成绩。</div>';
+    } else {
+        const missingNames = ov.missing.map(i => (TEST_ITEMS[i] && TEST_ITEMS[i].name) || i).join('、');
+        const note = ov.complete ? '' :
+            `<div style="font-size:12px;color:#F57F17;margin-top:6px;">⚠️ 预估总分：尚有 ${missingNames} 未测，已按已测项权重归一化估算，补测后自动更新。</div>`;
+        html += `<div style="display:flex;align-items:center;gap:16px;padding:14px;background:#E8F5E9;border-radius:10px;">
+            <div style="font-size:36px;font-weight:800;color:${LEVEL_COLORS[ov.level]};line-height:1;">${ov.total}</div>
+            <div>
+                <span class="badge badge-${ov.level}" style="font-size:15px;">${LEVEL_LABELS[ov.level]}</span>
+                <div style="font-size:12px;color:var(--gray-500);margin-top:4px;">评分标准：≥90 优秀 · 80–89.9 良好 · 60–79.9 及格 · &lt;60 不及格</div>
+                ${note}
+            </div>
+        </div>`;
+    }
+    html += '</div>';
+    return html;
+}
+
+// 详情页操作区：免测开关 / 运动处方 / 体质报告
+function studentDetailActions(cls, student) {
+    const exTxt = student.excused ? '↩️ 取消免测' : '🛡️ 设为免测';
+    const exVal = student.excused ? 'false' : 'true';
+    return `<div class="detail-section"><h4>操作</h4>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;">
+            <button class="btn ${student.excused ? 'btn-cancel' : 'btn-warning'}" onclick="setExcused('${cls}', ${student.no}, ${exVal})">${exTxt}</button>
+            <button class="btn btn-primary" onclick="generateExercisePrescription('${cls}', ${student.no})">💊 生成运动处方</button>
+            <button class="btn btn-secondary" onclick="renderStudentReport('${cls}', ${student.no})">🖨️ 生成体质报告</button>
+        </div></div>`;
+}
+
+// ===== 运动处方（联动真实薄弱项）=====
+const EXERCISE_LIB = {
+    run50: { name: '50米跑', focus: '速度 / 爆发力', plan: ['高抬腿 4×20秒（强调摆臂与提膝）', '30米冲刺跑 4组（组间走回放松）', '小步跑 + 后蹬跑 各 3×15米', '立卧撑 3×10次增强全身协调'], tip: '训练前充分热身，避免拉伤；每周3次，穿插在跳绳日之间。' },
+    lung: { name: '肺活量', focus: '心肺耐量', plan: ['腹式深呼吸 4×10次（慢吸慢呼）', '吹气球 / 吹纸练习 3×15次', '12分钟持续慢跑（心率维持在120-140）', '游泳或骑车等有氧 2次/周'], tip: '配合慢跑提升有氧基础，肺活量提升见效较慢需坚持4周以上。' },
+    sitReach: { name: '坐位体前屈', focus: '柔韧度', plan: ['坐姿体前屈静态保持 4×20秒（不弹震）', '站立体前屈 3×15秒', '瑜伽下犬式 / 猫式 各 1分钟', '腿部动态拉伸 2组'], tip: '每天早晚各一次，循序渐进，切忌用力过猛。' },
+    skipRope: { name: '一分钟跳绳', focus: '协调 / 节奏', plan: ['空手摇绳 + 节奏练习 3×30秒', '1分钟计时跳 3组（记录次数）', '双脚交替单脚跳 各 2×30秒', '单摇提速 4×15秒'], tip: '重点练绳感与节奏，每次跳后休息同等时长。' },
+    sitUps: { name: '一分钟仰卧起坐', focus: '腰腹力量', plan: ['卷腹 3×20次（控速）', '仰卧起坐 3×30秒计时', '平板支撑 3×30秒', '仰卧举腿 3×15次'], tip: '收紧腹部而非用脖子发力，避免颈椎受压。' },
+    run50x8: { name: '50×8折返跑', focus: '灵敏 / 耐力', plan: ['变向折返灵敏梯 4×1分钟', '400米匀速跑 2组（控制节奏）', '30秒高强度 + 30秒慢走 间歇跑 6组', '标志物急停急起 3×10次'], tip: '注意转身降速与蹬地转身技术，防止踩线犯规。' },
+    bmi: { name: '身高体重(BMI)', focus: '体态管理', plan: ['每日60分钟中高强度运动（跑跳类为主）', '减少油炸 / 含糖饮料，增加蔬菜蛋白质', '保证睡眠 9-10小时 / 天', '与家长共制每周运动打卡表'], tip: 'BMI 偏高/偏低需结合饮食与运动综合干预，建议家校协同。' },
+};
+
+function generateExercisePrescription(cls, no) {
+    const student = (appData.students[cls] || []).find(s => s.no == no);
+    if (!student) { showToast('未找到该学生', 'error'); return; }
+    const items = getActiveItems(student.grade);
+    const ranked = items.filter(i => {
+        const v = i === 'bmi' ? calcBmi(student) : student[i];
+        return v != null && v !== '' && !isNaN(parseFloat(v));
+    }).map(i => {
+        const raw = i === 'bmi' ? calcBmi(student) : student[i];
+        return { item: i, sc: getScore100(i, parseFloat(raw), student.gender, student.grade) };
+    }).filter(x => x.sc != null).sort((a, b) => a.sc - b.sc);
+
+    const weak = ranked.filter(x => x.sc < 60);
+    const belowGood = ranked.filter(x => x.sc < 80);
+    const targets = (belowGood.length ? belowGood : ranked).slice(0, 2);
+
+    let body = '';
+    const ov = getOverallScore(student);
+    if (student.excused) {
+        body = `<div style="padding:16px;background:#F3E5F5;border-radius:10px;color:#6A1B9A;">该生已标记免测，暂不生成运动处方。如有康复性锻炼需求，请遵医嘱单独安排。</div>`;
+    } else if (targets.length === 0) {
+        body = `<div style="padding:16px;background:#E8F5E9;border-radius:10px;color:#2E7D32;">🎉 该生各项目均达良好及以上，继续保持规律运动即可，无需专项强化处方。</div>`;
+    } else {
+        const title = weak.length
+            ? `薄弱项目专项强化（共 ${weak.length} 项不及格，优先 ${targets.map(t => EXERCISE_LIB[t.item].name).join('、')}）`
+            : `提升项目家庭锻炼计划（针对 ${targets.map(t => EXERCISE_LIB[t.item].name).join('、')}）`;
+        body += `<div style="padding:10px 14px;background:#FFF3E0;border-radius:8px;font-weight:600;color:#E65100;margin-bottom:12px;">${title}</div>`;
+        targets.forEach(t => {
+            const lib = EXERCISE_LIB[t.item];
+            body += `<div style="margin-bottom:14px;padding:12px;border:1px solid #FFCCBC;border-radius:10px;background:#FFF;">
+                <div style="font-weight:700;margin-bottom:6px;">💊 ${lib.name} <span style="font-weight:400;font-size:12px;color:var(--gray-500);">（训练重点：${lib.focus} · 当前单项 ${t.sc} 分）</span></div>
+                <ol style="margin:0;padding-left:20px;font-size:13px;line-height:1.8;">${lib.plan.map(p => `<li>${p}</li>`).join('')}</ol>
+                <div style="font-size:12px;color:#EF6C00;margin-top:6px;">⏱ ${lib.tip}</div>
+            </div>`;
+        });
+        body += `<div style="font-size:12px;color:var(--gray-500);">建议每周训练 3-4 次，每次 20-30 分钟；4 周后回测对比进步。本处方由系统依据国标单项得分自动生成，仅供参考，特殊情况请遵医嘱。</div>`;
+    }
+
+    document.getElementById('prescriptionTitle').textContent = `${student.name} 的运动处方`;
+    document.getElementById('prescriptionBody').innerHTML = body;
+    openModal('prescriptionModal');
+}
+
+// ===== 可打印个人体质报告 =====
+function renderStudentReport(cls, no) {
+    const student = (appData.students[cls] || []).find(s => s.no == no);
+    if (!student) { showToast('未找到该学生', 'error'); return; }
+    if (student.excused) {
+        showToast('该生为免测，不生成评定报告', 'error');
+        return;
+    }
+    const items = getActiveItems(student.grade);
+    const ov = getOverallScore(student);
+    const bmi = calcBmi(student);
+    const now = new Date();
+    const dateStr = now.getFullYear() + '年' + (now.getMonth() + 1) + '月' + now.getDate() + '日';
+
+    let rows = items.map(item => {
+        const v = item === 'bmi' ? bmi : student[item];
+        const level = getScoreLevel(item, v, student.gender, student.grade);
+        const sc = getScore100(item, v, student.gender, student.grade);
+        const name = (TEST_ITEMS[item] && TEST_ITEMS[item].name) || item;
+        const unit = (TEST_ITEMS[item] && TEST_ITEMS[item].unit) || '';
+        const std = getStdThresholds(item, student.grade, student.gender);
+        const stdTxt = std ? `满分${std.满分}｜优秀${std.优秀}｜良好${std.良好}｜及格${std.及格}` : '';
+        return `<tr>
+            <td>${name}</td>
+            <td>${v != null && v !== '' ? v + ' ' + unit : '未测'}</td>
+            <td>${sc != null ? sc : '—'}</td>
+            <td><b style="color:${LEVEL_COLORS[level]}">${LEVEL_LABELS[level]}</b></td>
+            <td style="font-size:11px;color:#666;">${stdTxt}</td>
+        </tr>`;
+    }).join('');
+
+    const weak = items.filter(i => {
+        const v = i === 'bmi' ? bmi : student[i];
+        return getScoreLevel(i, v, student.gender, student.grade) === 'weak';
+    });
+    const weakTxt = weak.length ? weak.map(i => (TEST_ITEMS[i] && TEST_ITEMS[i].name) || i).join('、') : '无';
+
+    const inner = `<div class="report-doc">
+      <h1>学生体质健康报告</h1>
+      <div class="meta">
+        <span>姓名：${student.name}</span><span>性别：${student.gender}</span>
+        <span>班级：${cls}</span><span>年级：${parseClassName(cls).grade} 年级</span>
+        <span>身高：${student.height ?? '—'} cm</span><span>体重：${student.weight ?? '—'} kg</span>
+        <span>BMI：${bmi ?? '—'}</span>
+      </div>
+      <div class="box" style="display:flex;align-items:center;gap:18px;">
+        <div class="score-big">${ov.total != null ? ov.total : '—'}</div>
+        <div>
+          <div style="font-size:15px;">综合评级：<b style="color:${ov.total != null ? LEVEL_COLORS[ov.level] : '#999'}">${ov.total != null ? LEVEL_LABELS[ov.level] : '数据不足'}</b></div>
+          <div style="font-size:12px;color:#666;">（依据《国家学生体质健康标准（2014修订）》加权总分评定${ov.complete ? '' : '，含未测项按已测项估算'}）</div>
+        </div>
+      </div>
+      <table><thead><tr><th>测试项目</th><th>成绩</th><th>单项得分</th><th>等级</th><th>标准线</th></tr></thead>
+      <tbody>${rows}</tbody></table>
+      <div class="box"><b>薄弱项目：</b>${weakTxt}<br><b>综合建议：</b>${weak.length ? '针对薄弱项目加强家庭锻炼（详见运动处方），4周后复测。' : '各项达标，保持规律运动即可。'}</div>
+      <div class="foot">生成日期：${dateStr} · 体育老师AI工作台 · 本报告由系统依据国标自动生成，仅供教学参考。</div>
+    </div>`;
+
+    document.getElementById('reportBody').innerHTML = inner;
+    openModal('reportModal');
+}
+
+// ===== 国家体测网上报格式导出 =====
+function exportUploadXlsx() {
+    const cls = appData.currentClass;
+    if (!cls) { showToast('请先选择班级', 'error'); return; }
+    const grade = parseClassName(cls).grade;
+    const items = getActiveItems(grade);
+    const students = appData.students[cls] || [];
+    if (!students.length) { showToast('当前班级无学生数据', 'error'); return; }
+
+    const header = ['年级', '班级', '姓名', '性别', '学号', '出生日期', '身高(cm)', '体重(kg)'];
+    items.forEach(i => header.push((TEST_ITEMS[i] && TEST_ITEMS[i].name) + ((TEST_ITEMS[i] && TEST_ITEMS[i].unit) ? '(' + TEST_ITEMS[i].unit + ')' : '')));
+    header.push('BMI', '总分', '等级', '免测');
+
+    const note = ['（国家学生体质健康标准·数据上报模板）请在上报系统中补全学号 / 出生日期；总分与等级由系统按国标加权自动计算。'];
+    const wsData = [note, header];
+
+    students.forEach(s => {
+        const ov = getOverallScore(s);
+        const bmi = calcBmi(s);
+        const row = [grade != null ? grade : '', cls, s.name, s.gender, s.no != null ? s.no : '', '', s.height != null ? s.height : '', s.weight != null ? s.weight : ''];
+        items.forEach(i => row.push(i === 'bmi' ? (bmi != null ? bmi : '') : (s[i] != null ? s[i] : '')));
+        row.push(bmi != null ? bmi : '');
+        row.push(s.excused ? '' : (ov.total != null ? ov.total : ''));
+        row.push(s.excused ? '免测' : (ov.total != null ? LEVEL_LABELS[ov.level] : ''));
+        row.push(s.excused ? '是' : '否');
+        wsData.push(row);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws['!rows'] = [{ hpt: 30 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '上报数据');
+    XLSX.writeFile(wb, `${cls}_上报数据_${new Date().toLocaleDateString()}.xlsx`);
+    showToast('上报格式 Excel 已导出', 'success');
+}
+
+// ===== 数据备份与恢复 =====
+function backupData() {
+    const payload = {
+        app: 'pe-workbench',
+        version: 8,
+        exportedAt: new Date().toISOString(),
+        students: appData.students,
+        currentClass: appData.currentClass,
+        logs: appData.logs,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `体育工作台备份_${new Date().toLocaleDateString()}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    showToast('备份已导出（JSON）', 'success');
+}
+
+function triggerRestore() {
+    const i = document.getElementById('restoreFile');
+    if (i) i.click();
+}
+
+function restoreData(input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (!data.students) throw new Error('不是有效的工作台备份文件');
+            if (!window.confirm('恢复备份将覆盖当前所有班级数据，确定继续？（建议先导出当前备份）')) { input.value = ''; return; }
+            appData.students = data.students;
+            appData.currentClass = data.currentClass || Object.keys(data.students)[0];
+            appData.logs = data.logs || [];
+            saveAppData();
+            initRoster(); renderRoster(); renderOverview(); renderStudentMgmt();
+            showToast('数据已从备份恢复', 'success');
+        } catch (err) {
+            showToast('备份文件无法解析：' + err.message, 'error');
+        }
+        input.value = '';
+    };
+    reader.readAsText(file);
+}
+
 // ===== Analysis =====
 function initAnalysis() {
     const classSelect = document.getElementById('analysisClass');
@@ -726,8 +1014,9 @@ function initAnalysis() {
         });
     });
     
-    // Project selector
-    const projects = ['run50', 'skipRope', 'sitReach', 'sitUps'];
+    // Project selector（按当前班级年级显示实际项目：含肺活量、5-6年级含50×8）
+    const curGrade = parseClassName(appData.currentClass).grade;
+    const projects = getActiveItems(curGrade);
     document.getElementById('projectSelector').innerHTML = projects.map((p, i) => 
         `<div class="project-btn ${i === 0 ? 'active' : ''}" data-project="${p}">${TEST_ITEMS[p].icon} ${TEST_ITEMS[p].name}</div>`
     ).join('');
@@ -764,16 +1053,32 @@ function renderOverview() {
         const valid = arr.filter(v => v !== null && v !== undefined && !isNaN(v));
         return valid.length > 0 ? (valid.reduce((a, b) => a + b, 0) / valid.length) : 0;
     };
-    
+
     const avgRun50 = avg(students.map(s => s.run50));
     const avgSkip = avg(students.map(s => s.skipRope));
     const avgSitReach = avg(students.map(s => s.sitReach));
     const avgSitUps = avg(students.map(s => s.sitUps));
-    
+
+    // 班级加权总分统计（免测生不计入分母）
+    const rated = students.filter(s => !s.excused);
+    let sumTotal = 0, cnt = 0, pass = 0, good = 0;
+    rated.forEach(s => {
+        const r = getOverallScore(s);
+        if (r.total != null) { sumTotal += r.total; cnt++; if (r.level !== 'weak' && r.level !== 'none') pass++; if (r.level === 'excellent' || r.level === 'good') good++; }
+    });
+    const avgTotal = cnt ? (sumTotal / cnt).toFixed(1) : '—';
+    const passRate = rated.length ? Math.round(pass / rated.length * 100) : 0;
+    const goodRate = rated.length ? Math.round(good / rated.length * 100) : 0;
+    const excusedCount = students.length - rated.length;
+
     document.getElementById('overviewStats').innerHTML = `
+        <div class="stat-card" style="--card-color:#1565C0"><div class="stat-label">总分均值</div><div class="stat-value">${avgTotal}<span class="stat-unit">分</span></div></div>
+        <div class="stat-card" style="--card-color:#2E7D32"><div class="stat-label">及格率</div><div class="stat-value">${passRate}<span class="stat-unit">%</span></div></div>
+        <div class="stat-card" style="--card-color:#F9A825"><div class="stat-label">优良率</div><div class="stat-value">${goodRate}<span class="stat-unit">%</span></div></div>
         <div class="stat-card" style="--card-color:#4CAF50"><div class="stat-label">班级总人数</div><div class="stat-value">${total}</div></div>
         <div class="stat-card" style="--card-color:#42A5F5"><div class="stat-label">男生</div><div class="stat-value">${maleCount}</div></div>
         <div class="stat-card" style="--card-color:#EC407A"><div class="stat-label">女生</div><div class="stat-value">${femaleCount}</div></div>
+        ${excusedCount ? `<div class="stat-card" style="--card-color:#8E24AA"><div class="stat-label">免测人数</div><div class="stat-value">${excusedCount}</div></div>` : ''}
         <div class="stat-card" style="--card-color:#FFA726"><div class="stat-label">50米跑均值</div><div class="stat-value">${avgRun50.toFixed(2)}<span class="stat-unit">秒</span></div></div>
         <div class="stat-card" style="--card-color:#26A69A"><div class="stat-label">跳绳均值</div><div class="stat-value">${avgSkip.toFixed(0)}<span class="stat-unit">次</span></div></div>
         <div class="stat-card" style="--card-color:#AB47BC"><div class="stat-label">体前屈均值</div><div class="stat-value">${avgSitReach.toFixed(1)}<span class="stat-unit">cm</span></div></div>
@@ -886,7 +1191,7 @@ function renderStudentDetail(no) {
     const student = appData.students[cls]?.find(s => s.no == no);
     if (!student) return;
     
-    const items = ['run50', 'skipRope', 'sitReach', 'sitUps'];
+    const items = getActiveItems(student.grade);
     
     const body = `
         <div class="detail-section">
@@ -916,6 +1221,8 @@ function renderStudentDetail(no) {
         </div>
         ${renderBestRecords(student)}
         ${(student.history && student.history.length > 0) ? renderHistoryTrend(student) : ''}
+        ${studentDetailScoreBlock(cls, student)}
+        ${studentDetailActions(cls, student)}
     `;
     
     document.getElementById('studentDetail').innerHTML = body;
@@ -924,7 +1231,7 @@ function renderStudentDetail(no) {
 function renderWarnings() {
     const cls = appData.currentClass;
     const students = appData.students[cls] || [];
-    const items = ['run50', 'skipRope', 'sitReach', 'sitUps'];
+    const items = getActiveItems(student.grade);
     
     const warnings = [];
     students.forEach(s => {
@@ -1089,6 +1396,7 @@ function seSelectProject(code) {
 }
 
 function seGoStep(step) {
+    if (step !== 3) pauseRopeMusic();
     if (step === 3) resetStopwatch();
     if (step === 2 && !seState.klass) { step = 1; showToast('请先选择班级', ''); }
     seState.step = step;
@@ -1120,6 +1428,32 @@ function updateSeToolbar() {
     bar.classList.toggle('visible', seState.step === 3);
 }
 
+// ===== 一分钟跳绳计时音乐 =====
+function toggleRopeMusic() {
+    const a = document.getElementById('ropeAudio');
+    if (!a) return;
+    if (a.paused) {
+        a.currentTime = 0;
+        a.play().then(() => updateRopeMusicUI(true)).catch(() => showToast('音乐播放失败，请检查音频文件', 'error'));
+    } else {
+        a.pause();
+        updateRopeMusicUI(false);
+    }
+}
+function updateRopeMusicUI(playing) {
+    const icon = document.getElementById('ropeMusicIcon');
+    const label = document.getElementById('ropeMusicLabel');
+    const btn = document.getElementById('ropeMusicBtn');
+    if (icon) icon.textContent = playing ? '⏸️' : '🎵';
+    if (label) label.textContent = playing ? '停止计时音乐' : '一分钟计时音乐';
+    if (btn) btn.classList.toggle('playing', playing);
+}
+function pauseRopeMusic() {
+    const a = document.getElementById('ropeAudio');
+    if (a && !a.paused) { a.pause(); a.currentTime = 0; }
+    updateRopeMusicUI(false);
+}
+
 function renderSeEntryTable() {
     const klass = seState.klass;
     if (!klass) return;
@@ -1127,6 +1461,14 @@ function renderSeEntryTable() {
     const project = seState.project;
     const projInfo = SE_PROJECTS.find(p => p.code === project);
     document.getElementById('seEntryTitle').textContent = `${klass.replace('班','')}班 · ${projInfo.name}`;
+
+    // 一分钟跳绳：显示「一分钟计时音乐」按钮，其它项目隐藏并停止播放
+    const ropeBtn = document.getElementById('ropeMusicBtn');
+    if (ropeBtn) {
+        const isRope = seState.project === 'skipRope';
+        ropeBtn.style.display = isRope ? '' : 'none';
+        if (!isRope) pauseRopeMusic();
+    }
 
     const tbody = document.getElementById('seTbody');
     tbody.innerHTML = list.map((s, idx) => {
@@ -1982,7 +2324,7 @@ function openTrackingModal() {
     
     const cls = appData.currentClass;
     const students = appData.students[cls] || [];
-    const items = ['run50', 'skipRope', 'sitReach', 'sitUps'];
+    const items = getActiveItems(student.grade);
     
     // Top performers
     const topRun = [...students].filter(s => s.run50).sort((a, b) => a.run50 - b.run50).slice(0, 5);
@@ -2216,7 +2558,7 @@ function selectExistingStudent(cls, no) {
     
     // Show hint
     const hint = document.getElementById('selectedStudentHint');
-    const items = ['run50', 'skipRope', 'sitReach', 'sitUps'];
+    const items = getActiveItems(student.grade);
     const levels = items.map(i => {
         const level = getScoreLevel(i, student[i], student.gender, student.grade);
         const val = student[i] !== null && student[i] !== undefined ? student[i] : '未测';
@@ -2548,20 +2890,24 @@ function saveQuickEntry() {
 
 function exportRoster() {
     const cls = appData.currentClass;
+    const grade = parseClassName(cls).grade;
+    const items = getActiveItems(grade);
     const students = appData.students[cls] || [];
-    
-    const wsData = [
-        ['序号', '姓名', '性别', '身高(cm)', '体重(kg)', '50米跑(秒)', '1分钟跳绳(次)', '坐位体前屈(cm)', '1分钟仰卧起坐(次)', '体能水平'],
-    ];
-    
+
+    const header = ['序号', '姓名', '性别', '身高(cm)', '体重(kg)', '肺活量(ml)']
+        .concat(items.map(i => TEST_ITEMS[i].name + (TEST_ITEMS[i].unit ? '(' + TEST_ITEMS[i].unit + ')' : '')))
+        .concat(['总分', '等级']);
+    const wsData = [header];
+
     students.forEach(s => {
-        wsData.push([
-            s.no, s.name, s.gender, s.height, s.weight,
-            s.run50, s.skipRope, s.sitReach, s.sitUps,
-            LEVEL_LABELS[getOverallLevel(s)],
-        ]);
+        const ov = getOverallScore(s);
+        const row = [s.no, s.name, s.gender, s.height, s.weight, s.lung];
+        items.forEach(i => row.push(i === 'bmi' ? (calcBmi(s) ?? '') : (s[i] ?? '')));
+        row.push(s.excused ? '免测' : (ov.total != null ? ov.total : ''));
+        row.push(s.excused ? '免测' : LEVEL_LABELS[ov.level]);
+        wsData.push(row);
     });
-    
+
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, cls);
@@ -2578,6 +2924,8 @@ function renderStudentMgmt() {
     if (classes.length === 0) {
         select.innerHTML = '<option value="">（暂无班级数据）</option>';
     }
+    const bk = document.getElementById('backupArea');
+    if (bk) bk.style.display = classes.length ? 'flex' : 'none';
 }
 
 // 导入新数据：复用侧边栏已有的文件选择框
@@ -2589,18 +2937,18 @@ function triggerImport() {
 // 模板下载：生成含表头的 Excel 空模板
 function downloadTemplate() {
     const classes = Object.keys(appData.students);
-    const header = ['序号', '姓名', '性别', '身高(cm)', '体重(kg)', '50米跑(秒)', '1分钟跳绳(次)', '坐位体前屈(cm)', '1分钟仰卧起坐(次)'];
+    const header = ['序号', '姓名', '性别', '身高(cm)', '体重(kg)', '肺活量(ml)', '50米跑(秒)', '1分钟跳绳(次)', '坐位体前屈(cm)', '1分钟仰卧起坐(次)', '50×8(秒)'];
     const wb = XLSX.utils.book_new();
 
     const sheetNames = classes.length > 0 ? classes : ['示例班级'];
     sheetNames.forEach((cls, idx) => {
         const sheetName = cls.length > 31 ? cls.substring(0, 31) : cls;
         const ws = XLSX.utils.aoa_to_sheet([header]);
-        // 预留 3 行空白便于填写示例
+        // 预留 3 行空白便于填写示例（含肺活量、50×8 列）
         XLSX.utils.sheet_add_aoa(ws, [
-            [idx + 1, '', '男', '', '', '', '', '', ''],
-            ['', '', '女', '', '', '', '', '', ''],
-            ['', '', '', '', '', '', '', '', ''],
+            [idx + 1, '', '男', '', '', '', '', '', '', '', ''],
+            ['', '', '女', '', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', '', '', '', ''],
         ], { origin: 'A2' });
         // 设置列宽，方便填写
         ws['!cols'] = header.map(h => ({ wch: Math.max(8, h.length * 2 + 2) }));
@@ -2688,6 +3036,7 @@ function handleExcelImport(e) {
                         sitReach: parseNum(row[colMap.sitReach]),
                         skipRope: parseNum(row[colMap.skipRope]),
                         sitUps: parseNum(row[colMap.sitUps]),
+                        run50x8: colMap.run50x8 !== undefined ? parseNum(row[colMap.run50x8]) : null,
                         gender: String(row[colMap.gender] || '').trim(),
                     });
                 }
@@ -2726,7 +3075,8 @@ function handleExcelImport(e) {
                         const hasOldData = old.run50 !== null && old.run50 !== undefined ||
                                            old.skipRope !== null && old.skipRope !== undefined ||
                                            old.sitReach !== null && old.sitReach !== undefined ||
-                                           old.sitUps !== null && old.sitUps !== undefined;
+                                           old.sitUps !== null && old.sitUps !== undefined ||
+                                           old.lung !== null && old.lung !== undefined;
                         
                         if (hasOldData) {
                             if (!old.history) old.history = [];
@@ -2755,6 +3105,7 @@ function handleExcelImport(e) {
                         if (newStudent.sitReach !== null) old.sitReach = newStudent.sitReach;
                         if (newStudent.sitUps !== null) old.sitUps = newStudent.sitUps;
                         if (newStudent.lung !== null) old.lung = newStudent.lung;
+                        if (newStudent.run50x8 !== null) old.run50x8 = newStudent.run50x8;
                         if (newStudent.gender) old.gender = newStudent.gender;
                     } else {
                         // New student - add to class
@@ -2799,6 +3150,7 @@ function parseHeaderRow(header) {
         else if (hStr.includes('体前屈')) map.sitReach = i;
         else if (hStr.includes('跳绳')) map.skipRope = i;
         else if (hStr.includes('仰卧') || hStr.includes('起坐')) map.sitUps = i;
+        else if (hStr.includes('50×8') || hStr.includes('折返')) map.run50x8 = i;
         else if (hStr.includes('性别')) map.gender = i;
     });
     return map;

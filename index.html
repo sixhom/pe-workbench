@@ -107,10 +107,11 @@
                         </select>
                         <select id="rosterLevelFilter" class="filter-select">
                             <option value="">全部体能水平</option>
-                            <option value="优秀">体能优秀</option>
-                            <option value="良好">体能良好</option>
-                            <option value="及格">体能及格</option>
-                            <option value="薄弱">体能薄弱</option>
+                            <option value="excellent">体能优秀</option>
+                            <option value="good">体能良好</option>
+                            <option value="pass">体能及格</option>
+                            <option value="weak">体能薄弱</option>
+                            <option value="excused">免测</option>
                         </select>
                         <input type="text" id="rosterSearch" class="search-input" placeholder="搜索学生姓名...">
                     </div>
@@ -250,8 +251,14 @@
                             <div class="se-entry-title" id="seEntryTitle">五1班 · 50米跑</div>
                             <div class="se-entry-tip">点击"成绩"输入并自动计分</div>
                         </div>
-                        <button class="btn btn-outline btn-sm" onclick="seGoStep(2)">🔁 重选班级/项目</button>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button class="btn btn-music btn-sm" id="ropeMusicBtn" onclick="toggleRopeMusic()" style="display:none;">
+                                <span id="ropeMusicIcon">🎵</span> <span id="ropeMusicLabel">一分钟计时音乐</span>
+                            </button>
+                            <button class="btn btn-outline btn-sm" onclick="seGoStep(2)">🔁 重选班级/项目</button>
+                        </div>
                     </div>
+                    <audio id="ropeAudio" src="assets/rope-timer-1min.mp3" preload="auto" onended="updateRopeMusicUI(false)"></audio>
                     <div class="se-progress-bar">
                         <div class="se-progress" id="seProgress"></div>
                         <div class="se-progress-text" id="seProgressText">完成率 0%</div>
@@ -424,6 +431,26 @@
                             <button class="btn btn-danger" onclick="deleteClassData(event)">🗑️ 删除该班级数据</button>
                         </div>
                     </div>
+
+                    <!-- 上报格式导出 -->
+                    <div class="mgmt-card mgmt-card-upload" onclick="exportUploadXlsx()">
+                        <div class="mgmt-card-icon">📤</div>
+                        <div class="mgmt-card-title">导出上报数据</div>
+                        <div class="mgmt-card-desc">按《国家学生体质健康标准》上报模板导出当前班级 Excel（年级/班级/各项成绩/总分/等级/免测）。</div>
+                        <div class="mgmt-card-action">点击导出上报 Excel ↓</div>
+                    </div>
+
+                    <!-- 数据备份与恢复 -->
+                    <div class="mgmt-card mgmt-card-backup" id="backupArea" style="display:none;">
+                        <div class="mgmt-card-icon">💾</div>
+                        <div class="mgmt-card-title">数据备份与恢复</div>
+                        <div class="mgmt-card-desc">导出全部班级数据为 JSON 备份；或从备份文件恢复（覆盖本机数据）。建议期末定期备份。</div>
+                        <div class="mgmt-card-form" style="flex-direction:column;align-items:stretch;gap:8px;">
+                            <button class="btn btn-primary" onclick="backupData()">⬇️ 导出备份(JSON)</button>
+                            <button class="btn btn-secondary" onclick="triggerRestore()">⬆️ 从备份恢复</button>
+                            <input type="file" id="restoreFile" accept="application/json,.json" style="display:none;" onchange="restoreData(this)">
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -435,6 +462,31 @@
                         <button class="modal-close" onclick="closeModal('studentModal')">✕</button>
                     </div>
                     <div class="modal-body" id="modalStudentBody"></div>
+                </div>
+            </div>
+
+            <!-- 弹出层：运动处方 -->
+            <div class="modal-overlay" id="prescriptionModal" onclick="closeModal('prescriptionModal')">
+                <div class="modal modal-large" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3 id="prescriptionTitle">运动处方</h3>
+                        <button class="modal-close" onclick="closeModal('prescriptionModal')">✕</button>
+                    </div>
+                    <div class="modal-body" id="prescriptionBody"></div>
+                </div>
+            </div>
+
+            <!-- 弹出层：体质报告 -->
+            <div class="modal-overlay" id="reportModal" onclick="closeModal('reportModal')">
+                <div class="modal modal-large" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h3>学生体质健康报告</h3>
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn btn-primary no-print" onclick="window.print()">🖨️ 打印 / 存为PDF</button>
+                            <button class="modal-close" onclick="closeModal('reportModal')">✕</button>
+                        </div>
+                    </div>
+                    <div class="modal-body" id="reportBody"></div>
                 </div>
             </div>
 
@@ -608,10 +660,10 @@
         </nav>
     </div>
 
-    <script src="data.js?v=7"></script>
-    <script src="toolbox-data.js?v=7"></script>
-    <script src="nation-score.js?v=7"></script>
-    <script src="app.js?v=7"></script>
+    <script src="data.js?v=10"></script>
+    <script src="toolbox-data.js?v=10"></script>
+    <script src="nation-score.js?v=10"></script>
+    <script src="app.js?v=10"></script>
 
     <!-- 手机端浮动快速录入按钮 -->
     <button class="fab-btn" onclick="openQuickEntry()" title="快速录入">⚡</button>
