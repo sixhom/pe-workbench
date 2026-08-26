@@ -28,6 +28,15 @@ input,textarea{font-family:inherit;}
 .home-head{text-align:center;margin-bottom:20px;}
 .home-head .cls{font-size:clamp(22px,3vw,32px);font-weight:500;}
 .home-head .sub{color:var(--muted);font-size:15px;margin-top:6px;}
+.cls-picker{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;margin:2px 0 14px;}
+.cp-label{color:var(--muted);font-size:17px;}
+.cp-row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
+.cp-btn{background:var(--card2);border:2px solid var(--border);border-radius:14px;color:var(--dim);font-size:21px;padding:13px 28px;display:flex;align-items:baseline;gap:9px;transition:transform .12s;}
+.cp-btn:active{transform:scale(.96);opacity:.85;}
+.cp-btn .n{color:var(--muted);font-size:14px;}
+.cp-btn.sel{border-color:var(--teal);color:var(--teal);}
+.cp-mini{background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--teal);font-size:15px;padding:8px 18px;}
+.cp-mini:active{opacity:.8;}
 .home-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;flex:1;align-content:center;}
 .home-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:26px 24px;display:flex;flex-direction:column;gap:8px;text-align:left;transition:transform .12s;}
 .home-card:active{transform:scale(.97);}
@@ -165,8 +174,12 @@ input,textarea{font-family:inherit;}
 <div id="page-home" class="page active">
   <div class="page-pad" style="display:flex;flex-direction:column;flex:1;">
     <div class="home-head">
-      <div class="cls" id="homeClassName">四年级(2)班</div>
+      <div class="cls" id="homeClassName">四年级1班</div>
       <div class="sub">室内体育大屏工作台 · 下雨天也能上出精彩的体育课</div>
+    </div>
+    <div class="cls-picker">
+      <div class="cp-label">🛄 点一下切换上课班级：</div>
+      <div class="cp-row" id="clsRow"></div>
     </div>
     <div class="home-grid">
       <button class="home-card c-coral" onclick="showPage('challenge')">
@@ -263,7 +276,7 @@ input,textarea{font-family:inherit;}
       </div>
     </div>
     <div id="wheelNameView" class="wheel-wrap" style="display:none;">
-      <div class="slot-info" id="slotInfo">先在右上角「设置」里录入班级名单</div>
+      <div class="slot-info" id="slotInfo">回主页点班级按钮选班级，名单就自动加载</div>
       <div class="slot-face"><div class="slot-name" id="slotName">？</div></div>
       <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;">
         <button class="broad-btn primary" onclick="spinName()">点将！</button>
@@ -401,8 +414,15 @@ input,textarea{font-family:inherit;}
     </div>
     <div class="form-row">
       <label>班级学生名单（一行一个名字，用于随机点将）</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center;">
+        <span style="color:var(--muted);font-size:14px;">快速填入：</span>
+        <button class="cp-mini" onclick="fillPreset('四年级1班')">1班</button>
+        <button class="cp-mini" onclick="fillPreset('四年级2班')">2班</button>
+        <button class="cp-mini" onclick="fillPreset('四年级3班')">3班</button>
+        <button class="cp-mini" onclick="fillPreset('四年级4班')">4班</button>
+      </div>
       <textarea id="setStudents" placeholder="张三&#10;李四&#10;王五"></textarea>
-      <div class="hint">在电脑或手机上粘贴名单更方便，保存后希沃上直接用</div>
+      <div class="hint">点上面的按钮快速填入班级名单，也可以自己粘贴修改；平时上课直接在主页点班级按钮切换更方便</div>
     </div>
     <div class="modal-btns">
       <button class="broad-btn primary" onclick="saveSettings()">保存</button>
@@ -433,6 +453,12 @@ var CHALLENGES = [
 ];
 var WHEEL_ITEMS = ['开合跳','深蹲','平板支撑','高抬腿','波比跳','靠墙静蹲','弓步蹲','金鸡独立'];
 var WHEEL_COLORS = ['#F0997B','#5DCAA5','#85B7EB','#ED93B1','#FAC775','#E24B4A'];
+var PRESET_CLASSES = {
+  '四年级1班': ['郑奕朗','梁依依','陈英恺','许弘煜','黄友铉','郑舒蔚','薛梓昊','林晓烨','俞皓源','沈瑞博','李晓慧','蔡凯州','丘梓妤','廖彦淳','林国弘','蔡怿可','谢友贤','蔡楒桐','陈锶桐','林佳韵','余梓豪','陈钰琪','许诺','杨乐悠','黄信煜','陈一泓','林凯历','王泽林','林钇晋','唐梦曦','陈启灿','黄紫琳','叶骏谊','许礼源','王子铨','郑施恩','马启洋','赖致行','李奕溥','陈嘉垲','张仕成','黄洢彤','许文睿','郑舒晗','李梓琳'],
+  '四年级2班': ['庄梓慧','谭诗妍','徐启泽','卢泓宇','林子凡','蔡伟超','李安语','庄佳桓','周钦宁','罗芮淇','沈诗雅','陈怡佳','丁锶妍','朱杰楷','刘未钒','黄妍心','陈梓杭','陈政钖','林正胜','郑梓灿','吴桦峻','翁梓晨','庄雅棐','肖宇炀','连翊捷','肖海洲','黄煜鑫','孙一心','张芷羽','李颜明勋','郭易楷','林彧','吴俊扬','肖舒菀','林润丝','孙也涵','曾若熙','刘得雨','林煜典','庄可馨','林芷榆','郑济芃','黄若仪','蔡诗涵','黄新淇'],
+  '四年级3班': ['颜铄','佘坤颖','陈博宇','吴昭颖','周祖含','黄嘉泓','陈泐铟','卢睿颖','赵韵杰','林依涵','周梦辰','庄杰辉','许昱妍','陈沫瑶','彭依柏','陈圣超','黄镕臻','黄熙桐','杨舒钒','张斯豪','李佳怡','林祈言','陈建楠','吴庆栋','周志楠','杨雅琳','吴可非','陈力煜','吴佳航','刘竣凯','林楚校','黄铠航','郭梓潼','庄雨萱','林佳金','朱高远','黄漫妮','周怡潞','黄宥源','钟雨欣','谢忻霖'],
+  '四年级4班': ['刘峻宇','郑子汐','林雨馨','谢洛鑫','谢佳颖','黄泓奋','黄纪程','蔡佳恩','林靖欣','刘艺阳','高佳淇','陈衍勋','赖芷依','洪瑞雨','沈梓城','林学炜','薛维涛','林铄','陈元诺','陈若菲','蔡佳薇','许震廷','李文堉','周思妤','陈培健','林珂雅','黄玮琳','黄育铭','欧梓涵','林镡捷','郑友锐','郑皓楠','李圣跃','蔡建源','温子妍','王绎凡','李亦桐','陈均喆','苏志霆','黄于晋','周楠稀','杨书妍','林宝莹','沈家扬']
+};
 var TEAM_DEFS = [
   {key:'red', name:'红队', cls:'t-red'},
   {key:'blue', name:'蓝队', cls:'t-blue'},
@@ -452,7 +478,7 @@ var tlRun = false, tlTimer = null, tlAuto = true, tlState = 'g';
 var arrowRun = false, arrowTimer = null, arrowMs = 2000;
 
 function load(){
-  var def = {className:'四年级(2)班', students:[], scores:[0,0,0,0], teamNames:['红队','蓝队','黄队','绿队'], soundOn:true, picked:[]};
+  var def = {className:'四年级1班', students:PRESET_CLASSES['四年级1班'].slice(), scores:[0,0,0,0], teamNames:['红队','蓝队','黄队','绿队'], soundOn:true, picked:[], pickedByClass:{}};
   try{
     var raw = localStorage.getItem(STORAGE_KEY);
     if(raw){
@@ -470,6 +496,37 @@ function toast(msg){
   t.classList.add('show');
   clearTimeout(t._tm);
   t._tm = setTimeout(function(){ t.classList.remove('show'); }, 2200);
+}
+
+/* ---------- 班级切换 ---------- */
+function renderClassRow(){
+  var row = document.getElementById('clsRow');
+  var html = '';
+  for(var k in PRESET_CLASSES){
+    var sel = state.className===k;
+    html += '<button class="cp-btn'+(sel?' sel':'')+'" onclick="pickClass(\''+k+'\')">'+k+'<span class="n">'+PRESET_CLASSES[k].length+'人</span></button>';
+  }
+  row.innerHTML = html;
+}
+function pickClass(k){
+  if(state.className===k && (state.students||[]).length===PRESET_CLASSES[k].length){ toast('当前已经是 '+k); return; }
+  if(!state.pickedByClass){ state.pickedByClass = {}; }
+  if(state.className){ state.pickedByClass[state.className] = (state.picked||[]).slice(); }
+  state.className = k;
+  state.students = PRESET_CLASSES[k].slice();
+  state.picked = (state.pickedByClass[k]||[]).slice();
+  state.scores = [0,0,0,0];
+  save();
+  document.getElementById('homeClassName').textContent = k;
+  renderClassRow();
+  renderScores();
+  renderPickedChips();
+  toast('已切换到 '+k+'（'+state.students.length+'人）· 分数已清零');
+}
+function fillPreset(k){
+  document.getElementById('setClassName').value = k;
+  document.getElementById('setStudents').value = PRESET_CLASSES[k].join('\n');
+  toast('已填入 '+k+' 名单，记得点「保存」');
 }
 
 /* ---------- 音效引擎 ---------- */
@@ -740,7 +797,7 @@ function stopSlot(){
 }
 function spinName(){
   var st = state.students||[];
-  if(st.length===0){ toast('请先在右上角「设置」里录入班级名单'); return; }
+  if(st.length===0){ toast('请先回主页点一下班级按钮'); return; }
   var noRep = document.getElementById('noRepeat').checked;
   var pool = [];
   for(var i=0;i<st.length;i++){
@@ -787,7 +844,7 @@ function renderPickedChips(){
   var st = state.students||[];
   var box = document.getElementById('pickedChips');
   var info = document.getElementById('slotInfo');
-  if(st.length===0){ info.textContent = '先在右上角「设置」里录入班级名单'; box.innerHTML=''; return; }
+  if(st.length===0){ info.textContent = '回主页点班级按钮选班级，名单就自动加载'; box.innerHTML=''; return; }
   info.textContent = '已点 '+state.picked.length+' / '+st.length+' 人';
   var html = '';
   for(var i=0;i<st.length;i++){
@@ -1044,6 +1101,7 @@ function clearAll(){
     localStorage.removeItem(STORAGE_KEY);
     state = load();
     document.getElementById('homeClassName').textContent = state.className;
+    renderClassRow();
     renderScores();
     renderPickedChips();
     closeSettings();
@@ -1058,6 +1116,7 @@ function clearAll(){
     document.getElementById('btnSound').classList.add('off');
   }
   document.getElementById('homeClassName').textContent = state.className;
+  renderClassRow();
   renderChal();
   buildWheel();
   initBeatDots();
