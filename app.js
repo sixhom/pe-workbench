@@ -1284,7 +1284,7 @@ const SE_PROJECTS = [
 ];
 const SE_LEVEL_TEXT = { excellent: '优秀', good: '良好', pass: '及格', weak: '未达标', none: '' };
 
-let seState = { step: 1, klass: null, groupSize: 4, project: 'run50', leaveMap: {} };
+let seState = { step: 1, klass: null, groupSize: 4, project: 'run50', leaveMap: {}, groupMode: 'default' };
 
 function parseClassName(klass) {
     const cnMap = { '一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9 };
@@ -1454,6 +1454,101 @@ function pauseRopeMusic() {
     updateRopeMusicUI(false);
 }
 
+// ===== 录入界面：快速分组（性别 / 身高 / 性别+身高） =====
+// 计算某分组内「已录入」人数
+function seGroupProgress(students) {
+    let done = 0;
+    students.forEach(s => {
+        if (seState.leaveMap[s.no]) return;
+        const v = seState.project === 'bmi' ? calcBmi(s) : s[seState.project];
+        if (v != null && v !== '') done++;
+    });
+    return { done, total: students.length };
+}
+
+// 按分组方式把全班拆成若干组
+function buildSeGroups(list, mode) {
+    const byHDesc = (a, b) => (b.height ?? -1) - (a.height ?? -1);
+    const byHAsc = (a, b) => (a.height ?? 999) - (b.height ?? 999);
+    if (mode === 'default') return [{ icon: '📋', title: '全班', students: list.slice() }];
+    if (mode === 'gender') {
+        const boys = list.filter(s => s.gender === '男').sort(byHDesc);
+        const girls = list.filter(s => s.gender === '女').sort(byHDesc);
+        const g = [];
+        if (boys.length) g.push({ icon: '👦', title: '男生', students: boys });
+        if (girls.length) g.push({ icon: '👧', title: '女生', students: girls });
+        return g;
+    }
+    // 身高分档：按本班身高排序后取三分位，分为 矮/中/高
+    const hs = list.map(x => x.height).filter(h => h != null).sort((a, b) => a - b);
+    const lo = hs.length ? hs[Math.floor(hs.length * 0.34)] : null;
+    const hi = hs.length ? hs[Math.floor(hs.length * 0.67)] : null;
+    const tierOf = s => {
+        if (s.height == null) return '中';
+        if (lo != null && s.height <= lo) return '矮';
+        if (hi != null && s.height >= hi) return '高';
+        return '中';
+    };
+    const tierMeta = [['矮', '📏', '矮个'], ['中', '📐', '中等个'], ['高', '📈', '高个']];
+    const makeGroups = arr => {
+        const tiers = { '矮': [], '中': [], '高': [] };
+        arr.forEach(s => tiers[tierOf(s)].push(s));
+        const out = [];
+        tierMeta.forEach(([k, ic, label]) => {
+            if (tiers[k].length) {
+                tiers[k].sort(byHAsc);
+                out.push({ icon: ic, title: label, students: tiers[k] });
+            }
+        });
+        return out;
+    };
+    if (mode === 'height') return makeGroups(list);
+    // gender-height：先分男女，组内再分身高档
+    const g = [];
+    const boys = list.filter(s => s.gender === '男');
+    const girls = list.filter(s => s.gender === '女');
+    if (boys.length) makeGroups(boys).forEach(x => g.push({ icon: '👦 ' + x.icon, title: '男生·' + x.title, students: x.students }));
+    if (girls.length) makeGroups(girls).forEach(x => g.push({ icon: '👧 ' + x.icon, title: '女生·' + x.title, students: x.students }));
+    return g;
+}
+
+// 生成单行 HTML（分组时复用，idx 为原名单序号）
+function seRowHtml(s, idx, showH, projInfo) {
+    const isLeave = !!seState.leaveMap[s.no];
+    const isBmi = seState.project === 'bmi';
+    const bmiVal = isBmi ? calcBmi(s) : null;
+    const rawVal = isBmi ? (bmiVal == null ? '' : bmiVal) : ((s[seState.project] === null || s[seState.project] === undefined) ? '' : s[seState.project]);
+    const score100 = (!isLeave && rawVal !== '') ? getScore100(seState.project, parseFloat(rawVal), s.gender, s.grade) : null;
+    const band = scoreBand(score100);
+    const scoreTxt = score100 == null ? '—' : `${score100} 分`;
+    let scoreCell;
+    if (isBmi) {
+        const cat = bmiVal != null ? getBmiLabel(bmiVal, s.gender, s.grade) : '';
+        const bmiOut = bmiVal != null
+            ? `BMI <b>${bmiVal}</b> <span class="se-bmi-tag">${cat}</span>`
+            : `填身高/体重自动算`;
+        scoreCell = `<div class="se-score-wrap se-score-bmi">
+            <div class="se-bmi-row">
+                <label class="se-bmi-input"><input type="number" step="0.1" min="50" max="220" value="${s.height ?? ''}" data-no="${s.no}" data-field="height" onchange="seOnBmi(${s.no},'height',this.value)" ${isLeave ? 'disabled' : ''} placeholder="身高"><span>cm</span></label>
+                <label class="se-bmi-input"><input type="number" step="0.1" min="10" max="200" value="${s.weight ?? ''}" data-no="${s.no}" data-field="weight" onchange="seOnBmi(${s.no},'weight',this.value)" ${isLeave ? 'disabled' : ''} placeholder="体重"><span>kg</span></label>
+            </div>
+            <div class="se-bmi-out ${bmiVal != null ? '' : 'se-bmi-out-empty'}">${bmiOut}</div>
+        </div>`;
+    } else {
+        scoreCell = `<div class="se-score-wrap">
+            <input type="number" step="${projInfo.step}" min="${projInfo.min}" max="${projInfo.max}" class="se-score-input" value="${rawVal}" data-no="${s.no}" onchange="seOnScore(${s.no}, this.value)" ${isLeave ? 'disabled' : ''} placeholder="—">
+            ${projInfo.unit ? `<span class="se-score-unit">${projInfo.unit}</span>` : ''}
+        </div>`;
+    }
+    const hTag = (showH && s.height != null) ? `<span class="se-row-h">${s.height}cm</span>` : '';
+    return `<tr data-no="${s.no}" class="${isLeave ? 'se-row-leave' : ''}">
+        <td class="se-col-idx">${idx + 1}</td>
+        <td class="se-col-name" title="${esc(s.name)} · ${esc(s.gender)}">${esc(s.name)} ${hTag}</td>
+        <td class="se-col-score">${scoreCell}</td>
+        <td class="se-col-level"><span class="se-level se-level-${band}">${scoreTxt}</span></td>
+    </tr>`;
+}
+
 function renderSeEntryTable() {
     const klass = seState.klass;
     if (!klass) return;
@@ -1470,43 +1565,52 @@ function renderSeEntryTable() {
         if (!isRope) pauseRopeMusic();
     }
 
-    const tbody = document.getElementById('seTbody');
-    tbody.innerHTML = list.map((s, idx) => {
-        const isLeave = !!seState.leaveMap[s.no];
-        const isBmi = project === 'bmi';
-        const bmiVal = isBmi ? calcBmi(s) : null;
-        const rawVal = isBmi ? (bmiVal == null ? '' : bmiVal) : ((s[project] === null || s[project] === undefined) ? '' : s[project]);
-        const score100 = (!isLeave && rawVal !== '') ? getScore100(project, parseFloat(rawVal), s.gender, s.grade) : null;
-        const band = scoreBand(score100);
-        const scoreTxt = score100 == null ? '—' : `${score100} 分`;
+    // 分组方式
+    const gmSel = document.getElementById('seGroupMode');
+    if (gmSel) {
+        if (!seState.groupMode) seState.groupMode = 'default';
+        gmSel.value = seState.groupMode;
+    }
+    const mode = seState.groupMode || 'default';
+    const showH = (mode === 'height' || mode === 'gender-height');
+    const idxOf = {}; list.forEach((s, i) => idxOf[s.no] = i);
+    const groups = buildSeGroups(list, mode);
 
-        let scoreCell;
-        if (isBmi) {
-            const cat = bmiVal != null ? getBmiLabel(bmiVal, s.gender, s.grade) : '';
-            const bmiOut = bmiVal != null
-                ? `BMI <b>${bmiVal}</b> <span class="se-bmi-tag">${cat}</span>`
-                : `填身高/体重自动算`;
-            scoreCell = `<div class="se-score-wrap se-score-bmi">
-                <div class="se-bmi-row">
-                    <label class="se-bmi-input"><input type="number" step="0.1" min="50" max="220" value="${s.height ?? ''}" data-no="${s.no}" data-field="height" onchange="seOnBmi(${s.no},'height',this.value)" ${isLeave ? 'disabled' : ''} placeholder="身高"><span>cm</span></label>
-                    <label class="se-bmi-input"><input type="number" step="0.1" min="10" max="200" value="${s.weight ?? ''}" data-no="${s.no}" data-field="weight" onchange="seOnBmi(${s.no},'weight',this.value)" ${isLeave ? 'disabled' : ''} placeholder="体重"><span>kg</span></label>
-                </div>
-                <div class="se-bmi-out ${bmiVal != null ? '' : 'se-bmi-out-empty'}">${bmiOut}</div>
-            </div>`;
-        } else {
-            scoreCell = `<div class="se-score-wrap">
-                <input type="number" step="${projInfo.step}" min="${projInfo.min}" max="${projInfo.max}" class="se-score-input" value="${rawVal}" data-no="${s.no}" onchange="seOnScore(${s.no}, this.value)" ${isLeave ? 'disabled' : ''} placeholder="—">
-                ${projInfo.unit ? `<span class="se-score-unit">${projInfo.unit}</span>` : ''}
-            </div>`;
+    const tbody = document.getElementById('seTbody');
+    let html = '';
+    groups.forEach(g => {
+        if (mode !== 'default') {
+            const pr = seGroupProgress(g.students);
+            html += `<tr class="se-group-row"><td colspan="4">${g.icon} <b>${g.title}</b> <span class="se-group-count">${g.students.length}人 · 已完成 ${pr.done}/${pr.total}</span></td></tr>`;
         }
-        return `<tr data-no="${s.no}" class="${isLeave ? 'se-row-leave' : ''}">
-            <td class="se-col-idx">${idx + 1}</td>
-            <td class="se-col-name" title="${esc(s.name)} · ${esc(s.gender)}">${esc(s.name)}</td>
-            <td class="se-col-score">${scoreCell}</td>
-            <td class="se-col-level"><span class="se-level se-level-${band}">${scoreTxt}</span></td>
-        </tr>`;
-    }).join('');
+        html += g.students.map(s => seRowHtml(s, idxOf[s.no], showH, projInfo)).join('');
+    });
+    tbody.innerHTML = html;
+    const hint = document.getElementById('seGroupHint');
+    if (hint) hint.textContent = mode === 'default' ? '当前按名单顺序录入' : '已分组，可分批叫号快速录入';
     updateSeProgress();
+}
+
+// 局部刷新分组头「已完成 X/Y」，避免整表重渲染导致输入框失焦
+function updateSeGroupCounts() {
+    const klass = seState.klass;
+    if (!klass) return;
+    const list = appData.students[klass] || [];
+    const groups = buildSeGroups(list, seState.groupMode || 'default');
+    const rows = document.querySelectorAll('#seTbody tr.se-group-row');
+    rows.forEach((tr, i) => {
+        const g = groups[i];
+        if (!g) return;
+        const pr = seGroupProgress(g.students);
+        const span = tr.querySelector('.se-group-count');
+        if (span) span.textContent = `${g.students.length}人 · 已完成 ${pr.done}/${pr.total}`;
+    });
+}
+
+// 切换分组方式
+function seOnGroupMode(val) {
+    seState.groupMode = val;
+    renderSeEntryTable();
 }
 
 function seOnScore(no, value) {
@@ -1531,6 +1635,7 @@ function seOnScore(no, value) {
         }
     }
     updateSeProgress();
+    updateSeGroupCounts();
 }
 
 // BMI 项：录入身高/体重，自动算 BMI + 得分（同步写 height/weight/bmi 三个字段）
@@ -1564,6 +1669,7 @@ function seOnBmi(no, field, value) {
         }
     }
     updateSeProgress();
+    updateSeGroupCounts();
 }
 
 function seToggleLeave(no) {

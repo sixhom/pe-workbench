@@ -259,6 +259,16 @@
                         </div>
                     </div>
                     <audio id="ropeAudio" src="assets/rope-timer-1min.mp3" preload="auto" onended="updateRopeMusicUI(false)"></audio>
+                    <div class="se-group-bar">
+                        <span class="se-group-label">🧩 分组/排序：</span>
+                        <select id="seGroupMode" class="filter-select" onchange="seOnGroupMode(this.value)">
+                            <option value="default">原名单顺序</option>
+                            <option value="gender">男女生分组</option>
+                            <option value="height">身高分组（矮/中/高）</option>
+                            <option value="gender-height">男女生 + 身高分组</option>
+                        </select>
+                        <span class="se-group-hint" id="seGroupHint">当前按名单顺序录入</span>
+                    </div>
                     <div class="se-progress-bar">
                         <div class="se-progress" id="seProgress"></div>
                         <div class="se-progress-text" id="seProgressText">完成率 0%</div>
@@ -660,10 +670,10 @@
         </nav>
     </div>
 
-    <script src="data.js?v=10"></script>
-    <script src="toolbox-data.js?v=10"></script>
-    <script src="nation-score.js?v=10"></script>
-    <script src="app.js?v=10"></script>
+    <script src="data.js?v=11"></script>
+    <script src="toolbox-data.js?v=11"></script>
+    <script src="nation-score.js?v=11"></script>
+    <script src="app.js?v=11"></script>
 
     <!-- 手机端浮动快速录入按钮 -->
     <button class="fab-btn" onclick="openQuickEntry()" title="快速录入">⚡</button>
