@@ -2,7 +2,7 @@
 let appData = { students: {}, currentClass: null, charts: {}, logs: [] };
 
 // 内置数据版本：每次大批量更新花名册后递增，使老用户本地存储自动重新播种最新数据
-const DATA_VERSION = 20260827;
+const DATA_VERSION = 20260828;
 // 体测年级参照学年：按 2026-09 开学（2026~2027 学年）推算各届学生当前年级
 const REF_SCHOOL_YEAR = 2026;
 
@@ -276,6 +276,9 @@ const NATION_WEIGHTS = {
   4: { bmi: 15, lung: 15, run50: 20, sitReach: 20, sitUps: 20, skipRope: 10 },
   5: { bmi: 15, lung: 15, run50: 20, sitReach: 10, sitUps: 20, run50x8: 10, skipRope: 10 },
   6: { bmi: 15, lung: 15, run50: 20, sitReach: 10, sitUps: 20, run50x8: 10, skipRope: 10 },
+  7: { bmi: 15, lung: 15, run50: 20, sitReach: 10, standingLongJump: 10, sitUps: 10, enduranceRun: 20 },
+  8: { bmi: 15, lung: 15, run50: 20, sitReach: 10, standingLongJump: 10, sitUps: 10, enduranceRun: 20 },
+  9: { bmi: 15, lung: 15, run50: 20, sitReach: 10, standingLongJump: 10, sitUps: 10, enduranceRun: 20 }
 };
 // 某年级实际参与评分的项目（含肺活量；5-6年级含 50×8 折返跑）
 // 初中(7/8/9)等暂无国标评分标准的年级返回空数组，界面显示「待补充评分标准」
