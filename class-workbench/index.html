@@ -661,7 +661,7 @@ function renderChal(){
   }
   g.innerHTML = html;
   var dur = document.getElementById('durRow');
-  var opts = [30,45,60,90,120,180];
+  var opts = [15,30,45,60,90,120,180];
   var hh = '';
   for(var j=0;j<opts.length;j++){
     hh += '<button class="dur-btn'+(opts[j]===chalDur?' sel':'')+'" onclick="pickDur('+opts[j]+')">'+opts[j]+'</button>';
@@ -1074,6 +1074,7 @@ function toggleArrow(){
     arrowRun = true;
     document.getElementById('arrowBtn').textContent = '结束游戏';
     Sound.ensure();
+    if(gameMusicOn){ Music.play(GAME_BGM); }
     nextArrow();
   }
 }
