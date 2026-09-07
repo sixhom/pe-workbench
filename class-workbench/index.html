@@ -332,6 +332,7 @@ input,textarea{font-family:inherit;}
     <div class="game-tabs" data-page-node-id="SrREzHyqY6qHK0s1A04NyT">
       <button class="wheel-tab sel" id="gtTL" onclick="gameTab('tl')" data-page-node-id="OLiD3zBjrBBKqgn9uOCiTy">🚦 红绿灯</button>
       <button class="wheel-tab" id="gtArrow" onclick="gameTab('arrow')" data-page-node-id="TBIwOVVAMU2i7ZJzx1YykJ">➡️ 方向快闪</button>
+      <button class="wheel-tab" id="gtMusic" onclick="toggleGameMusic()" title="背景音乐开关" style="margin-left:auto;font-size:15px;padding:8px 16px;">🎵 配乐:开</button>
     </div>
     <div id="gameTL" class="game-area" data-page-node-id="sF2pXw6nBBneBpjChXf3B9">
       <div class="tl-face" id="tlFace" data-page-node-id="KMmG4kSFCHWmBhmaBcHO6v">
@@ -1020,6 +1021,7 @@ function toggleTL(){
     document.getElementById('tlBtn').textContent = '结束游戏';
     Sound.ensure();
     setTL('g');
+    if(gameMusicOn){ Music.play(GAME_BGM); }
     if(tlAuto){
       tlTimer = setTimeout(tlToggleAuto, 2000+Math.random()*2500);
     }
@@ -1028,6 +1030,7 @@ function toggleTL(){
 function stopTL(){
   if(tlTimer){ clearTimeout(tlTimer); tlTimer=null; }
   tlRun = false;
+  Music.stop();
   document.getElementById('tlBtn').textContent = '开始游戏';
   var f = document.getElementById('tlFace');
   f.className = 'tl-face';
