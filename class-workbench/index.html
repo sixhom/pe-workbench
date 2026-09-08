@@ -201,6 +201,10 @@ input,textarea{font-family:inherit;}
         <div class="hc-name" data-page-node-id="pOY64V2aAzCamJ9AsNr0G9">🚦 大屏反应游戏</div>
         <div class="hc-desc" data-page-node-id="kvuYgc0fnh9VgrWC89IXNE">红绿灯（绿动红停）· 方向快闪，练反应练听口令</div>
       </button>
+      <button class="home-card c-teal" onclick="showPage('radio')" data-page-node-id="homeRadio001">
+        <div class="hc-name" data-page-node-id="homeRadioName001">📻 广播体操</div>
+        <div class="hc-desc" data-page-node-id="homeRadioDesc001">七彩阳光标准体操音乐，一键播放跟着做</div>
+      </button>
       <button class="home-card c-red" onclick="showPage('plan')" data-page-node-id="LbrFCyu2dim6MlBTuRZyj6">
         <div class="hc-name" data-page-node-id="mHLysK1bBXJq2uuppAjP46">📋 一键雨天课包</div>
         <div class="hc-desc" data-page-node-id="PEPOENPgZS6adJBrcrm7HS">3套现成的40分钟室内课流程，跟着屏幕走就行</div>
@@ -326,6 +330,23 @@ input,textarea{font-family:inherit;}
     </div>
   </div>
 </div>
+
+</div>
+
+
+<div id="page-radio" class="page" data-page-node-id="radioPage001">
+  <div class="page-pad" style="display:flex;flex-direction:column;flex:1;" data-page-node-id="radioPad001">
+    <div class="sec-title" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;" data-page-node-id="radioTitle001">
+      <span data-page-node-id="radioSpan001">📻 广播体操音乐（跟着做）：</span>
+    </div>
+    <div class="center-col">
+      <button class="broad-btn primary" id="bgmRadioQicai" onclick="playRadio(RADIO_BGM,'bgmRadioQicai')" style="font-size:28px;padding:28px 50px;">▶ 七彩阳光（标准广播体操）</button>
+      <button class="broad-btn ghost" onclick="stopRadio()" style="font-size:22px;padding:18px 40px;margin-top:18px;">⏹ 停止</button>
+    </div>
+    <div class="stage-tip" style="margin-top:24px;">第一节：伸展运动 · 第二节：扩胸运动 · 跟着音乐节奏做，动作要到位</div>
+  </div>
+</div>
+
 
 <div id="page-game" class="page" data-page-node-id="xmjVBMtEUuzd1HVeCqwJtE">
   <div class="page-pad" style="display:flex;flex-direction:column;flex:1;" data-page-node-id="Y82aSL0Si8C3KtqA4wGu2L">
@@ -485,7 +506,7 @@ var TEAM_DEFS = [
   {key:'yellow', name:'黄队', cls:'t-yellow'},
   {key:'green', name:'绿队', cls:'t-green'}
 ];
-var TITLES = {home:'室内体育大屏', challenge:'全班挑战台', wheel:'幸运大转盘', score:'小组计分板', beat:'节拍跟练台', game:'大屏反应游戏', plan:'一键雨天课包'};
+var TITLES = {home:'室内体育大屏', challenge:'全班挑战台', wheel:'幸运大转盘', score:'小组计分板', beat:'节拍跟练台', game:'大屏反应游戏', plan:'一键雨天课包', radio:'广播体操'};
 
 var state = load();
 var currentPage = 'home';
@@ -604,8 +625,8 @@ var Music = {
   },
   isPlaying:function(src){ return !!this.audio && this.current === src && !this.audio.paused; }
 };
-var GAME_BGM = 'https://workbuddy-bga-1258344699.cos.ap-beijing.myqcloud.com/attachments/a57915bf-abd7-4865-aaa1-9c17684d3f8d/1788744336_24d67cee/%E5%B0%8F%E5%A4%B4%E9%92%88%20%20%E5%90%B4%E7%91%9E%E6%96%AF%20-%E9%A3%8E%E5%90%B9%E4%B8%80%E5%A4%8F%20(DJ%E7%89%88).mp3?q-sign-algorithm=sha1&q-ak=AKID6A1d7VrU8gw1tYzKapy22sb7RZUQAfut&q-sign-time=1788744336%3B1796520336&q-key-time=1788744336%3B1796520336&q-header-list=host&q-url-param-list=&q-signature=0778eae052d5dac51ec69b46c73d7feaac262175';
-var RADIO_BGM = 'https://workbuddy-bga-1258344699.cos.ap-beijing.myqcloud.com/attachments/a57915bf-abd7-4865-aaa1-9c17684d3f8d/1788744413_11ed74c7/%E4%B8%83%E5%BD%A9%E9%98%B3%E5%85%89-%E4%B9%8B%E5%A3%B0%E4%BD%93%E6%93%8D-503114.mp3?q-sign-algorithm=sha1&q-ak=AKID6A1d7VrU8gw1tYzKapy22sb7RZUQAfut&q-sign-time=1788744413%3B1796520413&q-key-time=1788744413%3B1796520413&q-header-list=host&q-url-param-list=&q-signature=0f17eaf634f904d273dbd8a8806656177b6fbb0b';
+var GAME_BGM = 'media/game-bgm.mp3';
+var RADIO_BGM = 'media/radio-qicai.mp3';
 var gameMusicOn = true;
 document.addEventListener('click', function(){ Sound.ensure(); }, {once:true});
 
@@ -646,6 +667,7 @@ function stopAll(){
   stopTL();
   stopArrow();
   resetRadioBtns();
+  Music.stop();
 }
 
 /* ---------- 挑战台 ---------- */
@@ -1107,7 +1129,7 @@ function playRadio(src, id){
 }
 function stopRadio(){ Music.stop(); resetRadioBtns(); }
 function resetRadioBtns(){
-  var ids = ['bgmQicai','bgmFeng'];
+  var ids = ['bgmQicai','bgmFeng','bgmRadioQicai'];
   for(var i=0;i<ids.length;i++){
     var b = document.getElementById(ids[i]);
     if(b){ b.style.borderColor = ''; b.style.color = ''; }
