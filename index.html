@@ -4,7 +4,7 @@
     <meta charset="UTF-8" data-page-node-id="l0nMDMIEgqEERK73ZjwJwz">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" data-page-node-id="4VnrGNZ5ZzSHD3MkEFGcdy">
     <title>大鸿体育工作台</title>
-    <link rel="stylesheet" href="styles.css?v=27" data-page-node-id="r1RERUSfaWVolKtAOIhkwe">
+    <link rel="stylesheet" href="styles.css?v=28" data-page-node-id="r1RERUSfaWVolKtAOIhkwe">
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.24.2/dist/index.min.js"></script>
@@ -260,14 +260,19 @@
                             <div class="se-entry-title" id="seEntryTitle" data-page-node-id="HKcj1qmwG6m65evjj35Mgc">五1班 · 50米跑</div>
                             <div class="se-entry-tip" data-page-node-id="3qYeE7Pl6eSb293Jt8vIxR">点击"成绩"输入并自动计分</div>
                         </div>
-                        <div style="display:flex;gap:8px;flex-wrap:wrap;" data-page-node-id="FYRiuBq13oxP1hry9llam7">
-                            <button class="btn btn-music btn-sm" id="ropeMusicBtn" onclick="toggleRopeMusic()" style="display:none;" data-page-node-id="PP0DdEAY33ep1xzKmFvwx9">
-                                <span id="ropeMusicIcon" data-page-node-id="P8PYV0eDIKEd51oobIK3SS">🎵</span> <span id="ropeMusicLabel" data-page-node-id="V00GlGl7MxdMvF74CF52Xr">一分钟计时音乐</span>
-                            </button>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;" data-page-node-id="FYRiuBq13oxP1hry9llam7">
+                            <!-- 一分钟跳绳计时音乐播放器 -->
+                            <div class="rope-player" id="ropePlayer" style="display:none;" data-page-node-id="PP0DdEAY33ep1xzKmFvwx9">
+                                <span class="rope-player-title">🎵 一分钟计时音乐</span>
+                                <button type="button" class="rope-ctl rope-ctl-play" id="ropePlayBtn" onclick="ropeToggle()" title="播放 / 暂停">▶</button>
+                                <button type="button" class="rope-ctl" id="ropeResetBtn" onclick="ropeReset(true)" title="重置到开头">⏹</button>
+                                <input type="range" class="rope-seek" id="ropeSeek" min="0" max="100" value="0" step="0.1" oninput="ropeSeekDrag(this)" onchange="ropeSeekTo(this.value)" aria-label="进度"/>
+                                <span class="rope-time" id="ropeTime">0:00 / 0:00</span>
+                            </div>
                             <button class="btn btn-outline btn-sm" onclick="seGoStep(2)" data-page-node-id="b7hHzVlrhlUBy7AbvlTkP9">🔁 重选班级/项目</button>
                         </div>
                     </div>
-                    <audio id="ropeAudio" src="assets/rope-timer-1min.mp3" preload="auto" onended="updateRopeMusicUI(false)" data-page-node-id="EcppK41gGP5Ai6uhZK4s8Q"></audio>
+                    <audio id="ropeAudio" src="assets/rope-timer-1min.mp3" preload="auto" data-page-node-id="EcppK41gGP5Ai6uhZK4s8Q"></audio>
                     <div class="se-group-bar" data-page-node-id="kHdfa2MZctGAp4rHDNo7wm">
                         <span class="se-group-label" data-page-node-id="F2zyBfXQajmQxdBvsw77P1">🧩 分组/排序：</span>
                         <select id="seGroupMode" class="filter-select" onchange="seOnGroupMode(this.value)" data-page-node-id="0ihXOkJJOkrb2aFXaKxHLF">
@@ -755,10 +760,10 @@
         </nav>
     </div>
 
-    <script src="data.js?v=27"></script>
-    <script src="toolbox-data.js?v=27"></script>
-    <script src="nation-score.js?v=27"></script>
-    <script src="app.js?v=27"></script>
+    <script src="data.js?v=28"></script>
+    <script src="toolbox-data.js?v=28"></script>
+    <script src="nation-score.js?v=28"></script>
+    <script src="app.js?v=28"></script>
 
     <!-- 手机端浮动快速录入按钮 -->
     <button class="fab-btn" onclick="openQuickEntry()" title="快速录入" data-page-node-id="C43v8bA9ZWr8nKLz2jj8W8">⚡</button>
