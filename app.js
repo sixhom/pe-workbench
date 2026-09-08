@@ -10,17 +10,19 @@ const REF_SCHOOL_YEAR = 2026;
 document.addEventListener('DOMContentLoaded', () => {
     // Load data from localStorage or use default
     loadAppData();
-    initNavigation();
-    initMobileNav();
-    initHomeStats();
-    initRoster();
-    initAnalysis();
-    initScoreEntry();
-    initToolbox();
-    initSafety();
-    initExcelImport();
-    initHomeCards();
-    updateSeToolbar();
+
+    // 关键点：Excel 导入最先注册。以前任何初始化报错都会中断整条链，
+    // 导致 change 监听没绑上，表现为“选了文件毫无反应”。
+    try { initExcelImport(); } catch (e) { console.error('初始化失败[Excel导入]:', e); }
+
+    // 其余初始化逐项隔离：单项出错不再影响其它功能
+    [['导航', initNavigation], ['移动端导航', initMobileNav], ['首页统计', initHomeStats],
+     ['花名册', initRoster], ['体测分析', initAnalysis], ['成绩录入', initScoreEntry],
+     ['教学工具箱', initToolbox], ['安全预案', initSafety], ['首页卡片', initHomeCards]
+    ].forEach(([label, fn]) => {
+        try { fn(); } catch (e) { console.error('初始化失败[' + label + ']:', e); }
+    });
+    try { updateSeToolbar(); } catch (e) { console.error('初始化失败[录入工具条]:', e); }
 });
 
 // ===== Data Management =====
@@ -336,7 +338,7 @@ function initHomeCards() {
         { id: 'roster', icon: '👥', title: '学生花名册管理', desc: '批量导入/手动录入学生信息，关联体测历史、课堂表现、体能短板标记', tag: '花名册+体测', color: '#4CAF50', bg: '#E8F5E9' },
         { id: 'analysis', icon: '📊', title: '体测成绩分析表', desc: '自动同步花名册体测数据，生成班级统计、个人趋势、薄弱预警', tag: '自动同步', color: '#42A5F5', bg: '#E3F2FD' },
         { id: 'scoreentry', icon: '📝', title: '成绩录入', desc: '测试日现场批量录入：选年级/班级→选项目→自动分道次→边测边录', tag: '现场录入', color: '#FF7043', bg: '#FBE9E7' },
-        { id: 'toolbox', icon: '🧰', title: '教学工具箱', desc: '训练计划生成器、体育游戏库、课堂打卡记录、家校话术库，备课上课一站式', tag: '4大工具', color: '#FFA726', bg: '#FFF3E0' },
+        { id: 'toolbox', icon: '🧰', title: '教学工具箱', desc: '训练计划生成器、体育游戏库、跳绳课周计划、课堂打卡记录、家校话术库，备课上课一站式', tag: '5大工具', color: '#FFA726', bg: '#FFF3E0' },
         { id: 'safety', icon: '🛡️', title: '课堂安全与应急预案', desc: '运动损伤处理流程、突发事件应急方案、安全检查清单', tag: '安全第一', color: '#EF5350', bg: '#FFEBEE' },
     ];
     
@@ -374,25 +376,151 @@ function openCardDetail(id) {
 }
 
 // ===== Roster =====
-function initRoster() {
-    // Class tabs
-    const tabs = document.getElementById('classTabs');
-    tabs.innerHTML = Object.keys(appData.students).map(cls => 
-        `<div class="class-tab ${cls === appData.currentClass ? 'active' : ''}" data-class="${cls}">${cls}</div>`
-    ).join('');
-    
-    tabs.addEventListener('click', e => {
-        if (e.target.classList.contains('class-tab')) {
-            appData.currentClass = e.target.dataset.class;
-            tabs.querySelectorAll('.class-tab').forEach(t => t.classList.remove('active'));
-            e.target.classList.add('active');
-            renderRoster();
-        }
+// 年级 → 班级 两级导航（数据放模块级，保证重新初始化时始终用最新分组）
+const GRADE_CN = { 1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九' };
+let rosterGradeGroups = {};   // key -> { grade, list:[班级名] }
+let rosterGradeKeys = [];      // 升序排列的 key
+let rosterLastClass = {};      // 记住每个年级上次选的班，切回年级时不丢选择
+let rosterNavBound = false;    // 事件只绑一次，避免重复初始化累积监听
+
+function gradeCn(g) { return g == null ? '未分年级' : ((GRADE_CN[g] || g) + '年级'); }
+function rosterGKey(cls) {
+    const g = gradeOfClass(cls);
+    return g == null ? 'other' : ('g' + g);
+}
+// 班级简称：小学2023级4班 → 4班
+function shortClassLabel(cls) {
+    const p = parseClassName(cls);
+    return p.num != null ? (p.num + '班') : String(cls).replace(/班$/, '');
+}
+// 通用：按年级把全校班级分组（年级升序、班内按班号升序）
+function buildGradeClassGroups() {
+    const map = {};
+    Object.keys(appData.students).forEach(k => {
+        const g = gradeOfClass(k);
+        const key = g == null ? 'other' : ('g' + g);
+        if (!map[key]) map[key] = { grade: g, list: [] };
+        map[key].list.push(k);
     });
-    
-    document.getElementById('rosterGenderFilter').addEventListener('change', renderRoster);
-    document.getElementById('rosterLevelFilter').addEventListener('change', renderRoster);
-    document.getElementById('rosterSearch').addEventListener('input', renderRoster);
+    const arr = Object.keys(map).map(k => map[k]);
+    arr.sort((a, b) => {
+        if (a.grade == null) return 1;
+        if (b.grade == null) return -1;
+        return a.grade - b.grade;
+    });
+    arr.forEach(x => x.list.sort((a, b) => (parseClassName(a).num ?? 999) - (parseClassName(b).num ?? 999)));
+    return arr;
+}
+// 通用：把「年级 → 班级」两级结构填进原生 select（用 optgroup 做年级分组）
+function fillClassSelectGrouped(sel, selectedCls, opts) {
+    if (!sel) return;
+    opts = opts || {};
+    const groups = buildGradeClassGroups();
+    if (!groups.length) {
+        sel.innerHTML = `<option value="">${esc(opts.emptyText || '（暂无班级数据）')}</option>`;
+        return;
+    }
+    const cur = selectedCls || appData.currentClass;
+    sel.innerHTML = groups.map(gp => {
+        const label = opts.withCount ? `${gradeCn(gp.grade)}（${gp.list.length}个班）` : gradeCn(gp.grade);
+        return `<optgroup label="${esc(label)}">` + gp.list.map(cls => {
+            const n = (appData.students[cls] || []).length;
+            const text = opts.withCount ? `${shortClassLabel(cls)}（${n}人）` : shortClassLabel(cls);
+            return `<option value="${esc(cls)}" ${cls === cur ? 'selected' : ''}>${esc(text)}</option>`;
+        }).join('') + '</optgroup>';
+    }).join('');
+}
+function buildRosterGradeGroups() {
+    rosterGradeGroups = {};
+    Object.keys(appData.students).forEach(k => {
+        const g = gradeOfClass(k);
+        const key = rosterGKey(k);
+        if (!rosterGradeGroups[key]) rosterGradeGroups[key] = { grade: g, list: [] };
+        rosterGradeGroups[key].list.push(k);
+    });
+    rosterGradeKeys = Object.keys(rosterGradeGroups).sort((a, b) => {
+        const ga = rosterGradeGroups[a].grade, gb = rosterGradeGroups[b].grade;
+        if (ga == null) return 1;
+        if (gb == null) return -1;
+        return ga - gb;
+    });
+    // 班内按班号升序
+    rosterGradeKeys.forEach(k => rosterGradeGroups[k].list.sort((a, b) => {
+        const na = parseClassName(a).num ?? 999, nb = parseClassName(b).num ?? 999;
+        return na - nb;
+    }));
+}
+function paintRosterGradeTabs(activeKey) {
+    const el = document.getElementById('gradeTabs');
+    if (!el) return;
+    el.innerHTML = rosterGradeKeys.map(k => {
+        const info = rosterGradeGroups[k];
+        return `<div class="grade-tab ${k === activeKey ? 'active' : ''}" data-gkey="${k}">${gradeCn(info.grade)}<span class="grade-tab-badge">${info.list.length}班</span></div>`;
+    }).join('');
+}
+function paintRosterClassTabs(gkey) {
+    const el = document.getElementById('classTabs');
+    if (!el) return;
+    const list = (rosterGradeGroups[gkey] && rosterGradeGroups[gkey].list) || [];
+    el.innerHTML = list.map(cls =>
+        `<div class="class-tab ${cls === appData.currentClass ? 'active' : ''}" data-class="${cls}">${shortClassLabel(cls)}</div>`
+    ).join('');
+}
+
+function initRoster() {
+    buildRosterGradeGroups();
+    if (!rosterGradeKeys.length) return;
+
+    // 当前班级所在年级优先，否则落到第一个年级
+    let activeKey = rosterGKey(appData.currentClass);
+    if (!rosterGradeGroups[activeKey]) activeKey = rosterGradeKeys[0];
+
+    // 当前班不在该年级里（如切换年级/班级被删），自动落为该年级记住的班或第一个班
+    const list = rosterGradeGroups[activeKey].list;
+    if (list.indexOf(appData.currentClass) === -1) {
+        const last = rosterLastClass[activeKey];
+        appData.currentClass = (last && list.indexOf(last) !== -1) ? last : list[0];
+    }
+    rosterLastClass[activeKey] = appData.currentClass;
+
+    paintRosterGradeTabs(activeKey);
+    paintRosterClassTabs(activeKey);
+
+    // 事件委托，生命周期内只绑一次
+    if (!rosterNavBound) {
+        rosterNavBound = true;
+        const gradeTabs = document.getElementById('gradeTabs');
+        const classTabs = document.getElementById('classTabs');
+
+        gradeTabs.addEventListener('click', e => {
+            const t = e.target.closest('.grade-tab');
+            if (!t) return;
+            const gk = t.dataset.gkey;
+            const ls = (rosterGradeGroups[gk] && rosterGradeGroups[gk].list) || [];
+            if (!ls.length) return;
+            const last = rosterLastClass[gk];
+            appData.currentClass = (last && ls.indexOf(last) !== -1) ? last : ls[0];
+            rosterLastClass[gk] = appData.currentClass;
+            paintRosterGradeTabs(gk);
+            paintRosterClassTabs(gk);
+            renderRoster();
+        });
+
+        classTabs.addEventListener('click', e => {
+            const t = e.target.closest('.class-tab');
+            if (!t) return;
+            appData.currentClass = t.dataset.class;
+            rosterLastClass[rosterGKey(appData.currentClass)] = appData.currentClass;
+            classTabs.querySelectorAll('.class-tab').forEach(x => x.classList.remove('active'));
+            t.classList.add('active');
+            renderRoster();
+        });
+
+        document.getElementById('rosterGenderFilter').addEventListener('change', renderRoster);
+        document.getElementById('rosterLevelFilter').addEventListener('change', renderRoster);
+        document.getElementById('rosterSearch').addEventListener('input', renderRoster);
+        document.getElementById('rosterSort').addEventListener('change', renderRoster);
+    }
 }
 
 function renderRoster() {
@@ -419,7 +547,20 @@ function renderRoster() {
         }
         return true;
     });
-    
+
+    // 排序（花名册排序：总分递减/递增、姓氏拼音）
+    const sortMode = (document.getElementById('rosterSort') || {}).value || 'default';
+    if (sortMode === 'score-desc') {
+        filtered.sort((a, b) => (getOverallScore(b).total ?? -1) - (getOverallScore(a).total ?? -1));
+    } else if (sortMode === 'score-asc') {
+        filtered.sort((a, b) => (getOverallScore(a).total ?? Infinity) - (getOverallScore(b).total ?? Infinity));
+    } else if (sortMode === 'name-asc') {
+        filtered.sort((a, b) => {
+            const pa = getNamePinyin(a), pb = getNamePinyin(b);
+            return pa < pb ? -1 : pa > pb ? 1 : 0;
+        });
+    }
+
     // Summary
     const maleCount = filtered.filter(s => s.gender === '男').length;
     const femaleCount = filtered.filter(s => s.gender === '女').length;
@@ -926,7 +1067,8 @@ function renderStudentReport(cls, no) {
 
 // ===== 国家体测网上报格式导出 =====
 function exportUploadXlsx() {
-    const cls = appData.currentClass;
+    const sel = document.getElementById('uploadClassSelect');
+    const cls = (sel && sel.value) || appData.currentClass;
     if (!cls) { showToast('请先选择班级', 'error'); return; }
     const grade = gradeOfClass(cls);
     const items = getActiveItems(grade);
@@ -1009,48 +1151,55 @@ function restoreData(input) {
 }
 
 // ===== Analysis =====
+let analysisNavBound = false;   // 事件只绑一次，避免重复初始化累积监听
 function initAnalysis() {
+    const page = document.getElementById('page-analysis');
+
+    // 班级下拉：年级 → 班级 两级（optgroup 分组，年级升级成小标题）
     const classSelect = document.getElementById('analysisClass');
-    classSelect.innerHTML = Object.keys(appData.students).map(cls => 
-        `<option value="${cls}" ${cls === appData.currentClass ? 'selected' : ''}>${cls}</option>`
-    ).join('');
-    
-    classSelect.addEventListener('change', () => {
-        appData.currentClass = classSelect.value;
-        renderAnalysis();
-    });
-    
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            btn.classList.add('active');
-            document.getElementById('atab-' + btn.dataset.atab).classList.add('active');
-            if (btn.dataset.atab === 'project') renderProjectAnalysis();
-            if (btn.dataset.atab === 'student') renderStudentAnalysis();
-            if (btn.dataset.atab === 'warning') renderWarnings();
-        });
-    });
-    
+    fillClassSelectGrouped(classSelect, appData.currentClass, { withCount: true });
+
     // Project selector（按当前班级年级显示实际项目：含肺活量、5-6年级含50×8）
     const curGrade = gradeOfClass(appData.currentClass);
     const projects = getActiveItems(curGrade);
     document.getElementById('projectSelector').innerHTML = projects.map((p, i) => 
         `<div class="project-btn ${i === 0 ? 'active' : ''}" data-project="${p}">${TEST_ITEMS[p].icon} ${TEST_ITEMS[p].name}</div>`
     ).join('');
-    
-    document.getElementById('projectSelector').addEventListener('click', e => {
-        if (e.target.classList.contains('project-btn')) {
-            document.querySelectorAll('.project-btn').forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
-            renderProjectChart(e.target.dataset.project);
-        }
-    });
-    
-    // Student selector
-    document.getElementById('studentSelect').addEventListener('change', e => {
-        renderStudentDetail(e.target.value);
-    });
+
+    if (!analysisNavBound) {
+        analysisNavBound = true;
+
+        classSelect.addEventListener('change', () => {
+            appData.currentClass = classSelect.value;
+            renderAnalysis();
+        });
+
+        // 作用域限定在本页，避免误绑其它页面的同类按钮
+        page.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                page.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                page.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('atab-' + btn.dataset.atab).classList.add('active');
+                if (btn.dataset.atab === 'project') renderProjectAnalysis();
+                if (btn.dataset.atab === 'student') renderStudentAnalysis();
+                if (btn.dataset.atab === 'warning') renderWarnings();
+            });
+        });
+
+        document.getElementById('projectSelector').addEventListener('click', e => {
+            if (e.target.classList.contains('project-btn')) {
+                page.querySelectorAll('.project-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                renderProjectChart(e.target.dataset.project);
+            }
+        });
+
+        // Student selector
+        document.getElementById('studentSelect').addEventListener('change', e => {
+            renderStudentDetail(e.target.value);
+        });
+    }
 }
 
 function renderAnalysis() {
@@ -1380,28 +1529,27 @@ function renderScoreEntry() {
 }
 
 function populateSeGradeClass() {
-    const groups = {};
-    Object.keys(appData.students).forEach(k => {
-        const p = parseClassName(k);
-        const g = gradeOfClass(k);
-        groups[g] = groups[g] || [];
-        groups[g].push({ name: k, num: p.num, display: p.display });
-    });
-    const sortedGrades = Object.keys(groups).map(Number).sort((a, b) => a - b);
+    const groups = buildGradeClassGroups();
     window._seGroups = groups;
     const gradeSel = document.getElementById('seGrade');
-    gradeSel.innerHTML = '<option value="">请选择年级</option>' + sortedGrades.map(g =>
-        `<option value="${g}">${g === 0 ? '其他' : g + '年级'}</option>`).join('');
+    gradeSel.innerHTML = '<option value="">请选择年级</option>' + groups.map(gp => {
+        const key = gp.grade == null ? 'other' : gp.grade;
+        return `<option value="${key}">${gradeCn(gp.grade)}（${gp.list.length}个班）</option>`;
+    }).join('');
     onSeGradeChange();
 }
 
 function onSeGradeChange() {
     const g = document.getElementById('seGrade').value;
-    const groups = window._seGroups || {};
-    const list = (groups[g] || []).slice().sort((a, b) => (a.num || 0) - (b.num || 0));
+    const groups = window._seGroups || [];
+    const gp = groups.find(x => String(x.grade == null ? 'other' : x.grade) === String(g));
+    const list = gp ? gp.list : [];
     const classSel = document.getElementById('seClass');
     classSel.innerHTML = list.length
-        ? '<option value="">请选择班级</option>' + list.map(c => `<option value="${esc(c.name)}">${esc(c.display)}班</option>`).join('')
+        ? '<option value="">请选择班级</option>' + list.map(cls => {
+              const n = (appData.students[cls] || []).length;
+              return `<option value="${esc(cls)}">${esc(shortClassLabel(cls))}（${n}人）</option>`;
+          }).join('')
         : '<option value="">请先选年级</option>';
     document.getElementById('seClassMeta').innerHTML = '';
     seState.klass = null;
@@ -1537,11 +1685,56 @@ function seGroupProgress(students) {
     return { done, total: students.length };
 }
 
+// 排序辅助：取当前项目得分（100分制），未录入/请假返回 null
+function getEntryScore(s) {
+    if (seState.leaveMap[s.no]) return null;
+    if (seState.project === 'bmi') {
+        const v = calcBmi(s);
+        return v == null ? null : getScore100('bmi', v, s.gender, s.grade);
+    }
+    const v = s[seState.project];
+    if (v == null || v === '') return null;
+    return getScore100(seState.project, parseFloat(v), s.gender, s.grade);
+}
+// 排序辅助：取姓名拼音全拼（小写），用于按姓氏排序
+function getNamePinyin(s) {
+    if (!s || !s.name) return 'zzzz';
+    try {
+        if (typeof pinyinPro !== 'undefined' && pinyinPro.pinyin) {
+            const arr = pinyinPro.pinyin(s.name, { toneType: 'none', type: 'array' });
+            const py = (arr || []).join('').toLowerCase();
+            if (py) return py;
+        }
+    } catch (e) { /* 降级用姓名 */ }
+    return s.name ? s.name.toLowerCase() : 'zzzz';
+}
+
 // 按分组方式把全班拆成若干组
 function buildSeGroups(list, mode) {
     const byHAsc = (a, b) => (a.height ?? 999) - (b.height ?? 999);
     const byHDesc = (a, b) => (b.height ?? -1) - (a.height ?? -1);
     if (mode === 'default') return [{ icon: '📋', title: '全班', students: list.slice() }];
+    // ===== 排序模式（单组，按指定规则重排全班） =====
+    if (mode === 'score-desc' || mode === 'score-asc') {
+        const arr = list.map(s => ({ s, sc: getEntryScore(s) }));
+        if (mode === 'score-desc') {
+            // 高分在前；未录入/请假(null) 永远排最后
+            arr.sort((x, y) => (y.sc == null ? -1 : y.sc) - (x.sc == null ? -1 : x.sc));
+        } else {
+            // 低分在前；未录入/请假(null) 永远排最后
+            arr.sort((x, y) => (x.sc == null ? Infinity : x.sc) - (y.sc == null ? Infinity : y.sc));
+        }
+        const students = arr.map(o => o.s);
+        const title = mode === 'score-desc' ? '按成绩（得分 高 → 低）' : '按成绩（得分 低 → 高）';
+        const icon = mode === 'score-desc' ? '🏆' : '📊';
+        return [{ icon, title, students }];
+    }
+    if (mode === 'name-asc') {
+        const arr = list.map(s => ({ s, py: getNamePinyin(s) }));
+        arr.sort((x, y) => x.py < y.py ? -1 : x.py > y.py ? 1 : 0);
+        const students = arr.map(o => o.s);
+        return [{ icon: '🔤', title: '按姓氏（拼音 A → Z）', students }];
+    }
     if (mode === 'gender') {
         const boys = list.filter(s => s.gender === '男').sort(byHDesc);
         const girls = list.filter(s => s.gender === '女').sort(byHDesc);
@@ -1668,7 +1861,12 @@ function renderSeEntryTable() {
     });
     tbody.innerHTML = html;
     const hint = document.getElementById('seGroupHint');
-    if (hint) hint.textContent = mode === 'default' ? '当前按名单顺序录入' : '已分组，可分批叫号快速录入';
+    if (hint) {
+        if (mode === 'default') hint.textContent = '当前按名单顺序录入';
+        else if (mode === 'score-desc' || mode === 'score-asc') hint.textContent = '已按「成绩」排序，方便比对高低';
+        else if (mode === 'name-asc') hint.textContent = '已按「姓氏」排序（拼音 A→Z）';
+        else hint.textContent = '已分组，可分批叫号快速录入';
+    }
     updateSeProgress();
 }
 
@@ -2179,16 +2377,19 @@ function initToolbox() {
         if (btn) switchToolboxTab(btn.dataset.ttab);
     });
 
-    renderGames();
-    renderComms();
-    renderWarmup();
-    renderLogHistory();
-    updateLogShould();
+    // 逐项隔离：任一板块渲染失败只记日志，不影响工具箱其它内容
+    [['体育游戏库', renderGames], ['家校话术库', renderComms], ['训练标准化手册', renderWarmup],
+     ['跳绳课周计划', renderRopePlan], ['课堂打卡记录', renderLogHistory], ['打卡应到人数', updateLogShould]]
+        .forEach(([label, fn]) => {
+            try { fn(); } catch (e) { console.error('工具箱渲染失败[' + label + ']:', e); }
+        });
 }
 
 function renderWarmup() {
     const el = document.getElementById('warmupContent');
-    if (!el || !window.WARMUP) return;
+    // 注意：toolbox-data.js 里是 `const WARMUP = {...}`，顶层 const 不会挂到 window 上，
+    // 之前写 `window.WARMUP` 恒为 undefined，导致整页空白。必须用 typeof 判断。
+    if (!el || typeof WARMUP === 'undefined' || !WARMUP) return;
     const w = WARMUP;
     let html = `<div class="warmup-head">
         <h3>${esc(w.title)}</h3>
@@ -2314,10 +2515,113 @@ function switchToolboxTab(ttab) {
 }
 
 function renderToolbox() {
-    renderGames();
-    renderComms();
-    renderWarmup();
-    renderLogHistory();
+    // 同样逐项隔离，和 initToolbox 保持一致
+    [['体育游戏库', renderGames], ['家校话术库', renderComms], ['训练标准化手册', renderWarmup],
+     ['跳绳课周计划', renderRopePlan], ['课堂打卡记录', renderLogHistory]]
+        .forEach(([label, fn]) => {
+            try { fn(); } catch (e) { console.error('工具箱渲染失败[' + label + ']:', e); }
+        });
+}
+
+// ---------- 跳绳课周计划 ----------
+function renderRopePlan() {
+    const el = document.getElementById('ropePlanContent');
+    if (!el) return;
+    if (typeof ROPE_PLAN === 'undefined' || !ROPE_PLAN) {
+        el.innerHTML = '<p style="color:#999;font-size:13px">（周计划数据未加载，请刷新页面重试）</p>';
+        return;
+    }
+    const p = ROPE_PLAN;
+    let html = `<div class="rope-head">
+        <h3>${esc(p.meta.title)}</h3>
+        <p class="rope-sub">${esc(p.meta.sub)}</p>
+        <div class="rope-tags">${p.meta.tags.map(t => `<span>${esc(t)}</span>`).join('')}</div>
+        <div class="rope-toolbar">
+            <button class="btn" onclick="copyRopePlan()">📋 复制计划</button>
+            <button class="btn btn-outline" onclick="printRopePlan()">🖨️ 打印 / 导出PDF</button>
+        </div>
+    </div>
+    <div class="rope-notes"><b>⚠️ 用之前先看这 ${p.notes.length} 条</b>
+        <ul>${p.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul></div>`;
+
+    p.weeks.forEach(w => {
+        html += `<div class="rope-week">
+            <div class="rope-week-head">
+                <span class="rope-wk">${esc(w.week)}</span>
+                <span class="rope-theme">${esc(w.theme)}</span>
+            </div>
+            <div class="rope-goal">🎯 ${esc(w.goal)}</div>
+            <table class="rope-tbl">
+                <thead><tr>
+                    <th style="width:38px">#</th>
+                    <th>练习内容</th>
+                    <th style="width:230px">时间 / 组数 / 休息</th>
+                </tr></thead><tbody>` +
+                w.drills.map((d, i) => `<tr>
+                    <td>${i + 1}</td>
+                    <td>${esc(d.name)}</td>
+                    <td class="rope-sets">${esc(d.sets)}</td>
+                </tr>`).join('') +
+                `</tbody></table>`;
+        if (w.advanced && w.advanced !== '—') {
+            html += `<div class="rope-adv">🚀 进阶挑战（180+ 组）：${esc(w.advanced)}</div>`;
+        }
+        html += `</div>`;
+    });
+
+    el.innerHTML = html;
+}
+
+function ropePlanToText() {
+    const p = ROPE_PLAN;
+    let t = `${p.meta.title}\n${p.meta.sub}\n\n【注意事项】\n` +
+        p.notes.map((n, i) => `  ${i + 1}. ${n}`).join('\n') + '\n';
+    p.weeks.forEach(w => {
+        t += `\n【${w.week} ${w.theme}】\n目标：${w.goal}\n`;
+        w.drills.forEach((d, i) => { t += `  ${i + 1}. ${d.name}  ${d.sets}\n`; });
+        if (w.advanced && w.advanced !== '—') t += `  进阶挑战：${w.advanced}\n`;
+    });
+    return t;
+}
+
+function copyRopePlan() {
+    copyText(ropePlanToText());
+}
+
+function printRopePlan() {
+    const p = ROPE_PLAN;
+    let body = `<h3 style="text-align:center;margin:0 0 4px">${esc(p.meta.title)}</h3>
+        <p style="text-align:center;color:#555;font-size:12px;margin:0 0 4px">${esc(p.meta.sub)}</p>
+        <p style="text-align:center;color:#777;font-size:12px;margin:0 0 12px">${esc(p.meta.tags.join(' ｜ '))}</p>
+        <div style="background:#FFF3E0;border:1px solid #FFE0B2;border-radius:6px;padding:8px 12px;font-size:12px;color:#E65100;margin-bottom:14px">
+        <b>注意事项</b><ul style="margin:4px 0 0 18px">${p.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul></div>`;
+    p.weeks.forEach(w => {
+        body += `<div style="page-break-inside:avoid;margin-bottom:12px">
+            <h4 style="margin:0 0 4px;color:#1565C0">${esc(w.week)} ${esc(w.theme)}</h4>
+            <p style="font-size:12px;color:#444;margin:0 0 4px">🎯 ${esc(w.goal)}</p>
+            <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="background:#E8F5E9">
+                <th style="border:1px solid #ccc;padding:5px;text-align:left;width:30px">#</th>
+                <th style="border:1px solid #ccc;padding:5px;text-align:left">练习内容</th>
+                <th style="border:1px solid #ccc;padding:5px;text-align:left;width:200px">时间 / 组数 / 休息</th>
+            </tr></thead><tbody>` +
+            w.drills.map((d, i) => `<tr>
+                <td style="border:1px solid #ccc;padding:5px">${i + 1}</td>
+                <td style="border:1px solid #ccc;padding:5px">${esc(d.name)}</td>
+                <td style="border:1px solid #ccc;padding:5px;white-space:nowrap">${esc(d.sets)}</td>
+            </tr>`).join('') +
+            `</tbody></table>`;
+        if (w.advanced && w.advanced !== '—') {
+            body += `<p style="font-size:12px;color:#1565C0;margin:4px 0 0">🚀 进阶挑战（180+ 组）：${esc(w.advanced)}</p>`;
+        }
+        body += `</div>`;
+    });
+    const html = `<html><head><meta charset="utf-8"><title>${esc(p.meta.title)}</title>
+        <style>body{font-family:'Microsoft YaHei',sans-serif;padding:22px;color:#222;line-height:1.55}
+        @media print{body{padding:0}}</style></head><body>${body}<script>window.onload=function(){window.print();}<\/script></body></html>`;
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
 }
 
 // ---------- 训练计划生成器 ----------
@@ -2779,11 +3083,9 @@ let entrySelectedStudent = null;
 let entryMode = 'existing'; // 'existing' or 'new'
 
 function openEntryModal() {
-    // Populate class selector
+    // Populate class selector（年级 → 班级 两级分组）
     const classSelect = document.getElementById('entryClass');
-    classSelect.innerHTML = Object.keys(appData.students).map(cls => 
-        `<option value="${cls}" ${cls === appData.currentClass ? 'selected' : ''}>${cls}</option>`
-    ).join('');
+    fillClassSelectGrouped(classSelect, appData.currentClass, { withCount: true });
     
     // Reset form
     document.getElementById('entryStudentSearch').value = '';
@@ -3013,10 +3315,9 @@ function getNameInitials(name) {
 }
 
 function openQuickEntry() {
+    // 班级下拉：年级 → 班级 两级分组
     const classSelect = document.getElementById('qeClass');
-    classSelect.innerHTML = Object.keys(appData.students).map(cls =>
-        `<option value="${cls}" ${cls === appData.currentClass ? 'selected' : ''}>${cls}</option>`
-    ).join('');
+    fillClassSelectGrouped(classSelect, appData.currentClass, { withCount: true });
 
     // Build project pills
     const projects = ['run50', 'skipRope', 'sitReach', 'sitUps'];
@@ -3228,15 +3529,86 @@ function exportRoster() {
 
 // ===== Student Management Page =====
 function renderStudentMgmt() {
-    const select = document.getElementById('deleteClassSelect');
-    if (!select) return;
     const classes = Object.keys(appData.students);
-    select.innerHTML = classes.map(c => `<option value="${c}">${c}</option>`).join('');
-    if (classes.length === 0) {
-        select.innerHTML = '<option value="">（暂无班级数据）</option>';
-    }
+    const opt = { withCount: true, emptyText: '（暂无班级数据）' };
+    // 删除班级数据：班级下拉
+    fillClassSelectGrouped(document.getElementById('deleteClassSelect'), appData.currentClass, opt);
+    // 新增学生：班级下拉
+    fillClassSelectGrouped(document.getElementById('addStudentClass'), appData.currentClass, opt);
+    // 导出上报数据：班级下拉（默认选中当前班级）
+    fillClassSelectGrouped(document.getElementById('uploadClassSelect'), appData.currentClass, opt);
+    // 删除学生：班级下拉 + 联动学生下拉
+    const delCls = document.getElementById('delStudentClass');
+    fillClassSelectGrouped(delCls, appData.currentClass, opt);
+    if (delCls) onDelStudentClassChange();
     const bk = document.getElementById('backupArea');
     if (bk) bk.style.display = classes.length ? 'flex' : 'none';
+}
+
+// 删除学生：班级切换时刷新学生下拉
+function onDelStudentClassChange() {
+    const delCls = document.getElementById('delStudentClass');
+    const delStu = document.getElementById('delStudentSelect');
+    if (!delCls || !delStu) return;
+    const cls = delCls.value;
+    const list = appData.students[cls] || [];
+    if (list.length === 0) {
+        delStu.innerHTML = '<option value="">（该班暂无学生）</option>';
+        return;
+    }
+    delStu.innerHTML = list.map(s => `<option value="${s.no}">${s.no} - ${s.name}</option>`).join('');
+}
+
+// 新增学生：在选定班级添加一名新学生
+function addStudentToClass() {
+    const clsSel = document.getElementById('addStudentClass');
+    const nameInput = document.getElementById('addStudentName');
+    const genderSel = document.getElementById('addStudentGender');
+    const cls = clsSel ? clsSel.value : '';
+    const name = nameInput ? nameInput.value.trim() : '';
+    const gender = genderSel ? genderSel.value : '男';
+    if (!cls) { showToast('请先选择班级', 'error'); return; }
+    if (!name) { showToast('请输入学生姓名', 'error'); return; }
+    if (!appData.students[cls]) appData.students[cls] = [];
+    const students = appData.students[cls];
+    if (students.find(s => s.name === name)) {
+        showToast('「' + name + '」已在该班级中存在', 'error');
+        return;
+    }
+    const maxNo = students.reduce((max, s) => Math.max(max, s.no || 0), 0);
+    students.push({
+        no: maxNo + 1,
+        name: name,
+        gender: gender,
+        height: null, weight: null, lung: null,
+        run50: null, skipRope: null, sitReach: null, sitUps: null,
+        excused: false,
+    });
+    saveAppData();
+    initRoster(); initAnalysis(); initHomeStats();
+    renderRoster(); renderStudentMgmt();
+    if (nameInput) nameInput.value = '';
+    showToast('已添加「' + name + '」到【' + cls + '】', 'success');
+}
+
+// 删除学生：从选定班级删除某位学生
+function deleteStudentFromClass(e) {
+    if (e && e.stopPropagation) e.stopPropagation();
+    const delCls = document.getElementById('delStudentClass');
+    const delStu = document.getElementById('delStudentSelect');
+    const cls = delCls ? delCls.value : '';
+    const no = delStu ? delStu.value : '';
+    if (!cls || !appData.students[cls]) { showToast('请先选择班级', 'error'); return; }
+    if (!no) { showToast('请选择要删除的学生', 'error'); return; }
+    const list = appData.students[cls];
+    const stu = list.find(s => String(s.no) === String(no));
+    if (!stu) { showToast('未找到该学生', 'error'); return; }
+    if (!window.confirm('确定要删除【' + cls + '】的「' + stu.name + '」吗？\n该学生的成绩与历史记录将被永久删除，不可恢复！')) return;
+    appData.students[cls] = list.filter(s => String(s.no) !== String(no));
+    saveAppData();
+    initRoster(); initAnalysis(); initHomeStats();
+    renderRoster(); renderStudentMgmt();
+    showToast('已删除「' + stu.name + '」', 'success');
 }
 
 // 导入新数据：复用侧边栏已有的文件选择框
@@ -3245,25 +3617,83 @@ function triggerImport() {
     if (input) input.click();
 }
 
-// 模板下载：生成含表头的 Excel 空模板
-// 模板下载：生成含「班级」列的国家体测网格式空模板
-function downloadTemplate() {
-    const classes = Object.keys(appData.students);
-    const header = ['年级编号', '班级编号', '班级名称', '学籍号', '姓名', '性别', '出生日期', '身高(cm)', '体重(kg)', '肺活量(ml)', '50米跑(秒)', '坐位体前屈(cm)', '一分钟跳绳(次)', '一分钟仰卧起坐(次)', '50米×8往返跑(秒)'];
+function templateDateStr() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+// 模板一：精简学生名单 —— 只有「年级 / 班级 / 姓名 / 性别」4 列，开学先建档用
+function downloadNameListTemplate() {
+    const header = ['年级（如2024级）', '班级', '姓名', '性别'];
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([header]);
-    // 示例行：班级与姓名填写即可，分数留空；性别用 1=男 / 2=女
-    const sampleCls = classes.length ? classes[0] : '小学2024级1班';
-    const examples = [
-        ['12', '2024101', sampleCls, '', '张三', '1', '2016-09-01', '', '', '', '', '', '', '', ''],
-        ['12', '2024101', sampleCls, '', '李四', '2', '2016-10-12', '', '', '', '', '', '', '', ''],
-    ];
-    XLSX.utils.sheet_add_aoa(ws, examples, { origin: 'A2' });
-    ws['!cols'] = header.map(h => ({ wch: Math.max(8, h.length * 2) }));
-    XLSX.utils.book_append_sheet(wb, ws, '体测录入模板');
-    XLSX.writeFile(wb, `学生体测录入模板_${new Date().toLocaleDateString()}.xlsx`);
-    showToast('模板已下载（含「班级名称/班级编号」列），填写后可通过「导入新数据」上传', 'success');
+    XLSX.utils.sheet_add_aoa(ws, [
+        ['2024级', '1', '张三', '男'],
+        ['2024级', '1', '李四', '女'],
+        ['2024级', '2', '王五', '男'],
+    ], { origin: 'A2' });
+    ws['!cols'] = [{ wch: 20 }, { wch: 10 }, { wch: 14 }, { wch: 10 }];
+    XLSX.utils.book_append_sheet(wb, ws, '学生名单');
+
+    const tips = XLSX.utils.aoa_to_sheet([
+        ['📋 学生名单模板 · 填写说明'],
+        [''],
+        ['1. 「年级」填入学年份，写 2024级 或 2024 都行；系统会自己算出现在是几年级。'],
+        ['2. 「班级」只填数字，例如 1、2、3。年级+班级会自动拼成标准班名（如 小学2024级1班）。'],
+        ['3. 「性别」填 男 / 女，或者 1=男、2=女，都能识别。'],
+        ['4. 一个表可以写很多个班，导入时会自动按班分组。'],
+        ['5. 这份模板只建档、不含成绩。成绩以后用「体测成绩模板」导入，或直接在工作台里录。'],
+        ['6. 重复导入不会清掉已有成绩：同名学生只会补上新填的信息。'],
+        [''],
+        ['⚠ 小贴士：第一行表头不要改，也不要删。'],
+    ]);
+    tips['!cols'] = [{ wch: 66 }];
+    XLSX.utils.book_append_sheet(wb, tips, '填写说明');
+
+    XLSX.writeFile(wb, `学生名单模板_${templateDateStr()}.xlsx`);
+    showToast('名单模板已下载（4列：年级 / 班级 / 姓名 / 性别）', 'success');
 }
+
+// 模板二：体测成绩 —— 国家体测网标准 21 列，录完成绩后导入
+function downloadTestTemplate() {
+    const header = ['年级编号', '班级编号', '班级名称', '学籍号', '民族代码', '姓名', '性别', '出生日期',
+        '家庭住址', '身高', '体重', '肺活量', '50米跑', '坐位体前屈', '一分钟跳绳', '一分钟仰卧起坐',
+        '50米×8往返跑', '立定跳远', '800米跑', '1000米跑', '引体向上'];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([header]);
+
+    const classes = Object.keys(appData.students);
+    const sampleCls = classes.length ? classes[0] : '小学2023级1班';
+    const num = sampleCls.match(/(\d+)班?$/);
+    const classNo = num ? num[1] : '1';
+    XLSX.utils.sheet_add_aoa(ws, [
+        ['14', '2023' + classNo, sampleCls, '', '01', '张三', '1', '2016-09-01', '', '143', '36', '1800', '9.2', '12', '120', '30', '', '', '', '', ''],
+        ['14', '2023' + classNo, sampleCls, '', '01', '李四', '2', '2016-10-12', '', '141', '34', '1700', '9.6', '14', '115', '28', '', '', '', '', ''],
+    ], { origin: 'A2' });
+    ws['!cols'] = header.map(h => ({ wch: Math.max(8, h.length * 2.2) }));
+    XLSX.utils.book_append_sheet(wb, ws, '体测录入模板');
+
+    const tips = XLSX.utils.aoa_to_sheet([
+        ['📊 体测成绩模板 · 填写说明'],
+        [''],
+        ['1. 这是国家体测网的标准格式，从体测网导出的表格通常可以直接用。'],
+        ['2. 「班级名称」最重要，写完整班名（如 小学2023级1班）；没有它就用工作表名分组。'],
+        ['3. 「年级编号」对照：11=一年级 12=二年级 13=三年级 14=四年级 15=五年级 16=六年级。'],
+        ['4. 「性别」：1=男，2=女。'],
+        ['5. 成绩单位：身高cm / 体重kg / 肺活量ml / 50米跑秒 / 体前屈cm / 跳绳次 / 仰卧起坐次。'],
+        ['6. 没有的项目留空即可，不会覆盖已有数据。'],
+        [''],
+        ['⚠ 只导入名单不带成绩的话，请用「学生名单模板（精简）」，更省事。'],
+    ]);
+    tips['!cols'] = [{ wch: 66 }];
+    XLSX.utils.book_append_sheet(wb, tips, '填写说明');
+
+    XLSX.writeFile(wb, `学生体测录入模板_${templateDateStr()}.xlsx`);
+    showToast('体测模板已下载（21列国家体测网格式）', 'success');
+}
+
+// 兼容旧入口：统一导向精简名单模板
+function downloadTemplate() { downloadNameListTemplate(); }
 
 // 删除班级全部数据
 function deleteClassData(e) {
@@ -3299,16 +3729,70 @@ function deleteClassData(e) {
     showToast(`已删除【${cls}】全部数据`, 'success');
 }
 
+// ===== 精简班级：只保留指定年级（其余年级班级全部删除） =====
+// 典型场景：本学年只带四年级，把三/五/六年级及初中的班级清掉，界面更清爽。
+// 目标年级学生的体测成绩原样保留，不做任何重算或覆盖。
+function slimToTargetGrade(e) {
+    if (e) e.stopPropagation();
+    const sel = document.getElementById('slimGradeSelect');
+    const target = sel ? parseInt(sel.value, 10) : 4;
+    const all = Object.keys(appData.students);
+    if (!all.length) { showToast('当前没有任何班级数据', 'error'); return; }
+
+    const keepCls = all.filter(k => gradeOfClass(k) === target);
+    const dropCls = all.filter(k => gradeOfClass(k) !== target);
+    if (!dropCls.length) { showToast(`当前已只有${target}年级的班级，无需精简`, ''); return; }
+    if (!keepCls.length) { showToast(`未找到${target}年级班级，请确认班级数据`, 'error'); return; }
+
+    const keepN = keepCls.reduce((a, k) => a + (appData.students[k] || []).length, 0);
+    const dropN = dropCls.reduce((a, k) => a + (appData.students[k] || []).length, 0);
+    const gradeTxt = keepCls.length ? `${target}年级 ${keepCls.length} 个班 / ${keepN} 人` : '';
+
+    const c1 = window.confirm(
+        `确定只保留【${target}年级】吗？\n\n` +
+        `将删除其它 ${dropCls.length} 个班、共 ${dropN} 名学生的数据；\n` +
+        `保留 ${gradeTxt}（体测成绩不受影响）。\n\n` +
+        `⚠️ 建议先在「数据备份与恢复」导出备份！此操作不可撤销。`
+    );
+    if (!c1) return;
+    const c2 = window.confirm(`再次确认：删除这 ${dropCls.length} 个班的全部数据？此操作不可撤销。`);
+    if (!c2) return;
+
+    dropCls.forEach(k => { delete appData.students[k]; });
+    if (!appData.students[appData.currentClass]) appData.currentClass = keepCls[0];
+    saveAppData();
+
+    // 刷新所有相关模块
+    initRoster();
+    initAnalysis();
+    initHomeStats();
+    renderRoster();
+    renderStudentMgmt();
+    try { populateSeGradeClass(); } catch (err) { /* 未进入录入页时忽略 */ }
+
+    showToast(`已精简：删除 ${dropCls.length} 个班 / ${dropN} 人，保留 ${gradeTxt}`, 'success');
+}
+
 // ===== Excel Import =====
 function initExcelImport() {
-    document.getElementById('excelImport').addEventListener('change', handleExcelImport);
+    const el = document.getElementById('excelImport');
+    if (!el) { console.error('未找到 #excelImport 文件选择框'); return; }
+    el.addEventListener('change', handleExcelImport);
 }
 
 function handleExcelImport(e) {
-    const file = e.target.files[0];
+    const file = e.target.files && e.target.files[0];
     if (!file) return;
 
+    // Excel 解析库（CDN）没加载成功时，明确提示而不是静默失败
+    if (typeof XLSX === 'undefined') {
+        showToast('Excel 解析组件未加载成功，请检查网络后刷新页面重试', 'error');
+        return;
+    }
+
+    const input = e.target;
     const reader = new FileReader();
+    reader.onerror = () => showToast('文件读取失败，请重新选择文件', 'error');
     reader.onload = (ev) => {
         try {
             const data = new Uint8Array(ev.target.result);
@@ -3328,11 +3812,18 @@ function handleExcelImport(e) {
                     const name = (row[colMap.name] != null) ? String(row[colMap.name]).trim() : '';
                     if (!name) continue;
 
-                    // 班级：优先 班级名称 → 班级编号 → 班级；都没有则退回工作表名（避免全班塞进一个班级）
+                    // 班级：优先 班级名称 → 班级编号 → 「年级届 + 班级」组合 ↴
+                    // 都没有则退回工作表名（避免全班塞进一个班级）
                     let cls = null;
                     if (colMap.className != null && row[colMap.className] != null && String(row[colMap.className]).trim() !== '') cls = String(row[colMap.className]).trim();
                     else if (colMap.classNo != null && row[colMap.classNo] != null && String(row[colMap.classNo]).trim() !== '') cls = String(row[colMap.classNo]).trim();
-                    else if (colMap.classCol != null && row[colMap.classCol] != null && String(row[colMap.classCol]).trim() !== '') cls = String(row[colMap.classCol]).trim();
+                    else if (colMap.classCol != null && row[colMap.classCol] != null && String(row[colMap.classCol]).trim() !== '') {
+                        cls = composeClassName(
+                            colMap.cohort != null ? row[colMap.cohort] : '',
+                            row[colMap.classCol],
+                            sheetName
+                        );
+                    }
                     if (!cls) cls = sheetName;
 
                     // 年级：优先按班级名中的入学年届推算（2026-09 当前学年）；无届则回退 年级编号
@@ -3414,7 +3905,41 @@ function handleExcelImport(e) {
         }
     };
     reader.readAsArrayBuffer(file);
-    e.target.value = '';
+    // 清空 input，保证同一个文件可以再次选择并触发 change
+    input.value = '';
+}
+
+// 把「年级届 + 班级」拼成标准班名（精简名单模板用）
+// 例：'2024级' + '1'  →  小学2024级1班   （2026-09 学年算作三年级）
+function composeClassName(cohortRaw, classRaw, fallback) {
+    const coh = String(cohortRaw == null ? '' : cohortRaw).trim();
+    const cls = String(classRaw == null ? '' : classRaw).trim();
+    if (!coh) return cls || fallback;
+
+    // 1) 入学年届：2024级 / 2024 / 小学2024级 / 24级
+    const ym = coh.match(/(\d{4})/) || coh.match(/(?<!\d)(\d{2})(?=\D*$)/);
+    let year = null;
+    if (ym) {
+        let y = parseInt(ym[1], 10);
+        if (y >= 0 && y <= 99) y = 2000 + y;         // 24 → 2024
+        if (y >= 1950 && y <= 2100) year = y;
+    }
+    // 2) 中文年级：三年级 / 四 → 反推入学年届
+    if (year == null) {
+        const cnMap = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9 };
+        const m = coh.match(/^([一二三四五六七八九])年?级?$/);
+        if (m) {
+            const g = cnMap[m[1]];
+            if (g >= 1 && g <= 6) year = REF_SCHOOL_YEAR - (g - 1);      // 小学 1 年级入学
+            else if (g >= 7 && g <= 9) year = REF_SCHOOL_YEAR - (g - 7); // 初中 7 年级入学
+        }
+    }
+    if (year == null) return cls || fallback;
+    if (!cls) return '小学' + year + '级';
+
+    const nm = cls.match(/\d+/);
+    const num = nm ? nm[0] : cls.replace(/\D/g, '');
+    return '小学' + year + '级' + num + '班';
 }
 
 function parseHeaderRow(header) {
@@ -3427,6 +3952,7 @@ function parseHeaderRow(header) {
         else if (s === '班级' || (s.includes('班级') && !map.classCol && map.className == null)) map.classCol = i;
         else if (s.includes('学籍号') || s.includes('学号')) map.sid = i;
         else if (s.includes('年级编号')) map.gradeNo = i;
+        else if (s.includes('年级')) map.cohort = i;   // 「年级（如2024级）」这类填入学届的列
         else if (s.includes('出生日期') || s.includes('出生') || s.includes('生日')) map.birth = i;
         else if (s.includes('序号') || (s.includes('编号') && s.includes('学'))) map.no = i;
         else if (s.includes('姓名') || s.includes('名字')) map.name = i;
