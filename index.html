@@ -1,1197 +1,794 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-page-node-id="n0qckyCl12Gj7KiBCBSAIF">
-<head data-page-node-id="R19ZEjSlxZJnPQcQVdcWKJ">
-<meta charset="UTF-8" data-page-node-id="9KHcvEE99Fv3wdVXnaiuDn">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" data-page-node-id="BPSE0e5wK86i39758QygiL">
-<title>室内体育大屏工作台</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;}
-:root{
-  --bg:#14162B;--card:#1E2140;--card2:#232647;--border:#3A3F6E;--deep:#0E1022;
-  --text:#FFFFFF;--muted:#9EA3C7;--dim:#C9CDEB;
-  --coral:#F0997B;--teal:#5DCAA5;--blue:#85B7EB;--pink:#ED93B1;--amber:#FAC775;--red:#E24B4A;--green:#4CAF6D;
-}
-html,body{height:100%;overflow:hidden;}
-body{background:var(--bg);color:var(--text);font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif;}
-button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
-input,textarea{font-family:inherit;}
-#topbar{position:fixed;top:0;left:0;right:0;height:64px;background:var(--deep);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:100;}
-#topbar .tb-left{display:flex;align-items:center;gap:16px;min-width:0;}
-#btnHome{background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--dim);font-size:17px;padding:9px 18px;}
-#pageTitle{font-size:20px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.tb-right{display:flex;gap:10px;}
-.tb-icon{background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--dim);font-size:15px;padding:9px 14px;white-space:nowrap;}
-.tb-icon.off{color:var(--muted);opacity:.6;}
-.page{position:fixed;top:64px;left:0;right:0;bottom:0;display:none;flex-direction:column;overflow:auto;padding:22px;}
-.page.active{display:flex;}
-.page-pad{max-width:1100px;width:100%;margin:0 auto;}
-.home-head{text-align:center;margin-bottom:20px;}
-.home-head .cls{font-size:clamp(22px,3vw,32px);font-weight:500;}
-.home-head .sub{color:var(--muted);font-size:15px;margin-top:6px;}
-.cls-picker{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;margin:2px 0 14px;}
-.cp-label{color:var(--muted);font-size:17px;}
-.cp-row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
-.cp-btn{background:var(--card2);border:2px solid var(--border);border-radius:14px;color:var(--dim);font-size:21px;padding:13px 22px;display:inline-flex;align-items:center;justify-content:center;transition:transform .12s;}
-.cp-btn:active{transform:scale(.96);opacity:.85;}
-.cp-btn.sel{border-color:var(--teal);color:var(--teal);}
-.cp-mini{background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--teal);font-size:15px;padding:8px 18px;}
-.cp-mini:active{opacity:.8;}
-.home-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;flex:1;align-content:center;}
-.home-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:26px 24px;display:flex;flex-direction:column;gap:8px;text-align:left;transition:transform .12s;}
-.home-card:active{transform:scale(.97);}
-.home-card .hc-name{font-size:clamp(20px,2.4vw,28px);font-weight:500;}
-.home-card .hc-desc{color:var(--muted);font-size:15px;line-height:1.5;}
-.home-card.c-coral{border-top:4px solid var(--coral);}
-.home-card.c-teal{border-top:4px solid var(--teal);}
-.home-card.c-blue{border-top:4px solid var(--blue);}
-.home-card.c-pink{border-top:4px solid var(--pink);}
-.home-card.c-amber{border-top:4px solid var(--amber);}
-.home-card.c-red{border-top:4px solid var(--red);}
-.sec-title{font-size:18px;color:var(--dim);margin:0 0 14px;font-weight:500;}
-.chal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
-.chal-item{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:18px 16px;text-align:center;transition:border-color .15s;}
-.chal-item .ci-name{font-size:20px;font-weight:500;}
-.chal-item .ci-dur{color:var(--muted);font-size:14px;margin-top:6px;}
-.chal-item .ci-tip{color:var(--muted);font-size:12px;margin-top:4px;line-height:1.4;}
-.chal-item.sel{border-color:var(--coral);background:#2A2438;}
-.dur-row{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0;}
-.dur-btn,.broad-btn{background:var(--card2);border:2px solid var(--border);border-radius:12px;color:var(--dim);font-size:18px;padding:12px 22px;}
-.dur-btn.sel{border-color:var(--amber);color:var(--amber);}
-.broad-btn.primary{background:var(--coral);border-color:var(--coral);color:#3A1E12;font-size:22px;font-weight:500;padding:16px 40px;}
-.broad-btn.ghost{font-size:16px;padding:12px 26px;}
-.broad-btn:active{opacity:.8;}
-.chal-stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;}
-.stage-project{font-size:clamp(28px,4vw,46px);font-weight:500;}
-.stage-time{font-size:clamp(110px,20vw,260px);font-weight:500;line-height:1;font-variant-numeric:tabular-nums;}
-.stage-time.warn{color:var(--red);}
-.stage-count{font-size:clamp(140px,26vw,320px);font-weight:500;line-height:1;}
-.stage-bar{width:min(80%,640px);height:14px;background:var(--card2);border-radius:7px;overflow:hidden;}
-.stage-bar .fill{height:100%;background:var(--coral);border-radius:7px;transition:width .3s linear;}
-.stage-done{font-size:clamp(40px,7vw,80px);font-weight:500;color:var(--teal);}
-.stage-tip{color:var(--muted);font-size:18px;}
-.wheel-tabs{display:flex;gap:10px;margin-bottom:18px;}
-.wheel-tab{background:var(--card2);border:2px solid var(--border);border-radius:12px;color:var(--muted);font-size:17px;padding:10px 24px;}
-.wheel-tab.sel{border-color:var(--teal);color:var(--teal);}
-.wheel-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
-#wheelBox{position:relative;width:min(56vh,86vw,520px);}
-#wheelBox svg{width:100%;height:auto;display:block;}
-#wheelG{transform-origin:150px 150px;}
-.wheel-pointer{position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:16px solid transparent;border-right:16px solid transparent;border-top:30px solid #fff;filter:drop-shadow(0 2px 2px rgba(0,0,0,.4));}
-.wheel-result{min-height:90px;display:flex;flex-direction:column;align-items:center;gap:6px;}
-.wheel-result .wr-label{color:var(--muted);font-size:17px;}
-.wheel-result .wr-name{font-size:clamp(40px,7vw,72px);font-weight:500;color:var(--amber);}
-.slot-face{background:var(--deep);border:2px solid var(--border);border-radius:20px;width:min(90vw,700px);height:200px;display:flex;align-items:center;justify-content:center;overflow:hidden;}
-.slot-name{font-size:clamp(50px,9vw,96px);font-weight:500;color:var(--amber);white-space:nowrap;}
-.slot-info{color:var(--muted);font-size:16px;}
-.slot-picked{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:900px;}
-.picked-chip{background:var(--card2);border:1px solid var(--border);border-radius:999px;color:var(--dim);font-size:14px;padding:5px 14px;}
-.picked-chip.done{color:var(--teal);border-color:var(--teal);}
-.score-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;flex:1;align-content:center;}
-.team-card{background:var(--card);border:2px solid var(--border);border-radius:18px;padding:20px;display:flex;flex-direction:column;align-items:center;gap:12px;}
-.team-card.t-red{border-color:#7A3535;}
-.team-card.t-blue{border-color:#3A4E7A;}
-.team-card.t-yellow{border-color:#7A6635;}
-.team-card.t-green{border-color:#35704A;}
-.team-card.lead{box-shadow:inset 0 0 0 2px currentColor;}
-.team-name{font-size:20px;font-weight:500;color:var(--dim);}
-.team-card.t-red .team-name{color:#F0997B;}
-.team-card.t-blue .team-name{color:#85B7EB;}
-.team-card.t-yellow .team-name{color:#FAC775;}
-.team-card.t-green .team-name{color:#5DCAA5;}
-.team-score{font-size:clamp(60px,8vw,110px);font-weight:500;line-height:1;font-variant-numeric:tabular-nums;}
-.team-btns{display:flex;gap:10px;}
-.tb-btn{width:72px;height:56px;border-radius:12px;background:var(--card2);border:1px solid var(--border);font-size:24px;color:var(--dim);}
-.tb-btn.minus{color:var(--red);}
-.tb-btn.plus{color:var(--teal);}
-.beat-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
-.beat-eighth{color:var(--muted);font-size:clamp(18px,2.4vw,24px);}
-.beat-eighth b{color:var(--amber);font-weight:500;}
-.beat-num{font-size:clamp(120px,20vw,240px);font-weight:500;line-height:1;}
-.beat-dots{display:flex;gap:14px;}
-.bdot{width:20px;height:20px;border-radius:50%;background:var(--card2);border:1px solid var(--border);}
-.bdot.on{background:var(--teal);border-color:var(--teal);}
-.beat-ctrl{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:center;}
-.bpm-box{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 16px;}
-.bpm-box .bpm-val{font-size:26px;font-weight:500;min-width:74px;text-align:center;color:var(--amber);}
-.bpm-box button{font-size:22px;color:var(--dim);background:var(--card2);border-radius:8px;width:44px;height:44px;}
-.game-tabs{display:flex;gap:10px;margin-bottom:18px;}
-.game-area{flex:1;display:flex;flex-direction:column;}
-.tl-face{flex:1;min-height:340px;border-radius:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:var(--card);border:2px solid var(--border);transition:background .25s;}
-.tl-face.g{background:#1D5E3A;border-color:var(--teal);}
-.tl-face.r{background:#6E2222;border-color:var(--red);}
-.tl-word{font-size:clamp(80px,16vw,190px);font-weight:500;line-height:1;}
-.tl-face.g .tl-word{color:#B8F2D6;}
-.tl-face.r .tl-word{color:#F5C1C1;}
-.tl-sub{font-size:20px;color:rgba(255,255,255,.85);}
-.arrow-face{flex:1;min-height:340px;border-radius:20px;background:var(--deep);border:2px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
-.arrow-big{font-size:clamp(120px,22vw,260px);font-weight:500;line-height:1;color:var(--amber);}
-.arrow-act{color:var(--muted);font-size:clamp(18px,2.4vw,26px);}
-.speed-row{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0;}
-.speed-btn{background:var(--card2);border:2px solid var(--border);border-radius:12px;color:var(--muted);font-size:17px;padding:10px 20px;}
-.speed-btn.sel{border-color:var(--pink);color:var(--pink);}
-.plan-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px 24px;margin-bottom:18px;}
-.plan-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
-.plan-name{font-size:22px;font-weight:500;}
-.plan-tag{border-radius:999px;font-size:13px;padding:5px 14px;}
-.flow-list{display:flex;flex-direction:column;gap:0;}
-.flow-step{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px dashed var(--border);}
-.flow-step:last-child{border-bottom:none;}
-.flow-time{min-width:86px;text-align:center;background:var(--deep);border-radius:10px;padding:8px 6px;font-size:16px;color:var(--amber);font-variant-numeric:tabular-nums;}
-.flow-body{flex:1;}
-.flow-name{font-size:17px;font-weight:500;}
-.flow-desc{color:var(--muted);font-size:14px;margin-top:3px;}
-.flow-go{background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--dim);font-size:14px;padding:8px 14px;white-space:nowrap;}
-.modal-mask{position:fixed;inset:0;background:rgba(6,7,16,.72);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;}
-.modal-mask.show{display:flex;}
-.modal{background:var(--card);border:1px solid var(--border);border-radius:18px;width:min(94vw,560px);max-height:86vh;overflow:auto;padding:26px;}
-.modal h3{font-size:20px;margin-bottom:18px;font-weight:500;}
-.form-row{margin-bottom:18px;}
-.form-row label{display:block;color:var(--dim);font-size:15px;margin-bottom:8px;}
-.form-row input[type=text],.form-row textarea{width:100%;background:var(--deep);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;padding:12px 14px;user-select:text;}
-.form-row textarea{height:180px;resize:vertical;line-height:1.7;}
-.form-row .hint{color:var(--muted);font-size:13px;margin-top:6px;}
-.modal-btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;}
-.toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);background:var(--card2);border:1px solid var(--border);color:var(--dim);border-radius:999px;font-size:16px;padding:12px 26px;z-index:300;display:none;}
-.toast.show{display:block;}
-.center-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
-</style>
+<html lang="zh-CN" data-page-node-id="EyBxjpDklT5SrfmZFlniw7">
+<head data-page-node-id="6srntZBZ7TFmZ0uRBA7kb5">
+    <meta charset="UTF-8" data-page-node-id="l0nMDMIEgqEERK73ZjwJwz">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" data-page-node-id="4VnrGNZ5ZzSHD3MkEFGcdy">
+    <title>大鸿体育工作台</title>
+    <link rel="stylesheet" href="styles.css?v=27" data-page-node-id="r1RERUSfaWVolKtAOIhkwe">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.24.2/dist/index.min.js"></script>
 </head>
-<body data-page-node-id="dhE2ARuuQwGPNwC5fWzrZD">
+<body data-page-node-id="BDBs6FcsXvLBQdh2mc0EtL">
+    <div id="app" data-page-node-id="1zTIp3So5R5wJ3MUihuY9x">
+        <!-- 侧边栏遮罩 -->
+        <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()" data-page-node-id="kPvGQwJuLjawOmO2qFP2JE"></div>
 
-<div id="topbar" data-page-node-id="YsijyjBbjhG9VPEUGCl8Hu">
-  <div class="tb-left" data-page-node-id="EdPoNE5XzVu7huI05IOF17">
-    <button id="btnHome" onclick="goHome()" data-page-node-id="dLkQflifYFS8fuvVhfVbwB">◀ 主页</button>
-    <div id="pageTitle" data-page-node-id="sBKk8EZyzfNqE0JCEUjDNZ">室内体育大屏</div>
-  </div>
-  <div class="tb-right" data-page-node-id="hbxqiRSAJg0ZQfoZ0XYeNp">
-    <button id="btnSound" class="tb-icon" onclick="toggleSound()" data-page-node-id="99bujTCKkhLJ6EdjS98G0z">音效开</button>
-    <button id="btnFull" class="tb-icon" onclick="toggleFull()" data-page-node-id="AH9f9ZRlOSJ4JUoimHeGH1">全屏</button>
-    <button id="btnSettings" class="tb-icon" onclick="openSettings()" data-page-node-id="vF3TaRJrFgQeIPdbnyCzZ4">设置</button>
-  </div>
-</div>
+        <!-- 左侧导航栏 -->
+        <nav class="sidebar" id="sidebar" data-page-node-id="Jqw2uK809zvLZ2chFc1wsQ">
+            <div class="sidebar-header" data-page-node-id="K9EHG7eRwqoIkMeQ7JKjEk">
+                <div class="logo" data-page-node-id="rLhaPT0mRpIYnQ0svx764r">🏟️</div>
+                <div class="title" data-page-node-id="TgzOM7pbg7YXkFlt7SajPP">
+                    <h1 data-page-node-id="NmDEuPeoAJpLBSMk3QvF0Z">体育工作台</h1>
+                    <span class="subtitle" data-page-node-id="e9xR1O1KWdQaKA0hHa00zR">大鸿专用</span>
+                </div>
+            </div>
+            <ul class="nav-list" data-page-node-id="XsBuh8dpTK4LFqagPVX2Id">
+                <li class="nav-item active" data-page="home" data-page-node-id="lYhndciE2pSbgHWpaxyOpL">
+                    <span class="nav-icon" data-page-node-id="Z5Xtq40YunBHLws1fFh9uV">🏠</span>
+                    <span class="nav-text" data-page-node-id="DLMJasmCWYzsM9uxe3MkVv">首页</span>
+                </li>
+                <li class="nav-item" data-page="roster" data-page-node-id="UkBKTQhj03AWLJrH5gECT3">
+                    <span class="nav-icon" data-page-node-id="1L7uRcCDIlyj4AFKR20ZJ5">👥</span>
+                    <span class="nav-text" data-page-node-id="XeLFQyBx1l9HzSgMNI93sE">学生花名册</span>
+                </li>
+                <li class="nav-item" data-page="analysis" data-page-node-id="ZxeZWGl3tXuaHWSKoj6oyO">
+                    <span class="nav-icon" data-page-node-id="VIius8HpcUXlgzC8CMkbjf">📊</span>
+                    <span class="nav-text" data-page-node-id="9E92CvyAlrrOfYuKaCy1Xk">体测数据管理</span>
+                </li>
+                <li class="nav-item" data-page="scoreentry" data-page-node-id="MG6SpP97yMXrMwo2LKebFq">
+                    <span class="nav-icon" data-page-node-id="ER604rJ9fkG87FKqSOA0dK">📝</span>
+                    <span class="nav-text" data-page-node-id="CjRNV2nTnEi0XRFa1vPmTJ">成绩录入</span>
+                </li>
+                <li class="nav-item" data-page="toolbox" data-page-node-id="e2qvk5iG8aernpO8asOzR6">
+                    <span class="nav-icon" data-page-node-id="OuOaoVQPyziqMK5akuvwMo">🧰</span>
+                    <span class="nav-text" data-page-node-id="GBbfzZ5cTl0X6UJqYN9ulg">教学工具箱</span>
+                </li>
+                <li class="nav-item" data-page="safety" data-page-node-id="HCoTuT8kGKvAQ35dROYxMZ">
+                    <span class="nav-icon" data-page-node-id="Y0rWpg5kEbH3bmbeesmdbj">🛡️</span>
+                    <span class="nav-text" data-page-node-id="71ym78HOsqiNpIp4Jq9MC1">安全应急预案</span>
+                </li>
+                <li class="nav-item" data-page="studentmgmt" data-page-node-id="nxzvZWRy1kGkv6TqmHiIRX">
+                    <span class="nav-icon" data-page-node-id="WMJwM8y8i19G6hvKftIEp8">🗂️</span>
+                    <span class="nav-text" data-page-node-id="ZKoc5mD2DIEy9ou66ZYrdn">学生管理</span>
+                </li>
+            </ul>
+            <div class="sidebar-footer" data-page-node-id="B40y70UwhEgTSRT99MsIZZ">
+                <label class="import-btn" title="导入Excel体测表" data-page-node-id="HYiY6neuACQUn8DRoD128S">
+                    📂 导入Excel
+                    <input type="file" id="excelImport" accept=".xlsx,.xls" style="display:none" data-page-node-id="dYyNa1HgGr1Slsvg75suXu">
+                </label>
+            </div>
+        </nav>
 
-<div id="page-home" class="page active" data-page-node-id="iZYzQ6QG2eysoWSitJwnQ4">
-  <div class="page-pad" style="display:flex;flex-direction:column;flex:1;" data-page-node-id="Gs85aYMm3CKVdMGkYCCb66">
-    <div class="home-head" data-page-node-id="BpgOUvktmWbVBkUJDyIhNF">
-      <div class="cls" id="homeClassName" data-page-node-id="RG5XVl0JZTljftocv3tKwT">四年级1班</div>
-      <div class="sub" data-page-node-id="fIwdzvFidCXfauUpScIsYD">室内体育大屏工作台 · 下雨天也能上出精彩的体育课</div>
-    </div>
-    <div class="cls-picker" data-page-node-id="osLOiDaIPFXfvFrCz7SEQx">
-      <div class="cp-label" data-page-node-id="7sVZOPATPmpjeuYn8BsrhV">🛄 点一下切换上课班级：</div>
-      <div class="cp-row" id="clsRow" data-page-node-id="mUcxmi5J5WcGBARpPikE6n"></div>
-    </div>
-    <div class="home-grid" data-page-node-id="l6ACPzqvDCBtm2mtzKC13u">
-      <button class="home-card c-coral" onclick="showPage('challenge')" data-page-node-id="blLctWG5FbHnYXDB4wxfBP">
-        <div class="hc-name" data-page-node-id="EIYGIbQuO1LDIbhiT6BGjL">⏱ 全班挑战台</div>
-        <div class="hc-desc" data-page-node-id="oyMGxq9yVSHmJPNcU7ANmT">平板支撑、开合跳、深蹲…超大倒计时 + 哨声，全班同时开练</div>
-      </button>
-      <button class="home-card c-teal" onclick="showPage('wheel')" data-page-node-id="RupTEq8MEVgSMBuVWkVqaR">
-        <div class="hc-name" data-page-node-id="NXosJp16eTliy8GWMvb78d">🎡 幸运大转盘</div>
-        <div class="hc-desc" data-page-node-id="hoz1saKPTyARxs3CWuvi4p">转盘随机选项目 · 摇号随机点将，公平又刺激</div>
-      </button>
-      <button class="home-card c-blue" onclick="showPage('score')" data-page-node-id="nEWjdlpECzkphDsvZP0fm4">
-        <div class="hc-name" data-page-node-id="gEKrWkIgri8H2pHVde6neS">🆚 小组计分板</div>
-        <div class="hc-desc" data-page-node-id="HyFo1U3uYndv98qIyLdWbe">红蓝黄绿四队对抗，触屏加减分，纪律积分两不误</div>
-      </button>
-      <button class="home-card c-amber" onclick="showPage('beat')" data-page-node-id="IEOILtobE5goiV2haPmW7H">
-        <div class="hc-name" data-page-node-id="5DQdyAxv9zniEpgUqrBmzU">🎵 节拍跟练台</div>
-        <div class="hc-desc" data-page-node-id="I3PEpW1r6O2dKWkLghRHja">室内操节拍器，4×8拍口令大字，热身课间操直接用</div>
-      </button>
-      <button class="home-card c-pink" onclick="showPage('game')" data-page-node-id="QsEOFIFZfivUid5x3iMmLR">
-        <div class="hc-name" data-page-node-id="pOY64V2aAzCamJ9AsNr0G9">🚦 大屏反应游戏</div>
-        <div class="hc-desc" data-page-node-id="kvuYgc0fnh9VgrWC89IXNE">红绿灯（绿动红停）· 方向快闪，练反应练听口令</div>
-      </button>
-      <button class="home-card c-red" onclick="showPage('plan')" data-page-node-id="LbrFCyu2dim6MlBTuRZyj6">
-        <div class="hc-name" data-page-node-id="mHLysK1bBXJq2uuppAjP46">📋 一键雨天课包</div>
-        <div class="hc-desc" data-page-node-id="PEPOENPgZS6adJBrcrm7HS">3套现成的40分钟室内课流程，跟着屏幕走就行</div>
-      </button>
-    </div>
-  </div>
-</div>
+        <!-- 主内容区 -->
+        <main class="main-content" id="mainContent" data-page-node-id="7PglUsQEgHmIfrVKiMdieg">
+            <!-- 手机端顶部导航 -->
+            <div class="mobile-header" id="mobileHeader" data-page-node-id="GyZdFbvkHGgzlHeoOeA17w">
+                <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="菜单" data-page-node-id="pgksjsy3sTipzvAS0LgC1W">☰</button>
+                <span class="mobile-page-title" id="mobilePageTitle" data-page-node-id="XEAOryFWxChykjfStpMXTB">工作台首页</span>
+            </div>
 
-<div id="page-challenge" class="page" data-page-node-id="FD5S5pS5VCl4Y6FdIHMVlG">
-  <div class="page-pad" style="display:flex;flex-direction:column;flex:1;" data-page-node-id="a8B4kQK2DjiK4d5PN1ACaa">
-    <div id="chalPick" data-page-node-id="2u4CDmGn1hZLDsd4dFTABY">
-      <div class="sec-title" data-page-node-id="bemK4xo0OpRI8gC9RGdHdt">① 选一个挑战项目</div>
-      <div class="chal-grid" id="chalGrid" data-page-node-id="dMNLrBDxgexPvN7IrAlAa1"></div>
-      <div class="sec-title" style="margin-top:22px;" data-page-node-id="U5Pt7yXBojpXTddfAkYdMU">② 选时长（秒）</div>
-      <div class="dur-row" id="durRow" data-page-node-id="8pPIc0yEWpj0Rx5PsP2F5m"></div>
-      <div style="text-align:center;padding:10px 0 30px;" data-page-node-id="OGORPlgmLptjVXMwYJDN9Z">
-        <button class="broad-btn primary" onclick="startChallenge()" data-page-node-id="u4WQ7H2JyF1gB2H79D0i6s">开始挑战</button>
-      </div>
-    </div>
-    <div id="chalStage" class="chal-stage" style="display:none;" data-page-node-id="mSDa9XBtVhgED52v8kf0KF">
-      <div class="stage-project" id="stgProject" data-page-node-id="hhLovd3EXtBGJwrHWRRY3y">平板支撑</div>
-      <div class="stage-time" id="stgTime" data-page-node-id="j1kEr4WBj7Iqt76r79Ty6D">01:00</div>
-      <div class="stage-bar" data-page-node-id="gCEFrI5gyIwHEft6BPyxiY"><div class="fill" id="stgFill" style="width:100%" data-page-node-id="vxYSW09dNIWghF5aDeOUy7"></div></div>
-      <div class="stage-tip" id="stgTip" data-page-node-id="e9cEAd72f4kZrUHNHUXEfg">坚持住！动作标准最重要</div>
-      <button class="broad-btn ghost" onclick="stopChallenge()" data-page-node-id="AjvjRNVZ4G8dTvbvMxWWLq">结束本次</button>
-    </div>
-    <div id="chalCount" class="chal-stage" style="display:none;" data-page-node-id="2hlHny5MRqdlrCtTrZoFA9">
-      <div class="stage-tip" data-page-node-id="rhaMxpUK33Gq45z4iXVFj2">准备——</div>
-      <div class="stage-count" id="cntNum" data-page-node-id="EwEGlwi3sj5Ug355oF4oSI">3</div>
-    </div>
-    <div id="chalDone" class="chal-stage" style="display:none;" data-page-node-id="6Ciof7bV0OeTQ1dr5wZW4l">
-      <div class="stage-done" data-page-node-id="x6Cob99SNafXe0bWIARf1e">挑战完成！</div>
-      <div class="stage-tip" id="doneTip" data-page-node-id="zHkwBGhRjhEi1wAims9H9m">全班都很棒</div>
-      <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;" data-page-node-id="EgthKlpgTQvsvXYNKMnj4J">
-        <button class="broad-btn primary" onclick="startChallenge()" data-page-node-id="NJFB7HEUjndj1aeaLKe5SF">再来一次</button>
-        <button class="broad-btn ghost" onclick="backToPick()" data-page-node-id="DTd4fEbn4ebcgAhxScwuA3">换个项目</button>
-      </div>
-    </div>
-  </div>
-</div>
+            <!-- 首页 -->
+            <div class="page active" id="page-home" data-page-node-id="iDUmyC50n4Oj69FrS3lj9c">
+                <div class="page-header" data-page-node-id="qwiAGD606MV5CQcbef7T7Y">
+                    <h2 data-page-node-id="DPFGCD4UYIqpjuaU5RyBv2">工作台首页</h2>
+                    <div class="header-stats" id="homeStats" data-page-node-id="3s15xb9AFEsJAwgn6Qm9MS"></div>
+                </div>
 
-<div id="page-wheel" class="page" data-page-node-id="envFXVNvDKN7FFimf64YwO">
-  <div class="page-pad" style="display:flex;flex-direction:column;flex:1;" data-page-node-id="eGpAbxFkKlosyaUPjIUtHh">
-    <div class="wheel-tabs" data-page-node-id="9BApqatABliikKDrnpDmKH">
-      <button class="wheel-tab sel" id="wtProj" onclick="wheelMode('proj')" data-page-node-id="FnmLLTlKg9lAzTHWifaDuU">🎡 转项目</button>
-      <button class="wheel-tab" id="wtName" onclick="wheelMode('name')" data-page-node-id="XivGPfVEc7Rab6SrBGEK8F">🎯 随机点将</button>
+                <div class="home-section" data-page-node-id="ykIr987CNPI1HalBb9IQfX">
+                    <h3 class="section-title" data-page-node-id="eIbIbY63IuApL0xeCt763m">📋 常规工作</h3>
+                    <div class="card-grid" id="routineCards" data-page-node-id="DirqKCfdWweXwLiKXVINRE"></div>
+                </div>
+
+                <div class="home-section" data-page-node-id="vnFBdBk9GdvNLxYnpIC98y">
+                    <h3 class="section-title" data-page-node-id="Dte1jdjIkjcg1Wq8odmCZj">⭐ 特色工作</h3>
+                    <div class="card-grid" id="featureCards" data-page-node-id="eBkH6lzxJ4yj7Gj0CUGaW7"></div>
+                </div>
+            </div>
+
+            <!-- 学生花名册 -->
+            <div class="page" id="page-roster" data-page-node-id="bIIbOAtH7ZjyivhjeoomYV">
+                <div class="page-header" data-page-node-id="ABFaxf6nlrMZJLTsqxeY4v">
+                    <h2 data-page-node-id="9Ps6wNHCwiPECbmpwI9MYT">学生花名册管理</h2>
+                    <div class="header-actions" data-page-node-id="DDPZoHJ8W5oVakeg271xDg">
+                        <button class="btn btn-sm btn-outline" onclick="openQuickEntry()" data-page-node-id="J4XC0ZNJ7THbd59rgfibQ2">⚡ 快速录入</button>
+                        <button class="btn btn-sm btn-outline" onclick="openEntryModal()" data-page-node-id="5FQ5zFy1xBpGs9SSN2xfc0">✏️ 录入数据</button>
+                        <button class="btn btn-sm" onclick="exportRoster()" data-page-node-id="ZUCjVn0j6l0JnOAtvKa8iO">📥 导出</button>
+                    </div>
+                </div>
+                <div class="toolbar roster-nav-bar" data-page-node-id="TkhrTy8ozEBWK2gCT6qHpF">
+                    <div class="grade-class-nav" data-page-node-id="TJ9YkEjtHJwby4hD2Hlcz4">
+                        <div class="grade-tabs" id="gradeTabs" data-page-node-id="MvcQ7Rn2bXpKzLw5YgVd1e"></div>
+                        <div class="class-tabs" id="classTabs" data-page-node-id="Qw8ZuT4nHsJrEy3BvfKa9L"></div>
+                    </div>
+                    <div class="filter-bar" data-page-node-id="LZ7v06Gm6QiNsBWFeYfM5x">
+                        <select id="rosterGenderFilter" class="filter-select" data-page-node-id="ehpLlQNHd9wvLDUBzi0iHA">
+                            <option value="" data-page-node-id="94vTmiHgjfWQAACOdGHGME">全部性别</option>
+                            <option value="男" data-page-node-id="NgmHAYbMl2aVrPJzdosJQp">男生</option>
+                            <option value="女" data-page-node-id="CBzJW9p3TtSsYXjsQGj7cS">女生</option>
+                        </select>
+                        <select id="rosterLevelFilter" class="filter-select" data-page-node-id="RMdAfXxZtPT2subY6r3obK">
+                            <option value="" data-page-node-id="cXIoahm5nmOsTR9ddEI4UM">全部体能水平</option>
+                            <option value="excellent" data-page-node-id="PUcNpaLzcCPshorTZJEPmk">体能优秀</option>
+                            <option value="good" data-page-node-id="CDEhSjBz8ASDeAXaCkT22q">体能良好</option>
+                            <option value="pass" data-page-node-id="ddkLni1UpxesZ0KKlpPfys">体能及格</option>
+                            <option value="weak" data-page-node-id="PwsyntMApRfc8Xbh0yTzjp">体能薄弱</option>
+                            <option value="excused" data-page-node-id="KiSX2RNLceqfRrOL7TLKIq">免测</option>
+                        </select>
+                        <input type="text" id="rosterSearch" class="search-input" placeholder="搜索学生姓名..." data-page-node-id="Ex60HccKgQrvZR4tWaWsAH">
+                        <select id="rosterSort" class="filter-select" data-page-node-id="ZNVMlAUXphCXrJNGURZbDv">
+                            <option value="default" data-page-node-id="KeYzXxLA6f2ElDyJRtcNJL">默认顺序</option>
+                            <option value="score-desc" data-page-node-id="gq5kwjvJMW3ltOpGJJ3V64">🏆 按总分（高 → 低）</option>
+                            <option value="score-asc" data-page-node-id="jFuQLLAFtMKeh1l0gsiEdh">📊 按总分（低 → 高）</option>
+                            <option value="name-asc" data-page-node-id="YGXfRW4y6jq4owjezu2PVW">🔤 按姓氏（拼音 A → Z）</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="roster-summary" id="rosterSummary" data-page-node-id="JDPDl3YDlFlG6KM4gier5e"></div>
+                <div class="table-wrapper" data-page-node-id="KWBGvZn8HA5hrh1VLs3TV2">
+                    <table class="data-table" id="rosterTable" data-page-node-id="Io2BTjZEwyYj9SwDGq5yIl"></table>
+                </div>
+            </div>
+
+            <!-- 体测数据分析 -->
+            <div class="page" id="page-analysis" data-page-node-id="NIOCiA0FL2QgueuOkFcIqL">
+                <div class="page-header" data-page-node-id="7v17daD40WdviBe4HzxPqY">
+                    <h2 data-page-node-id="18THZbgrOWgyXAi6z3yKvO">体测成绩分析表</h2>
+                    <div class="header-actions" data-page-node-id="mIqaAKUa5WeCu82XleDcrs">
+                        <button class="btn btn-sm btn-outline" onclick="openQuickEntry()" data-page-node-id="TePcPAV1S3KX75KDEEw4rP">⚡ 快速录入</button>
+                        <button class="btn btn-sm btn-outline" onclick="openEntryModal()" data-page-node-id="4wueuhBLGc4DyWaAQfnyXC">✏️ 录入数据</button>
+                        <select id="analysisClass" class="filter-select" data-page-node-id="Nea6Iv0MuDVvExSnvrEHhn"></select>
+                    </div>
+                </div>
+                <div class="analysis-tabs" data-page-node-id="tS00Yzi82Jc6ckzQECdEwT">
+                    <button class="tab-btn active" data-atab="overview" data-page-node-id="6f5wok03bmpXwG7Wtpgqj7">班级概览</button>
+                    <button class="tab-btn" data-atab="project" data-page-node-id="tzxbTPK5LwulAbZujI8ahN">项目分析</button>
+                    <button class="tab-btn" data-atab="student" data-page-node-id="AMzNd4FTc1YqtbGSNenVdb">学生详情</button>
+                    <button class="tab-btn" data-atab="warning" data-page-node-id="TGFXXGbEj2uxTGIUvJm4XO">薄弱预警</button>
+                </div>
+                <div class="tab-content active" id="atab-overview" data-page-node-id="8dO3BfNA90WYkpNH1epfA8">
+                    <div class="stat-cards" id="overviewStats" data-page-node-id="HbF62e840CVlZygj9E1Wat"></div>
+                    <div class="chart-row" data-page-node-id="Cv3q8SWyI5MfXAbjVqp3Nl">
+                        <div class="chart-box" data-page-node-id="aCKyDon3HklKxQmSC7JvYN"><canvas id="chartRun50" data-page-node-id="qBlO5xwXPaamJA2h4EVzml"></canvas></div>
+                        <div class="chart-box" data-page-node-id="on9QQEKR7UPfQrLycVDala"><canvas id="chartSkipRope" data-page-node-id="Ez2H7QqxuGl8c7tJz6pnM5"></canvas></div>
+                    </div>
+                    <div class="chart-row" data-page-node-id="2fFvC3hEsHISoVyUDLfCZh">
+                        <div class="chart-box" data-page-node-id="72BHVIazPA1FN1bCOMNivB"><canvas id="chartSitReach" data-page-node-id="8MGYdH5yXuFMRNKP6aTsNQ"></canvas></div>
+                        <div class="chart-box" data-page-node-id="iRqozI0BE9BCV6zr3LvEUo"><canvas id="chartSitUps" data-page-node-id="pGmCQEw1ctX67sFJBZB3R0"></canvas></div>
+                    </div>
+                </div>
+                <div class="tab-content" id="atab-project" data-page-node-id="o0qpBZMDfleyJi8GvOttX1">
+                    <div class="project-selector" id="projectSelector" data-page-node-id="Gj3OeTk6HvVBnewhMkaxII"></div>
+                    <div class="chart-box large" data-page-node-id="blsD7I3fYjvfAN0bbnRJwp"><canvas id="chartProject" data-page-node-id="tBrJcoDErFR7BbjuVjQvct"></canvas></div>
+                    <div class="project-stats" id="projectStats" data-page-node-id="JwmKCgFeNdfBATITUQmPy3"></div>
+                </div>
+                <div class="tab-content" id="atab-student" data-page-node-id="cKZDeHcOMSl26dOvNZ9awG">
+                    <div class="student-selector" data-page-node-id="7ugQ1Hjv2T33qSKMig8Nsh">
+                        <select id="studentSelect" class="filter-select" data-page-node-id="F2pRyQVAXkllV6MlsDrJo3"></select>
+                    </div>
+                    <div class="student-detail" id="studentDetail" data-page-node-id="mr1Tb4khOrmuXbrNqEd7at"></div>
+                </div>
+                <div class="tab-content" id="atab-warning" data-page-node-id="8YT3XteRW4jlusqXBLDBnY">
+                    <div id="warningContent" data-page-node-id="3GJGDUONEA0UkgK3APhcHL"></div>
+                </div>
+            </div>
+
+            <!-- 成绩录入 -->
+            <div class="page" id="page-scoreentry" data-page-node-id="dwWINH9JitCk69GhUHuznf">
+                <div class="page-header" data-page-node-id="BOGREZMhI8XfNYFCGCggYE">
+                    <h2 id="sePageTitle" data-page-node-id="o5CXaLpihgXTXKWLA0uEEy">成绩录入</h2>
+                    <span class="page-sub" id="sePageSub" data-page-node-id="pidubqU2kYPw09Ng1ppbUG">按测试日现场批量录入，更高效</span>
+                </div>
+
+                <!-- 现场测速工具：顶部悬浮操作条（仅 step=3 时显示） -->
+                <div class="se-toolbar" id="seToolbar" data-page-node-id="JI74Is2Q0Sg13nRlsF4yx5">
+                    <button class="se-tb-btn se-tb-stopwatch" id="swBarBtn" onclick="openStopwatch()" data-page-node-id="SHCx7gC8E8G1N6Cy5jnphf">
+                        <span class="se-tb-icon" data-page-node-id="DZCqlIATb2I00lQgQoo6UH">⏱️</span>
+                        <span class="se-tb-label" data-page-node-id="Ka8l4eIAs3ltS49s1pWS8p">唤起秒表</span>
+                    </button>
+                    <button class="se-tb-btn se-tb-quick" id="quickBarBtn" onclick="openQuickEntry()" data-page-node-id="PO4tFkDD489oTgKcHBFpFx">
+                        <span class="se-tb-icon" data-page-node-id="RE6ZWusKbpOHiRD5mTYlkT">⚡</span>
+                        <span class="se-tb-label" data-page-node-id="KpyVZEsdkIUyw1WxgdHwdB">快速录入</span>
+                    </button>
+                    <button class="se-tb-btn se-tb-reset" id="resetBarBtn" onclick="resetStopwatch()" data-page-node-id="ag6jzSQeMbqoIRC6zg9sKv">
+                        <span class="se-tb-icon" data-page-node-id="uc1VekhpdgWkkA04tMlvLl">🔄</span>
+                        <span class="se-tb-label" data-page-node-id="OZL0qpiQmkh1jYY9ce7BXT">重置</span>
+                    </button>
+                </div>
+
+                <!-- 步骤指示器 -->
+                <div class="se-steps" id="seSteps" data-page-node-id="WYbPor28R9HpHJEv9WDmUJ">
+                    <div class="se-step active" data-step="1" data-page-node-id="qiQ7HXZPTyZ7f5PzqXTCLh"><span class="se-step-num" data-page-node-id="P8zXyruW7fEMkjS9mzKFCG">1</span>选择班级</div>
+                    <div class="se-step" data-step="2" data-page-node-id="8xuDU3oJ7QL4laDUopiIXA"><span class="se-step-num" data-page-node-id="8mPWUhKpw2CDeEqBHZkJtB">2</span>选择项目</div>
+                    <div class="se-step" data-step="3" data-page-node-id="0sJL4yHlTWnApUPs0eu7Yg"><span class="se-step-num" data-page-node-id="9apLmJLICfSTvK6lHgEGLb">3</span>录入成绩</div>
+                </div>
+
+                <!-- 步骤 1：选择班级 -->
+                <div class="se-view active" id="seView1" data-page-node-id="TKY1lm9qPHEgWzVdwQ5sae">
+                    <div class="se-card" data-page-node-id="bFkcXXZlqimrYDMsJOgazX">
+                        <div class="se-form-row" data-page-node-id="2LYI8972SPEMiFPFJw2mtF">
+                            <div class="se-field" data-page-node-id="eNQKXIuVDXCBpBJ00U26dJ">
+                                <label data-page-node-id="Rmk7AEuRKWTh4fmK14Kugi">① 选择年级</label>
+                                <select id="seGrade" class="filter-select" onchange="onSeGradeChange()" data-page-node-id="ABAOBSph2nOo4XBvMhpW5S"></select>
+                            </div>
+                            <div class="se-field" data-page-node-id="qmKbFzHpkM9cWHB6chdXMA">
+                                <label data-page-node-id="z7rVfygP5qU73URVXr6gO4">② 选择班级</label>
+                                <select id="seClass" class="filter-select" onchange="onSeClassChange()" data-page-node-id="8rmNGoLBQgz50zYYkXYMdO"></select>
+                            </div>
+                        </div>
+                        <div class="se-class-meta" id="seClassMeta" data-page-node-id="3PawTVe3hdhbq70FBzLQBv"></div>
+                        <div class="se-actions" data-page-node-id="obTirZIsX5bc6heEvFDDSQ">
+                            <button class="btn" id="seGotoStep2" onclick="seGoStep(2)" data-page-node-id="faUxu0oSt4J2bdiG69HYEQ">下一步：选择项目 →</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 步骤 2：选择项目 -->
+                <div class="se-view" id="seView2" data-page-node-id="jWYJt52eGQpsz8JQGGAbOs">
+                    <div class="se-card" data-page-node-id="43wNM6E8CwxDprmOqrYDfy">
+                        <div class="se-summary" id="seStep2Summary" data-page-node-id="71EQwMl6tx5QDGZg5AFBt0"></div>
+                        <div class="se-form-row" data-page-node-id="OpHYfEr4fNhnqoiz9KPvX8">
+                            <div class="se-field" data-page-node-id="K3i97Xw9r5FGTRgdpuj7jV">
+                                <label data-page-node-id="rub7FG26nTGnq3QbtpYWWl">③ 同时测试的学生数量（组别人数）</label>
+                                <select id="seGroupSize" class="filter-select" data-page-node-id="QD8jiRU8qDGoU4bfZ5lhHC">
+                                    <option value="1" data-page-node-id="aauSpuFh5miryn4ixK46FT">1 人/组</option>
+                                    <option value="2" data-page-node-id="wK1DlUFwwlUIxYtHgVNuY2">2 人/组</option>
+                                    <option value="4" selected data-page-node-id="eBH4QNPfp80xpOBTx6G1lM">4 人/组</option>
+                                    <option value="6" data-page-node-id="DACW4Evc6wO6C5WSLEZm5C">6 人/组</option>
+                                    <option value="8" data-page-node-id="GFslneUvbtKF6kxNZnH6b2">8 人/组</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="se-form-row" data-page-node-id="e9B2gq41mTp3ddjW11qmTs">
+                            <div class="se-field se-field-full" data-page-node-id="Y3Hak26XcY59GQ2Ay6ZV84">
+                                <label data-page-node-id="k4gWJQTIUeKJtnpkEEU6h9">④ 选择测试项目（点击下方按钮选定）</label>
+                                <div class="se-test-grid" id="seTestGrid" data-page-node-id="Q2RIVyle1G2CQRny3LA3bJ"></div>
+                            </div>
+                        </div>
+                        <div class="se-actions" data-page-node-id="cQ9YpqnKmHBT0XSf0eXSPc">
+                            <button class="btn btn-outline" onclick="seGoStep(1)" data-page-node-id="uCWvedVW3XVUCgZJzo98Bm">← 返回选班级</button>
+                            <button class="btn" id="seGotoStep3" onclick="seGoStep(3)" data-page-node-id="u2eUzYKNcYpNKs18ybbtUZ">开始录入成绩 →</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 步骤 3：录入成绩 -->
+                <div class="se-view" id="seView3" data-page-node-id="zXuvdxw6guTiQxQLCiFif1">
+                    <div class="se-entry-header" data-page-node-id="0VURpchQTO83CsIEwnZKvE">
+                        <div data-page-node-id="KNlWthNubQs6kDWiZUt87L">
+                            <div class="se-entry-title" id="seEntryTitle" data-page-node-id="HKcj1qmwG6m65evjj35Mgc">五1班 · 50米跑</div>
+                            <div class="se-entry-tip" data-page-node-id="3qYeE7Pl6eSb293Jt8vIxR">点击"成绩"输入并自动计分</div>
+                        </div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;" data-page-node-id="FYRiuBq13oxP1hry9llam7">
+                            <button class="btn btn-music btn-sm" id="ropeMusicBtn" onclick="toggleRopeMusic()" style="display:none;" data-page-node-id="PP0DdEAY33ep1xzKmFvwx9">
+                                <span id="ropeMusicIcon" data-page-node-id="P8PYV0eDIKEd51oobIK3SS">🎵</span> <span id="ropeMusicLabel" data-page-node-id="V00GlGl7MxdMvF74CF52Xr">一分钟计时音乐</span>
+                            </button>
+                            <button class="btn btn-outline btn-sm" onclick="seGoStep(2)" data-page-node-id="b7hHzVlrhlUBy7AbvlTkP9">🔁 重选班级/项目</button>
+                        </div>
+                    </div>
+                    <audio id="ropeAudio" src="assets/rope-timer-1min.mp3" preload="auto" onended="updateRopeMusicUI(false)" data-page-node-id="EcppK41gGP5Ai6uhZK4s8Q"></audio>
+                    <div class="se-group-bar" data-page-node-id="kHdfa2MZctGAp4rHDNo7wm">
+                        <span class="se-group-label" data-page-node-id="F2zyBfXQajmQxdBvsw77P1">🧩 分组/排序：</span>
+                        <select id="seGroupMode" class="filter-select" onchange="seOnGroupMode(this.value)" data-page-node-id="0ihXOkJJOkrb2aFXaKxHLF">
+                            <option value="default" data-page-node-id="NVgVunb3Fnsiqv5mhww8Iy">原名单顺序</option>
+                            <option value="gender" data-page-node-id="EYurhSe8U8GWEzHOvXaWaH">男女生分组</option>
+                            <option value="height" data-page-node-id="DQ64V4Gb1HuuCKTNTGTtbq">按身高递增排序</option>
+                            <option value="gender-height" data-page-node-id="2m4kdiqBWl8RMUfx8n83on">2男2女组合（身高递增）</option>
+                            <option value="lane-1234" data-page-node-id="loCFkrN4Z8lHpGljr0fAEM">1234 分组（男1/3/5·男2/4/6·女1/3/5·女2/4/6）</option>
+                            <option value="score-desc" data-page-node-id="On1iCTJu85AzKQuDdt9i8W">🏆 按成绩（得分 高 → 低）</option>
+                            <option value="score-asc" data-page-node-id="fvAQWCNrPBcOvjYrq52KKD">📊 按成绩（得分 低 → 高）</option>
+                            <option value="name-asc" data-page-node-id="Kc3nK3DLnq5A3PEJ9GeTfr">🔤 按姓氏（拼音 A → Z）</option>
+                        </select>
+                        <span class="se-group-hint" id="seGroupHint" data-page-node-id="22IkaD3QreyVcrUaV4qu49">当前按名单顺序录入</span>
+                    </div>
+                    <div class="se-progress-bar" data-page-node-id="2pukn409QfpLay0CPmvgyy">
+                        <div class="se-progress" id="seProgress" data-page-node-id="rFnpBLXsirmla3gDswahZz"></div>
+                        <div class="se-progress-text" id="seProgressText" data-page-node-id="CUraYH663ml7Rcj8qGZtGi">完成率 0%</div>
+                    </div>
+                    <div class="se-table-wrap" data-page-node-id="bCtUEHEY3TGGz13kAMmbDe">
+                        <table class="se-table" id="seTable" data-page-node-id="c6oaZOHJJV8pNY0fev7p7p">
+                            <thead data-page-node-id="HcI70QouLPMl9grO63raEI">
+                                <tr data-page-node-id="mFGKHvEuEzZ72z4OFslXzK">
+                                    <th class="se-col-idx" data-page-node-id="z4uBwoFvcvrZLIWfXpA0Ar">#</th>
+                                    <th data-page-node-id="rJUprjYTCbiSX15zZnHz9F">姓名</th>
+                                    <th class="se-col-score" data-page-node-id="wE3uPMiw4VQpMYxlfp1zAo">成绩</th>
+                                    <th class="se-col-level" data-page-node-id="GSfI8KpYCHzSHDjHdlBwtI">得分</th>
+                                </tr>
+                            </thead>
+                            <tbody id="seTbody" data-page-node-id="6Bzmc1BHn5KNdeSwauzwD8"></tbody>
+                        </table>
+                    </div>
+                    <div class="se-footer-actions" data-page-node-id="N7UoqF7oMLztnuxWN4gDJn">
+                        <button class="btn btn-outline" onclick="seExportCurrent()" data-page-node-id="CA3mUH8a2Vy7cZiklVXF0P">📊 导出本班项目</button>
+                        <button class="btn" onclick="seSaveAndNext()" data-page-node-id="TaJVlRteiUklWdROPVdxnF">💾 保存并查看花名册</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 教学工具箱 -->
+            <div class="page" id="page-toolbox" data-page-node-id="Y96K50nUF37c5KkxuvKaUK">
+                <div class="page-header" data-page-node-id="16uAN1fsUx7D7Ok98VmC78">
+                    <h2 data-page-node-id="smV3gPYedyiyRVgQ6L2fA7">教学工具箱</h2>
+                    <span class="page-sub" data-page-node-id="EKN7qbklCwfIJbHB1KV3q1">备课 / 游戏 / 打卡 / 沟通，一个菜单全搞定</span>
+                </div>
+
+                <div class="toolbox-tabs" id="toolboxTabs" data-page-node-id="cLDrcFn2AtIdXIXFQ9TreY">
+                    <button class="ttab-btn active" data-ttab="generator" data-page-node-id="vH0c99Essg1RwImndxVFEB">📝 训练计划生成器</button>
+                    <button class="ttab-btn" data-ttab="games" data-page-node-id="JlvGZwxGvyaWk3ccgGGP92">🎮 体育游戏库</button>
+                    <button class="ttab-btn" data-ttab="warmup" data-page-node-id="6dvZhF3EovhhlblyNWslo9">📖 训练标准化手册</button>
+                    <button class="ttab-btn" data-ttab="log" data-page-node-id="rXQUcdpkpIXTi0YtrX94cI">📋 课堂打卡记录</button>
+                    <button class="ttab-btn" data-ttab="comms" data-page-node-id="EjeWDXBwT2kpg78mEDpmNf">💬 家校话术库</button>
+                    <button class="ttab-btn" data-ttab="ropeplan" data-page-node-id="Pk2mR7vJ4tWqZx1YbNc3Le">🪢 跳绳课周计划</button>
+                </div>
+
+                <!-- 训练计划生成器 -->
+                <div class="ttab-content active" id="ttab-generator" data-page-node-id="UMKBm52sEKHSABD6XxJysL">
+                    <div class="gen-form" data-page-node-id="dJta8KUonOsJpjtyMgLHUa">
+                        <div class="gen-field" data-page-node-id="RDIwmzZBFrPEOQHP4jygTx">
+                            <label data-page-node-id="A7y6nwW4QK0rUBStDksol2">🎓 年级</label>
+                            <select id="genGrade" class="filter-select" data-page-node-id="qGPOLvljRhZd5Mv4xcYzEt"></select>
+                        </div>
+                        <div class="gen-field" data-page-node-id="8oVy2KxpvA3OGADsVFHvJi">
+                            <label data-page-node-id="sSk57MWm8nB6X3zEcSqsZy">⏱️ 课时</label>
+                            <select id="genDuration" class="filter-select" data-page-node-id="dbvphAzs39wA5FlG49IdGL"></select>
+                        </div>
+                        <div class="gen-field" data-page-node-id="YPJNByy1kIMV1gqqm0MIaL">
+                            <label data-page-node-id="79OEG5ZW6GsOuKrn7fGhgT">🎯 训练重点</label>
+                            <select id="genFocus" class="filter-select" data-page-node-id="pZMBSM6FGKL89DLe30jPFj"></select>
+                        </div>
+                        <div class="gen-field" data-page-node-id="LKPRbaB9CIPjurdmF8qlCc">
+                            <label data-page-node-id="0RcO8z1xI4GoQwxnAlqPgn">🏟️ 器材</label>
+                            <select id="genEquip" class="filter-select" data-page-node-id="FArvZ65j1skxjq25qpECNg"></select>
+                        </div>
+                        <div class="gen-actions" data-page-node-id="DUdflLOz4XeqLPG1d6FJEV">
+                            <button class="btn" onclick="generatePlan()" data-page-node-id="OtZruKZIFHsR1mVhukhobA">✨ 一键生成训练计划</button>
+                        </div>
+                    </div>
+                    <div id="genOutput" data-page-node-id="xHCSSqzZYh4DLEHvmbHxVq"></div>
+                </div>
+
+                <!-- 体育游戏库 -->
+                <div class="ttab-content" id="ttab-games" data-page-node-id="d0ZOE4qFIJLouCxQ8oqqGE">
+                    <div class="game-filters" data-page-node-id="Sa3eO1a1KhItyis2IOQJgQ">
+                        <div class="game-cats" id="gameCats" data-page-node-id="sTKXO7Cy5ubx3Fmi0FzN1v"></div>
+                        <input type="text" id="gameSearch" class="search-input" placeholder="搜索游戏名称..." data-page-node-id="CoI6kpxKBHVtRjJbaKz1hi">
+                    </div>
+                    <div class="game-grid" id="gameGrid" data-page-node-id="ptYhBJEAgeSfn4on6D4gtH"></div>
+                </div>
+
+                <!-- 课堂打卡记录 -->
+                <div class="ttab-content" id="ttab-log" data-page-node-id="ykAVpvvBfWneUW5A94oPi6">
+                    <div class="log-form" data-page-node-id="EqaF5hBZ6lqtsPaf7xF7Az">
+                        <div class="log-row" data-page-node-id="9XA0HMAIuEA610P6ZcPhLI">
+                            <div class="log-field" data-page-node-id="GOnz9CpoB27jodTzK89glI">
+                                <label data-page-node-id="labGkMLRDLjg3m0OGndB8C">📅 日期</label>
+                                <input type="date" id="logDate" class="filter-select" data-page-node-id="pGZXqjMHM06pkIo85KBRoE">
+                            </div>
+                            <div class="log-field" data-page-node-id="yB8Fo1xg6T4WGIvUtfMxrc">
+                                <label data-page-node-id="mEEuS9EVxec8hp5zBFj9ZA">📋 班级</label>
+                                <select id="logClass" class="filter-select" data-page-node-id="xfS93kc49iZPaqqJc3Nk8Z"></select>
+                            </div>
+                        </div>
+                        <div class="log-field" data-page-node-id="MrEQAnrpEk5xfUCjyzlydx">
+                            <label data-page-node-id="dFbcKQGzLEvKnDiDY2sHai">📝 教学内容</label>
+                            <input type="text" id="logContent" class="search-input" placeholder="如：50米跑+跳绳练习" data-page-node-id="otZnbaTbnnFJG3MQGSCfMs">
+                        </div>
+                        <div class="log-row" data-page-node-id="608ZESSt0eE9Il5xwCGOaV">
+                            <div class="log-field" data-page-node-id="qptgGaW6xchyBXcQM2sXT4">
+                                <label data-page-node-id="BHnS3tUMDyWE6uRJOH5ap3">✅ 应到 <span id="logShould" class="log-hint-inline" data-page-node-id="wPLjsF5qqAq0NzLJPckA5A"></span></label>
+                                <input type="number" id="logShouldInput" class="filter-select" min="0" data-page-node-id="CzGhUOoShVGIVn7RmE33EB">
+                            </div>
+                            <div class="log-field" data-page-node-id="pyDFy6lSwcHTooPKMcMUl0">
+                                <label data-page-node-id="85TNkJBqhmmDVKv6V0qpB2">🙋 实到</label>
+                                <input type="number" id="logActual" class="filter-select" min="0" data-page-node-id="uTrJvpov0k5bKhNeOE0tU7">
+                            </div>
+                            <div class="log-field" data-page-node-id="3coxU2AYRNCGfnZ343G3Z7">
+                                <label data-page-node-id="XiktCe9Qt3AruOnGntrusk">🚫 请假</label>
+                                <input type="number" id="logLeave" class="filter-select" min="0" data-page-node-id="0CZvKKDuU9pOwvEF4G3SmD">
+                            </div>
+                        </div>
+                        <div class="log-field" data-page-node-id="iQblE2Hvg5D4zUy1wGebCb">
+                            <label data-page-node-id="VaPJhX2HEH9WU0UnOkTLOt">⭐ 课堂表现</label>
+                            <div class="log-perf" id="logPerf" data-page-node-id="O797jZkqrnReT7lnHlpVDm">
+                                <button type="button" class="perf-btn" data-perf="好" data-page-node-id="By02vZOwNPkJMVcfRJzSLE">😀 好</button>
+                                <button type="button" class="perf-btn" data-perf="中" data-page-node-id="27nhPD05lAdXc6MV7BnX3z">😐 中</button>
+                                <button type="button" class="perf-btn" data-perf="待改进" data-page-node-id="Jk8XD3HqKwlsUjmOPbjPc8">😟 待改进</button>
+                            </div>
+                        </div>
+                        <div class="log-field" data-page-node-id="elV2aaiecmk3tfaKrHlt7h">
+                            <label data-page-node-id="JZOs7Y6TeHBlraiwmWNns2">📌 备注</label>
+                            <textarea id="logNote" class="search-input" rows="2" placeholder="特殊情况、安全事项等"></textarea>
+                        </div>
+                        <div class="log-actions" data-page-node-id="Bzd6NxcYxlssvwXHI7xHMN">
+                            <button class="btn" onclick="saveClassLog()" data-page-node-id="LoaoDcBMRo87nfxoLLeRXH">💾 保存本节课记录</button>
+                        </div>
+                    </div>
+                    <div class="log-history-title" data-page-node-id="WKnugWrDKQ78zdC6eZm1nt">📚 历史记录</div>
+                    <div id="logHistory" data-page-node-id="qP7qzKgJRKn8zGvPjw2y5t"></div>
+                </div>
+
+                <!-- 家校话术库 -->
+                <div class="ttab-content" id="ttab-comms" data-page-node-id="65DiGhs5KMRtowTJBcnbA0">
+                    <div class="comms-grid" id="commsGrid" data-page-node-id="lNJXBLSOOCHZVGDMZb5ExS"></div>
+                </div>
+
+                <!-- 动态热身动作清单 -->
+                <div class="ttab-content" id="ttab-warmup" data-page-node-id="BJUSarnLtX4EKAhtYUvR6B">
+                    <div id="warmupContent" data-page-node-id="gxbzUeFJrmjrHXgN7pkqzC"></div>
+                </div>
+
+                <!-- 跳绳课周计划 -->
+                <div class="ttab-content" id="ttab-ropeplan" data-page-node-id="Tn8XdQ1sVzHmKb4WpJr2Yf">
+                    <div id="ropePlanContent" data-page-node-id="Zc5LgRt3NqWvEy7AhMf6Bk"></div>
+                </div>
+            </div>
+
+            <!-- 安全应急预案 -->
+            <div class="page" id="page-safety" data-page-node-id="w7D3GjLr2mNBoRyf3N2Stn">
+                <div class="page-header" data-page-node-id="DfehRNucAO0X2RZn7YlfcW">
+                    <h2 data-page-node-id="14vJW5BzrBUKCduHZGXPgH">课堂安全与应急预案</h2>
+                </div>
+                <div class="safety-grid" id="safetyGrid" data-page-node-id="BEdJ7zSjlpD81gZYqjfpR1"></div>
+            </div>
+
+            <!-- 学生管理 -->
+            <div class="page" id="page-studentmgmt" data-page-node-id="UeEDZNmdWKL2HCQByKbnsv">
+                <div class="page-header" data-page-node-id="UHtQHzKYFuKC19Cd4XYHi0">
+                    <h2 data-page-node-id="owG0ZD7CoyOa8XKIGafHAI">学生管理</h2>
+                </div>
+                <p class="mgmt-intro" data-page-node-id="yotQu8U7AV22gPExEz1XS3">班级管理工具：清除旧班级数据、导入新数据、下载录入模板。</p>
+
+                <div class="mgmt-grid" data-page-node-id="s4dURH2g6FuEmlCOEd6XGL">
+                    <!-- 模板下载 1：精简学生名单 -->
+                    <div class="mgmt-card mgmt-card-template" onclick="downloadNameListTemplate()" data-page-node-id="o7SqaHnfwcXUa5mlvpXfVx">
+                        <div class="mgmt-card-icon" data-page-node-id="cszT7cfTNQQUS1oikDebq3">📋</div>
+                        <div class="mgmt-card-title" data-page-node-id="a3DwxkJ7b3FZ5GfidQyQbj">学生名单模板（精简）</div>
+                        <div class="mgmt-card-desc" data-page-node-id="cL0UJrgOc3bcQw8Un8qWOq">只有 4 列：年级、班级、姓名、性别。开学建名单用它，成绩以后再录。</div>
+                        <div class="mgmt-card-action" data-page-node-id="wR4NJ8svmiAEoJ2tyQOBqK">点击下载名单模板 ↓</div>
+                    </div>
+
+                    <!-- 模板下载 2：体测成绩（国家体测网格式） -->
+                    <div class="mgmt-card mgmt-card-template2" onclick="downloadTestTemplate()" data-page-node-id="Qm3Kp9LdRvNxYw2TzsB7Hc">
+                        <div class="mgmt-card-icon" data-page-node-id="Jn5Wt8HyCqZfE1UbMo4Vg2">📊</div>
+                        <div class="mgmt-card-title" data-page-node-id="Ld7Yb2NqWxFkR4VsZp3Tj9">体测成绩模板（完整）</div>
+                        <div class="mgmt-card-desc" data-page-node-id="Nh9Qc4MvRyTzW6KxAo2Lp7">21 列国家体测网标准格式，含学籍号、出生日期与全部体测项目，录完成绩后导入。</div>
+                        <div class="mgmt-card-action" data-page-node-id="Vr2Zk8TnBwQhY5FsLp6Nd3">点击下载体测模板 ↓</div>
+                    </div>
+
+                    <!-- 导入新数据 -->
+                    <div class="mgmt-card mgmt-card-import" onclick="triggerImport()" data-page-node-id="w2ddjRe8bYdnrfkSwlQZiw">
+                        <div class="mgmt-card-icon" data-page-node-id="xK216rQfb2gXPDIECovGI1">📥</div>
+                        <div class="mgmt-card-title" data-page-node-id="hJQmD7cTaRBvWj7KLTSByK">导入新数据</div>
+                        <div class="mgmt-card-desc" data-page-node-id="yC20ZQFNltHm8bFTnnhlH7">两种表格都能导：精简名单表（年级+班级+姓名+性别）或体测成绩表（21列国家体测网格式），自动按班分组。</div>
+                        <div class="mgmt-card-action" data-page-node-id="HT4tnTueJkiWsxvGGZEjGc">点击选择文件 ↑</div>
+                    </div>
+
+                    <!-- 删除班级全部数据 -->
+                    <div class="mgmt-card mgmt-card-danger" data-page-node-id="6GmJdFmE79Le8SJB98Ybzp">
+                        <div class="mgmt-card-icon" data-page-node-id="29ldaDvrsoDqJtMmxRbFwu">🗑️</div>
+                        <div class="mgmt-card-title" data-page-node-id="ecvzsYsFtDJzaaljLIvl05">删除班级全部数据</div>
+                        <div class="mgmt-card-desc" data-page-node-id="iSQmvFYSNyHbkBjPH8Z9oL">永久删除选定班级的所有学生与体测数据，历史记录一并清除，不可恢复。</div>
+                        <div class="mgmt-card-form" data-page-node-id="wkMcjdGthpnLIy2wRiUdOj">
+                            <select id="deleteClassSelect" class="filter-select" data-page-node-id="cDcUfRez9jreaFaRBBwHBX"></select>
+                            <button class="btn btn-danger" onclick="deleteClassData(event)" data-page-node-id="Nj1BaUr6pNnc5CunqihlOn">🗑️ 删除该班级数据</button>
+                        </div>
+                    </div>
+
+                    <!-- 精简班级：只保留指定年级 -->
+                    <div class="mgmt-card mgmt-card-danger" data-page-node-id="FxwNnWGRUBSWT8AwBKWLG5">
+                        <div class="mgmt-card-icon" data-page-node-id="aHSNCLg74uTTEH9x8o6v9J">🎯</div>
+                        <div class="mgmt-card-title" data-page-node-id="GCbdVs08tUlecW6i7MkteO">精简班级（只留一个年级）</div>
+                        <div class="mgmt-card-desc" data-page-node-id="hOyRlC2vc88F8UPDe5nQqo">一键删除选定年级以外的所有班级，<b data-page-node-id="vQUNoPczBqDCel7aAg6c5Y">该年级学生的体测成绩不受影响</b>。适合只带一个年级时使用。</div>
+                        <div class="mgmt-card-form" data-page-node-id="hApRR5F6qpiUh8vbNhMN8K">
+                            <select id="slimGradeSelect" class="filter-select" data-page-node-id="6133j6GarEVi6V1tOTvkSi">
+                                <option value="4" data-page-node-id="i3RzViGyWsSNwPN86zveQF">只保留四年级</option>
+                                <option value="3" data-page-node-id="SEpRqpixkFDjk8hLCCYcmt">只保留三年级</option>
+                                <option value="5" data-page-node-id="YrUcbiaFaATgoaeU47f4EI">只保留五年级</option>
+                                <option value="6" data-page-node-id="Ek9yUx96N6zKcq2SFex5YH">只保留六年级</option>
+                                <option value="7" data-page-node-id="Mv3ScROHBvuWB6zBH3j2dK">只保留初一</option>
+                                <option value="8" data-page-node-id="Z1sqUrqjBYAX9EshbkdeF9">只保留初二</option>
+                                <option value="9" data-page-node-id="URnlznflMsyJ3I8rDiezQc">只保留初三</option>
+                            </select>
+                            <button class="btn btn-danger" onclick="slimToTargetGrade(event)" data-page-node-id="wXlmQVPqPemIHyp0tzM7Fi">🎯 执行精简</button>
+                        </div>
+                    </div>
+
+                    <!-- 新增学生 -->
+                    <div class="mgmt-card mgmt-card-upload" data-page-node-id="C2BvmpG8XIKeFrN31pooo4">
+                        <div class="mgmt-card-icon" data-page-node-id="Yw7jQlekPcVnc1PmYsGl1m">➕</div>
+                        <div class="mgmt-card-title" data-page-node-id="5K2424eGUd6IHFw8jazOpP">新增学生</div>
+                        <div class="mgmt-card-desc" data-page-node-id="lfbfaKEqT53UuCZ4DCdKJ0">在选定班级中添加一名新学生（仅填姓名即可，成绩以后可录）。</div>
+                        <div class="mgmt-card-form" style="flex-direction:column;align-items:stretch;gap:8px;" data-page-node-id="29W1zPmOTcqWScqQRJNXQ7">
+                            <select id="addStudentClass" class="filter-select" data-page-node-id="uSADeGlkyqNwRFhFg2f2kb"></select>
+                            <div style="display:flex;gap:8px;" data-page-node-id="8wa1YhB7yrc9mU0xgwIWVt">
+                                <input type="text" id="addStudentName" class="search-input" placeholder="输入学生姓名" style="flex:1;" data-page-node-id="CZs9MaHSAJyaQfgUpMh5Gn">
+                                <select id="addStudentGender" class="filter-select" style="width:84px;" data-page-node-id="2DkX7rwwF33lnvS06G6B6d">
+                                    <option value="男" data-page-node-id="9boZWOUFNwHpkBCdFR36NR">男</option>
+                                    <option value="女" data-page-node-id="oAqEaX3bYi3JvGfjE9tW8g">女</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-primary" onclick="addStudentToClass()" data-page-node-id="WeP2MC33NGXecBv7PvVvkS">➕ 添加这名学生</button>
+                        </div>
+                    </div>
+
+                    <!-- 删除学生 -->
+                    <div class="mgmt-card mgmt-card-danger" data-page-node-id="ezGXREZmAyF6rxwCCG5uAq">
+                        <div class="mgmt-card-icon" data-page-node-id="5lO9KKKlFa3M2MGdBkkWbz">🗑️</div>
+                        <div class="mgmt-card-title" data-page-node-id="8pPPyIo5wSQgBEPWzJStxt">删除学生</div>
+                        <div class="mgmt-card-desc" data-page-node-id="x88fzLxyboLDdepbRHC2cm">从选定班级中删除某位学生（含其成绩与历史，不可恢复）。</div>
+                        <div class="mgmt-card-form" style="flex-direction:column;align-items:stretch;gap:8px;" data-page-node-id="Wm50JDGQBwWiPz4mWUcTZf">
+                            <select id="delStudentClass" class="filter-select" onchange="onDelStudentClassChange()" data-page-node-id="CgeJLEPoqUuAR0mpQkoyRB"></select>
+                            <select id="delStudentSelect" class="filter-select" data-page-node-id="G1jw1LhH5xloeXllVbDmny"></select>
+                            <button class="btn btn-danger" onclick="deleteStudentFromClass(event)" data-page-node-id="N43h8YlCAhPETcP9iPcjem">🗑️ 删除这名学生</button>
+                        </div>
+                    </div>
+
+                    <!-- 上报格式导出 -->
+                    <div class="mgmt-card mgmt-card-upload" data-page-node-id="HWaibbv25hA6Ihg7csqoNN">
+                        <div class="mgmt-card-icon" data-page-node-id="9BJc9iIv4aS159JeW1ETT4">📤</div>
+                        <div class="mgmt-card-title" data-page-node-id="uuPrAdCE1NrWvenD1DDHBE">导出上报数据</div>
+                        <div class="mgmt-card-desc" data-page-node-id="ulpSKHssNu8EDkt7N26QE9">按《国家学生体质健康标准》上报模板导出 Excel（年级/班级/各项成绩/总分/等级/免测）。先选班级，再点导出。</div>
+                        <div class="mgmt-card-form" style="flex-direction:column;align-items:stretch;gap:8px;" data-page-node-id="nTmehYAYmEqWUlCf1fEngg">
+                            <select id="uploadClassSelect" class="filter-select" data-page-node-id="Oc6DPpcpcVXO4BIEXQwXdj"></select>
+                            <button class="btn btn-primary" onclick="exportUploadXlsx()" data-page-node-id="R8MWplaLfzrYr96hJyszz6">📤 导出该班上报 Excel</button>
+                        </div>
+                    </div>
+
+                    <!-- 数据备份与恢复 -->
+                    <div class="mgmt-card mgmt-card-backup" id="backupArea" style="display:none;" data-page-node-id="kL0SOi2BG3mdqFhUji7sa9">
+                        <div class="mgmt-card-icon" data-page-node-id="SA6fEjKpPEsPTHOQwqrV6T">💾</div>
+                        <div class="mgmt-card-title" data-page-node-id="8xubXDUlJ0LYYZGxuFHQOL">数据备份与恢复</div>
+                        <div class="mgmt-card-desc" data-page-node-id="27Yi6kP0ESFaAXAt1cAo9R">导出全部班级数据为 JSON 备份；或从备份文件恢复（覆盖本机数据）。建议期末定期备份。</div>
+                        <div class="mgmt-card-form" style="flex-direction:column;align-items:stretch;gap:8px;" data-page-node-id="PISkmPlf43uZcpYrCGbwZS">
+                            <button class="btn btn-primary" onclick="backupData()" data-page-node-id="pHmem164o5TtKl6x79Pi3r">⬇️ 导出备份(JSON)</button>
+                            <button class="btn btn-secondary" onclick="triggerRestore()" data-page-node-id="q9pwYWOG9LzQSVRS9EHQ9O">⬆️ 从备份恢复</button>
+                            <input type="file" id="restoreFile" accept="application/json,.json" style="display:none;" onchange="restoreData(this)" data-page-node-id="2awHXMA0iwGxbdoWjevivy">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 弹出层：学生详情 -->
+            <div class="modal-overlay" id="studentModal" onclick="closeModal('studentModal')" data-page-node-id="Lu0Ri09o0kV8iHPdeJ9t4D">
+                <div class="modal" onclick="event.stopPropagation()" data-page-node-id="ihQAOh0jMHwDSGDbYGeJI6">
+                    <div class="modal-header" data-page-node-id="cfAvaSZLRXWRvsBEIOv46w">
+                        <h3 id="modalStudentName" data-page-node-id="6z6UGHSblm4jD7XqpKr9QY">学生详情</h3>
+                        <button class="modal-close" onclick="closeModal('studentModal')" data-page-node-id="mOQeyoxCwaZPqc67HCTAHQ">✕</button>
+                    </div>
+                    <div class="modal-body" id="modalStudentBody" data-page-node-id="7ydGebxrOzXEzJAc7LUdtR"></div>
+                </div>
+            </div>
+
+            <!-- 弹出层：运动处方 -->
+            <div class="modal-overlay" id="prescriptionModal" onclick="closeModal('prescriptionModal')" data-page-node-id="AEHKtfzpHsLOX7kYGR2yOu">
+                <div class="modal modal-large" onclick="event.stopPropagation()" data-page-node-id="ZcerqlYleKGLeH9vGi3hjs">
+                    <div class="modal-header" data-page-node-id="EwCvM7oM92zZHoLsENXkLF">
+                        <h3 id="prescriptionTitle" data-page-node-id="dx5H5G8IzoOEgn0XHOMl77">运动处方</h3>
+                        <button class="modal-close" onclick="closeModal('prescriptionModal')" data-page-node-id="8ZEmTTXZaoSYsyh9ynm3m3">✕</button>
+                    </div>
+                    <div class="modal-body" id="prescriptionBody" data-page-node-id="LOstw7jGlULkdQCT0xcKW7"></div>
+                </div>
+            </div>
+
+            <!-- 弹出层：体质报告 -->
+            <div class="modal-overlay" id="reportModal" onclick="closeModal('reportModal')" data-page-node-id="JluxQ6TCRe2YrOBi0iVfDg">
+                <div class="modal modal-large" onclick="event.stopPropagation()" data-page-node-id="FfIHoki9NDLVsphs4FvMH5">
+                    <div class="modal-header" data-page-node-id="VtxFjumi8XMvDEbR9IdvgU">
+                        <h3 data-page-node-id="EUibDPAAkusqdaGqfXwHzN">学生体质健康报告</h3>
+                        <div style="display:flex;gap:8px;" data-page-node-id="WUsL65SfJIfIyEAetWWkdX">
+                            <button class="btn btn-primary no-print" onclick="window.print()" data-page-node-id="f259BxHShuDlCTAbyKQP43">🖨️ 打印 / 存为PDF</button>
+                            <button class="modal-close" onclick="closeModal('reportModal')" data-page-node-id="Zhnk6SWh8GmMcPBsfQLLFL">✕</button>
+                        </div>
+                    </div>
+                    <div class="modal-body" id="reportBody" data-page-node-id="nmbUH9tm6dwJdomHh1dBGO"></div>
+                </div>
+            </div>
+
+            <!-- 弹出层：工具箱详情（游戏 / 话术） -->
+            <div class="modal-overlay" id="toolboxModal" onclick="closeModal('toolboxModal')" data-page-node-id="l4ExdfeeDv16JL6S6B0oEQ">
+                <div class="modal modal-large" onclick="event.stopPropagation()" data-page-node-id="ZhVhSwYjS78FFVVtT7laSR">
+                    <div class="modal-header" data-page-node-id="Zw2LRyKbgwZoGxWJoBtRui">
+                        <h3 id="modalToolboxTitle" data-page-node-id="34t1q4ZvQb0sL4hUI5mcCO">详情</h3>
+                        <button class="modal-close" onclick="closeModal('toolboxModal')" data-page-node-id="ES9GMmYqpa2Sx19N7dKR0U">✕</button>
+                    </div>
+                    <div class="modal-body" id="modalToolboxBody" data-page-node-id="sGXYv3Pj2ATHU991j7fSLn"></div>
+                </div>
+            </div>
+
+            <!-- 弹出层：卡片详情 -->
+            <div class="modal-overlay" id="cardModal" onclick="closeModal('cardModal')" data-page-node-id="hRbaIsB0Jkqrk3sXMg712H">
+                <div class="modal" onclick="event.stopPropagation()" data-page-node-id="AZMcGy7sCD3yzRXREnolFJ">
+                    <div class="modal-header" data-page-node-id="KADYZ7l8O8h2QwoKaUULdb">
+                        <h3 id="cardModalTitle" data-page-node-id="KpsMEkxYowQc2nfr0wyW8s">详情</h3>
+                        <button class="modal-close" onclick="closeModal('cardModal')" data-page-node-id="5EfSuOMCioPxOg4vYkZaPW">✕</button>
+                    </div>
+                    <div class="modal-body" id="cardModalBody" data-page-node-id="jDq8DQmrriRIZtdsHx6TVM"></div>
+                </div>
+            </div>
+
+            <!-- 弹出层：数据录入 -->
+            <div class="modal-overlay entry-modal" id="entryModal" onclick="closeModal('entryModal')" data-page-node-id="KnqTvuuaUXoeZfVvTnRQEB">
+                <div class="modal" onclick="event.stopPropagation()" data-page-node-id="UkX8XU15wJojm0g0GHO5zx">
+                    <div class="modal-header" data-page-node-id="VBSWrKNbKPBTbmVRF9raBQ">
+                        <h3 data-page-node-id="VflUF1CqQhtTCVJgpOhvmz">✏️ 录入新数据</h3>
+                        <button class="modal-close" onclick="closeModal('entryModal')" data-page-node-id="px9ABdCIJEfD8UcFhOC4Na">✕</button>
+                    </div>
+                    <div class="modal-body" data-page-node-id="YosElzzTXu93XLyBCV3Z0z">
+                        <form class="entry-form" onsubmit="saveEntryData(event)" data-page-node-id="uubjIXtd9DOxuI5mvFQkAs">
+                            <!-- 班级选择 -->
+                            <div data-page-node-id="k3qh2TYA2lFs7KspNfeAOO">
+                                <label data-page-node-id="CwOouyopo8fCufkI4ooPBV">📋 选择班级</label>
+                                <select id="entryClass" onchange="onEntryClassChange()" data-page-node-id="8dZq3BJQK00BRq5flSGG9O"></select>
+                            </div>
+
+                            <!-- 搜索已有学生 -->
+                            <div data-page-node-id="BxoYcSgopMGsl9b8JWuAAM">
+                                <label data-page-node-id="LdBexVcxv2diLaFM5cP10l">🔍 选择学生</label>
+                                <div class="student-search-wrap" data-page-node-id="6Ymx0wZwEUq0yYPKMcDrJJ">
+                                    <input type="text" id="entryStudentSearch" placeholder="输入姓名搜索..." autocomplete="off" oninput="onStudentSearch()" onfocus="onStudentSearch()" data-page-node-id="rllBvKCYXiiCfWqw85bv4L">
+                                    <div class="student-search-results" id="studentSearchResults" data-page-node-id="VQMO0Qs7WJV2S60dBTN3qr"></div>
+                                </div>
+                            </div>
+
+                            <!-- 新增学生 -->
+                            <div class="entry-divider" data-page-node-id="6uvSYbNlnf7tgIxEFTySbV">或者 新增学生</div>
+                            <div class="entry-new-student" data-page-node-id="vdiC6MT5r6JgkrUbTdPKvl">
+                                <input type="text" id="entryNewName" placeholder="输入新学生姓名" oninput="onNewStudentInput()" data-page-node-id="e8amGU0UHmRHHal7ycptBN">
+                                <select id="entryNewGender" data-page-node-id="GEG7iw8vDxlGmGDRj7FL4r">
+                                    <option value="男" data-page-node-id="jLAsUNyouAaJP3K0lvP6VR">男生</option>
+                                    <option value="女" data-page-node-id="7Av9YLzHe4jkjFpAuHpHtX">女生</option>
+                                </select>
+                            </div>
+
+                            <!-- 已选学生提示 -->
+                            <div id="selectedStudentHint" style="display:none;background:var(--primary-bg);padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;color:var(--primary-dark);" data-page-node-id="KfO6m5jJfyk184rDyqyAoY"></div>
+
+                            <!-- 体测数据 -->
+                            <div data-page-node-id="Iyt393tIs1EyYhaXWCPUCs">
+                                <label data-page-node-id="A6JjUmPpKlSf2AQOnk6ux4">📊 体测成绩</label>
+                                <div class="entry-score-grid" data-page-node-id="76RABCJjkXfMdRrw8viJb7">
+                                    <div class="entry-score-item" data-page-node-id="cbkufNlGa53Zqf17TzeETy">
+                                        <div class="score-icon" data-page-node-id="mAQ9FjCDpMp8KA7HBPv1Lr">🏃</div>
+                                        <div class="score-name" data-page-node-id="NHrPcQ34eUZtTFSfBFFSDN">50米跑</div>
+                                        <input type="number" id="entryRun50" placeholder="如 9.5" step="0.1" min="0" max="30" data-page-node-id="KUWPR8W5OMji0fa4ADYH79">
+                                        <div class="score-unit" data-page-node-id="GsrsbAOPEc5PbRCmUQYu4j">秒</div>
+                                    </div>
+                                    <div class="entry-score-item" data-page-node-id="hIsAI5iX06oP0JYxP0zRBB">
+                                        <div class="score-icon" data-page-node-id="yaUBfywiiNBhyK7dSooosv">🪢</div>
+                                        <div class="score-name" data-page-node-id="wyyXZZryCeiAvgqGbGf5ek">1分钟跳绳</div>
+                                        <input type="number" id="entrySkipRope" placeholder="如 120" step="1" min="0" max="300" data-page-node-id="famMOapE22CqZXr4HSDdKd">
+                                        <div class="score-unit" data-page-node-id="LjPCsey8E2ud0Fr7t909Af">次</div>
+                                    </div>
+                                    <div class="entry-score-item" data-page-node-id="FMRNbshA68LbrXNdDllnU7">
+                                        <div class="score-icon" data-page-node-id="EVoXy73qehmwbGhq1H4qKS">🤸</div>
+                                        <div class="score-name" data-page-node-id="4JBljdkVO554vfn0gEGwLQ">坐位体前屈</div>
+                                        <input type="number" id="entrySitReach" placeholder="如 10.5" step="0.1" min="-30" max="40" data-page-node-id="KaSpb3TzmKyhaes6co4yyL">
+                                        <div class="score-unit" data-page-node-id="Jt73dxoYhEORtxWcBFNo1K">厘米</div>
+                                    </div>
+                                    <div class="entry-score-item" data-page-node-id="aN4CSqUewtoUG16z2SbkYA">
+                                        <div class="score-icon" data-page-node-id="yNRo1GjsK1ywo2WrOj4wSG">💪</div>
+                                        <div class="score-name" data-page-node-id="OzAsflaIdVCoOhsnx0O6Ij">仰卧起坐</div>
+                                        <input type="number" id="entrySitUps" placeholder="如 35" step="1" min="0" max="80" data-page-node-id="OKKS86qOQG3jCPjYHGZaw1">
+                                        <div class="score-unit" data-page-node-id="GtXUhfB2Ttn8rRzoLEfZRr">次/分钟</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 操作按钮 -->
+                            <div class="entry-actions" data-page-node-id="EBLpNHE3Ono3hAksU5ulId">
+                                <button type="button" class="btn btn-cancel" onclick="closeModal('entryModal')" data-page-node-id="UhGffAZCc4STNt6HX4xkvh">取消</button>
+                                <button type="submit" class="btn btn-save" data-page-node-id="4XRC4lACflMfnBoHPSvDzH">💾 保存数据</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 弹出层：快速录入 -->
+            <div class="modal-overlay quick-entry-modal" id="quickEntryModal" onclick="closeModal('quickEntryModal')" data-page-node-id="GR6jVapXGiJ2Fan2nREyE5">
+                <div class="modal" onclick="event.stopPropagation()" data-page-node-id="qZ0q0SeA3UZ14bxQ8nRvHk">
+                    <div class="modal-header" data-page-node-id="tERvP0KyFFDOCrGb0dgM3w">
+                        <h3 data-page-node-id="FmGRv9B3EuiDQpxoWliGqc">⚡ 快速录入</h3>
+                        <button class="modal-close" onclick="closeModal('quickEntryModal')" data-page-node-id="LUklANN1HW7d3TNJzWDx7y">✕</button>
+                    </div>
+                    <div class="modal-body" data-page-node-id="Q41EiMlZiJzQyBTwGhNPY2">
+                        <!-- 班级选择 -->
+                        <div class="qe-section" data-page-node-id="L1B8gp4hJXotVakMEz2B5s">
+                            <label data-page-node-id="8YaG3drPHh99c94RM41c68">📋 班级</label>
+                            <select id="qeClass" onchange="onQeClassChange()" data-page-node-id="ecuHn2DJp04TH2Uc7FNhWO"></select>
+                        </div>
+
+                        <!-- 拼音首字母搜索 -->
+                        <div class="qe-section" data-page-node-id="RbsM5VyHqc6CXaPegGNVEM">
+                            <label data-page-node-id="HzHFayjqMCrs1Fk8sRYVwL">⌨️ 输入姓名 / 拼音首字母</label>
+                            <div class="student-search-wrap" data-page-node-id="6Apg58EGSU22V53PTG9a5X">
+                                <input type="text" id="qeSearch" placeholder="如 zs 或 张三" autocomplete="off" oninput="onQeSearch()" onfocus="onQeSearch()" data-page-node-id="edyDQtE1KWcWOPBNpbhm4l">
+                                <div class="student-search-results" id="qeSearchResults" data-page-node-id="4LsA1xQNdoqeXk3aLwhwf3"></div>
+                            </div>
+                        </div>
+
+                        <!-- 选择体测项目 -->
+                        <div class="qe-section" data-page-node-id="Uj3mmM475l9H44t66EE7UX">
+                            <label data-page-node-id="HyLGnl2DZHm5c2V6CZzcbr">📊 录入项目</label>
+                            <div class="qe-project-pills" id="qeProjectSelector" data-page-node-id="B5FeN0hq6h76CuleaIGoBO"></div>
+                        </div>
+
+                        <!-- 选中学生 + 成绩输入区 -->
+                        <div id="qeEntryPanel" class="qe-entry-panel" style="display:none;" data-page-node-id="rtqdoEABN0ETSLVqUzcFlA">
+                            <div class="qe-student-card" id="qeStudentCard" data-page-node-id="kweFWVTCuIeuBAgb9AXIKj"></div>
+                            <div class="qe-score-row" data-page-node-id="0NDzg23qFVs1Xar3CW1T4q">
+                                <input type="number" id="qeScoreInput" placeholder="输入成绩" step="0.1" onkeydown="if(event.key==='Enter')saveQuickEntry()" data-page-node-id="ApkgjxtV25eLRDG2aweAUD">
+                                <span class="qe-score-unit" id="qeScoreUnit" data-page-node-id="p1pY746uZzFJS5jZycmNaF"></span>
+                                <button class="btn btn-save" onclick="saveQuickEntry()" data-page-node-id="LfDoKpGPzXRRnRIk8K8J3g">✅ 保存</button>
+                            </div>
+                            <div class="qe-hint" id="qeHint" data-page-node-id="wNfEIpSTuHpAQkGCgzXWMf"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Toast 提示 -->
+            <div class="toast" id="toast" data-page-node-id="ebAn14U4irOnIphoD3Sy6N"></div>
+        </main>
+
+        <!-- 手机端底部导航栏 -->
+        <nav class="bottom-nav" id="bottomNav" data-page-node-id="i6JxrqtgjmdBS4wTM7jbAE">
+            <button class="bottom-nav-item active" data-page="home" data-page-node-id="7Fz2Ri93Zm0BxoevFKswXG">
+                <span class="bn-icon" data-page-node-id="eKrNU6Fp36pIoDyuyK91mN">🏠</span>首页
+            </button>
+            <button class="bottom-nav-item" data-page="roster" data-page-node-id="MyGpiY247d7JBjrwVs0N3P">
+                <span class="bn-icon" data-page-node-id="T8aiYg6s6RPnfqzbD76CFV">👥</span>花名册
+            </button>
+            <button class="bottom-nav-item" data-page="analysis" data-page-node-id="PKhk4pqZmGMF7GrLyyrZUG">
+                <span class="bn-icon" data-page-node-id="rRcyowJEJhekR6hh3vGeKQ">📊</span>体测
+            </button>
+            <button class="bottom-nav-item" data-page="scoreentry" data-page-node-id="GdtTOuSEyfWKFymao4FdA8">
+                <span class="bn-icon" data-page-node-id="xJsgt8o7SCDaF5IwFdspE6">📝</span>录入
+            </button>
+            <button class="bottom-nav-item" data-page="toolbox" data-page-node-id="52FZTpOU5BNwtiYmuDca33">
+                <span class="bn-icon" data-page-node-id="zALh0dwUJqQXVHCP0oAd1v">🧰</span>工具
+            </button>
+            <button class="bottom-nav-item" data-page="safety" data-page-node-id="k9O3UYjVZ1mjyC009nth5J">
+                <span class="bn-icon" data-page-node-id="G9jUibcKoCJN3yUC6j39A5">🛡️</span>安全
+            </button>
+        </nav>
     </div>
-    <div id="wheelProjView" class="wheel-wrap" data-page-node-id="0wmeaJj5hhLT9LJSVjNPlE">
-      <div id="wheelBox" data-page-node-id="5GFAH0OneZYNviEBx12pR8">
-        <div class="wheel-pointer" data-page-node-id="aBuIWuBwicWI1ZK0DkEhWq"></div>
-        <svg viewBox="0 0 300 300" data-page-node-id="WQOyHexS3f7m6N6XuTGaDK">
-          <circle cx="150" cy="150" r="148" fill="#0E1022" data-page-node-id="OqnrVO4u4wPMIVxUPNzwbX"/>
-          <g id="wheelG" data-page-node-id="5COJD8AjnszhywxchuBxsI"></g>
-          <circle cx="150" cy="150" r="22" fill="#14162B" stroke="#3A3F6E" stroke-width="1.5" data-page-node-id="Rrhay5SXJFCuRnDaDRmQMH"/>
-        </svg>
-      </div>
-      <div class="wheel-result" data-page-node-id="RffUQrTAnMkg48UWR4HPtI">
-        <div class="wr-label" id="wrLabel" data-page-node-id="s5cuc8FA3omvWEXMe0Be70">点击下方按钮，转出今天的挑战</div>
-        <div class="wr-name" id="wrName" data-page-node-id="KLP4EUPwfspYjrdjo6wmYp">？</div>
-      </div>
-      <button class="broad-btn primary" id="spinBtn" onclick="spinWheel()" data-page-node-id="9MnFhMLnD5enD8Il94kCSh">转！</button>
-      <div id="wheelAction" style="display:none;" data-page-node-id="LB1Cip8TBkUU84GX3QQKml">
-        <button class="broad-btn primary" id="waGo" onclick="showWheelDur()" data-page-node-id="FnW1xKqXZZ8C971kVIQ1Wc">▶ 开始挑战</button>
-      </div>
-      <div id="waDurRow" style="display:none;flex-direction:column;align-items:center;gap:10px;" data-page-node-id="DhFCJxby0NSKozbQnQt5tv">
-        <div class="slot-info" data-page-node-id="jtwqZO4I1EAxzvaAaEwdFr">选一个时长，马上开始 ⬇</div>
-        <div class="dur-row" style="margin:0;justify-content:center;" data-page-node-id="kDDaHggDiGgS954K6spmrp">
-          <button class="dur-btn" style="font-size:24px;padding:16px 34px;" onclick="wheelGo(30)" data-page-node-id="YCJ9QQ4YzAOkpEoVXg0UiI">30秒</button>
-          <button class="dur-btn" style="font-size:24px;padding:16px 34px;" onclick="wheelGo(60)" data-page-node-id="Hd6TNZ0dNL76g9lR7PEYhb">60秒</button>
-          <button class="dur-btn" style="font-size:24px;padding:16px 34px;" onclick="wheelGo(120)" data-page-node-id="HYeK2byc7T0CGRI2exsJXU">120秒</button>
+
+    <script src="data.js?v=27"></script>
+    <script src="toolbox-data.js?v=27"></script>
+    <script src="nation-score.js?v=27"></script>
+    <script src="app.js?v=27"></script>
+
+    <!-- 手机端浮动快速录入按钮 -->
+    <button class="fab-btn" onclick="openQuickEntry()" title="快速录入" data-page-node-id="C43v8bA9ZWr8nKLz2jj8W8">⚡</button>
+    <!-- 手机端浮动完整录入按钮 -->
+    <button class="fab-btn fab-btn-secondary" onclick="openEntryModal()" title="完整录入" data-page-node-id="vIooYKZrjP4PRm5VzYqTaY">✏️</button>
+
+    <!-- 秒表浮窗（页面内右下角小窗，常驻/可折叠） -->
+    <div class="sw-overlay" id="stopwatchModal" style="display:none;" data-page-node-id="aQ7XFOpgcNtRGC2DC2ArCm">
+        <button class="sw-bubble" onclick="toggleSwFloat(false)" title="展开秒表" data-page-node-id="faStxDvEfHImvsVQMAsHUo">
+            <span data-page-node-id="vCRJDAJNIGysQPs4ADrZrb">⏱️</span>
+            <span id="swBubbleText" data-page-node-id="qecHYmQIv7SRrs6ExscAaC">秒表已收起</span>
+            <span class="sw-bubble-count" id="swBubbleCount" data-page-node-id="COxUQCOuWtZOCiPl7s8CQq">0/4</span>
+        </button>
+        <div class="sw-card" onclick="event.stopPropagation()" data-page-node-id="J2ZGanRf6C6an6Ny80WItp">
+            <button class="sw-collapse-btn" onclick="toggleSwFloat(true)" title="收起" data-page-node-id="edQotCRoFmojb7kdb5EUWW">⌄</button>
+            <button class="sw-close" onclick="closeStopwatch()" data-page-node-id="Mx0HWsXNip8FmlJwmJzFgr">✕</button>
+            <div class="sw-title" data-page-node-id="lv0x8SPybLY7EAe80SBVTB">
+                <span class="sw-title-icon" data-page-node-id="VNCCtR9vUEPr7kXCnp7gGd">⏱️</span>
+                <span id="swProjectLabel" data-page-node-id="GNWRhkL8L0E8MbOBUWHb0H">50米跑 秒表</span>
+                <span class="sw-hint" data-page-node-id="PpeuoSutH6GJ10F0a4diJo">· 每轮4人</span>
+            </div>
+            <div class="sw-display" id="swDisplay" data-page-node-id="UyZFDhPohfPXomGyqwXAc9">0.00</div>
+            <div class="sw-splits" id="swSplits" data-page-node-id="afsFlGekHehAQxJlFdym7y"></div>
+            <div class="sw-controls" data-page-node-id="KE8EEXxVBhd8777FyNljGi">
+                <button class="sw-ctrl sw-ctrl-start" id="swStartBtn" onclick="startStopwatch()" data-page-node-id="egFbAKGDX6vdbynaSahNQS">开始</button>
+                <button class="sw-ctrl sw-ctrl-lap" id="swLapBtn" onclick="lapStopwatch()" disabled data-page-node-id="Bqz6zPVCwvHNLLPRoMTbxN">计时</button>
+                <button class="sw-ctrl sw-ctrl-reset" id="swResetBtn" onclick="resetStopwatch()" disabled data-page-node-id="7eo0xnVhqZqABs97yNRKyL">清零</button>
+            </div>
         </div>
-      </div>
-    </div>
-    <div id="wheelNameView" class="wheel-wrap" style="display:none;" data-page-node-id="bItJ0qBASIdo2OhWKsQth8">
-      <div class="slot-info" id="slotInfo" data-page-node-id="7vzsHeNlflMX6U46aICOER">回主页点班级按钮选班级，名单就自动加载</div>
-      <div class="slot-face" data-page-node-id="1vnChWhaAibK8TW7DFoOAO"><div class="slot-name" id="slotName" data-page-node-id="wVHOqPudSefbAPWyK9GTE1">？</div></div>
-      <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;" data-page-node-id="MQbvuxO0JCkyaksgw0RDtq">
-        <button class="broad-btn primary" onclick="spinName()" data-page-node-id="2ikRSuhI61HKurxDaafuTN">点将！</button>
-        <button class="broad-btn ghost" onclick="resetPicked()" data-page-node-id="afXOeQmrTLuXuPqrvayPGk">重置点名</button>
-      </div>
-      <div class="slot-info" data-page-node-id="jOdU0jySa6GA6BCZfyQgVu">
-        <label style="cursor:pointer;" data-page-node-id="qgoOP5ULqhLXAG82DtEbYB"><input type="checkbox" id="noRepeat" checked style="width:18px;height:18px;vertical-align:-3px;" data-page-node-id="auGXfhPlexxa93FDthSwy4"> 不重复点人（点完全班自动重来）</label>
-      </div>
-      <div class="slot-picked" id="pickedChips" data-page-node-id="uaxH0x0yxVC9RFKlH120gd"></div>
-    </div>
-  </div>
-</div>
-
-<div id="page-score" class="page" data-page-node-id="teEcseBz8ypv1MLmOH7B42">
-  <div class="page-pad" style="display:flex;flex-direction:column;flex:1;" data-page-node-id="ixCzqAVDlylEFeIJ6yoXpH">
-    <div class="sec-title" style="text-align:center;" data-page-node-id="R15MXti3G6yXEWSYxhAp4k">点击队名可改名 · 点击分数可直接输入 · 数据自动保存</div>
-    <div class="score-grid" id="scoreGrid" data-page-node-id="rZy6KA29ZaxIb4A5cvbWqf"></div>
-    <div style="text-align:center;padding:16px 0 8px;" data-page-node-id="RBAtXWZ9pQXunchp0xmoAx">
-      <button class="broad-btn ghost" onclick="resetScores()" data-page-node-id="MKAso79vDdPTvWcskwWTTZ">全部清零</button>
-    </div>
-  </div>
-</div>
-
-<div id="page-beat" class="page" data-page-node-id="nbxisVzhOBnrH5qTStTVAm">
-  <div class="page-pad" style="display:flex;flex-direction:column;flex:1;" data-page-node-id="7piP2cpPdOUwk1jG01NUFj">
-    <div class="sec-title" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;" data-page-node-id="ljCltmU7wq2yfik1ixwuJz">
-      <span data-page-node-id="UqHqmlCtXZ4UolrJvBDS3S">🎵 体操音乐（跟着练）：</span>
-      <button class="broad-btn ghost" id="bgmQicai" onclick="playRadio(RADIO_BGM,'bgmQicai')" data-page-node-id="uRKEesMykNuqikByQW7WNR">七彩阳光（标准体操）</button>
-      <button class="broad-btn ghost" id="bgmFeng" onclick="playRadio(GAME_BGM,'bgmFeng')" data-page-node-id="YJ1DxrZPyJ088KXt2lWWCE">风吹一夏（DJ版）</button>
-      <button class="broad-btn ghost" onclick="stopRadio()" data-page-node-id="y7sBf0nu3WTq8wKrYRkgqe">⏹ 停止</button>
-    </div>
-    <div class="beat-wrap" data-page-node-id="ofmaHACk7QHqVbGFbVtPIQ">
-      <div class="beat-eighth" id="beatEighth" data-page-node-id="ew80cDpsuodfj0o41OiQlR">第 <b data-page-node-id="05KsYPP8Erq9QLrMg9voEj">1</b> 个 8 拍</div>
-      <div class="beat-num" id="beatNum" data-page-node-id="mjUgYP9qNaArEguC3uGfYR">1</div>
-      <div class="beat-dots" id="beatDots" data-page-node-id="Y2laPEN8XXoBBRx4yjBPvA"></div>
-      <div class="beat-ctrl" data-page-node-id="5lkgvSiOL3RjPgPhpBwblE">
-        <button class="broad-btn primary" id="beatBtn" onclick="toggleBeat()" data-page-node-id="sPjmFgvmD9w656s66yg7bn">开始</button>
-        <div class="bpm-box" data-page-node-id="101dKL8uGmGZEQZLzJ6VzB">
-          <button onclick="stepBpm(-5)" data-page-node-id="Q3iI29vGa45RPL88HJjuiV">−</button>
-          <div data-page-node-id="2vjJrUCEB1D2G90dtKE90S"><div class="bpm-val" id="bpmVal" data-page-node-id="0GEwc5U4TDvjQUmDFuqsM3">100</div><div style="color:var(--muted);font-size:12px;text-align:center;" data-page-node-id="G01edPc3COpb7USmBdR5P6">BPM</div></div>
-          <button onclick="stepBpm(5)" data-page-node-id="IJvnPTzFELRCKOsQ0m8axs">＋</button>
-        </div>
-        <button class="broad-btn ghost" onclick="setBpm(80)" data-page-node-id="tRy19FOFamF7YggwdkKs16">慢 80</button>
-        <button class="broad-btn ghost" onclick="setBpm(100)" data-page-node-id="JULHjEWnuo1BG04uwDcp3h">中 100</button>
-        <button class="broad-btn ghost" onclick="setBpm(120)" data-page-node-id="IxJkkpWV4gLw5rm73UPgbV">快 120</button>
-      </div>
-      <div class="stage-tip" data-page-node-id="xeIJ21ZTLuCR8ozJd1ebUn">每个 8 拍的第 1 拍是重音 · 跟着大字数拍做动作</div>
-    </div>
-  </div>
-</div>
-
-<div id="page-game" class="page" data-page-node-id="xmjVBMtEUuzd1HVeCqwJtE">
-  <div class="page-pad" style="display:flex;flex-direction:column;flex:1;" data-page-node-id="Y82aSL0Si8C3KtqA4wGu2L">
-    <div class="game-tabs" data-page-node-id="SrREzHyqY6qHK0s1A04NyT">
-      <button class="wheel-tab sel" id="gtTL" onclick="gameTab('tl')" data-page-node-id="OLiD3zBjrBBKqgn9uOCiTy">🚦 红绿灯</button>
-      <button class="wheel-tab" id="gtArrow" onclick="gameTab('arrow')" data-page-node-id="TBIwOVVAMU2i7ZJzx1YykJ">➡️ 方向快闪</button>
-      <button class="wheel-tab" id="gtMusic" onclick="toggleGameMusic()" title="背景音乐开关" style="margin-left:auto;font-size:15px;padding:8px 16px;">🎵 配乐:开</button>
-    </div>
-    <div id="gameTL" class="game-area" data-page-node-id="sF2pXw6nBBneBpjChXf3B9">
-      <div class="tl-face" id="tlFace" data-page-node-id="KMmG4kSFCHWmBhmaBcHO6v">
-        <div class="tl-word" id="tlWord" data-page-node-id="w1EgRHuksvSvw1FKwnzv0E">红绿灯</div>
-        <div class="tl-sub" id="tlSub" data-page-node-id="1gZcMtgbpj9QXiraJEcQZM">绿=动（原地跑/开合跳） 红=马上定住！</div>
-      </div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;padding-top:14px;" data-page-node-id="ShhYJfhCGMFwEQfN7XHnM5">
-        <button class="broad-btn primary" id="tlBtn" onclick="toggleTL()" data-page-node-id="AKWgkDyCegsYfWN8B2UkmG">开始游戏</button>
-        <button class="broad-btn ghost" id="tlModeBtn" onclick="toggleTLMode()" data-page-node-id="1ORGxh4kS0FcpJeV6WkKXB">模式：自动</button>
-        <button class="broad-btn ghost" onclick="manualTL()" id="tlManualBtn" style="display:none;" data-page-node-id="SDlTQqEyDF1cPhjYc3p7PT">变！</button>
-      </div>
-    </div>
-    <div id="gameArrow" class="game-area" style="display:none;" data-page-node-id="1zGCUw2JHu0gWvC1PBQBez">
-      <div class="arrow-face" data-page-node-id="HplpKkA31M0o2GQAd8n6Wb">
-        <div class="arrow-big" id="arrowBig" data-page-node-id="Zn1qbLgp4q56WfRay0iHLC">↑</div>
-        <div class="arrow-act" id="arrowAct" data-page-node-id="3ScoHBICXyAOIYc15AMZYo">上 = 原地纵跳 · 下 = 快速下蹲 · 左/右 = 向侧单脚跳</div>
-      </div>
-      <div class="speed-row" data-page-node-id="cuTijMUPanRfZy0Dbx0BAh">
-        <button class="speed-btn" data-ms="3000" onclick="pickSpeed(this)" data-page-node-id="ZdcpraItIyG7zMAD4p8NU6">慢速 3秒</button>
-        <button class="speed-btn sel" data-ms="2000" onclick="pickSpeed(this)" data-page-node-id="PdycsopMikeW1bfUVfDdhx">中速 2秒</button>
-        <button class="speed-btn" data-ms="1300" onclick="pickSpeed(this)" data-page-node-id="dQ0GAqeESEMBfmahJVG9hF">快速 1.3秒</button>
-        <button class="speed-btn" data-ms="900" onclick="pickSpeed(this)" data-page-node-id="pdb7kgnxDXTBhblhvwsGFR">魔鬼 0.9秒</button>
-      </div>
-      <div style="text-align:center;padding-bottom:10px;" data-page-node-id="HMSgpBs7OvEFrWsw4CAJ7J">
-        <button class="broad-btn primary" id="arrowBtn" onclick="toggleArrow()" data-page-node-id="QouZKfIDeCcjxivMeVahN9">开始游戏</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div id="page-plan" class="page" data-page-node-id="IMiaCSJmHdWj6LHuobuZIB">
-  <div class="page-pad" data-page-node-id="vTC8kof5UUlpJNB4KdqVVI">
-    <div class="sec-title" data-page-node-id="1GX5cftIUrUD9aNkHiT0fM">下雨天不用愁 · 三套现成方案，点「前往」直达对应工具</div>
-
-    <div class="plan-card" data-page-node-id="auK4uQHrAkrEWaLp4Se2ZD">
-      <div class="plan-head" data-page-node-id="KzlijlKsiWYtKfwFXXTMic">
-        <div class="plan-name" data-page-node-id="fdDhxKa3oxYwNWWMlDxN01">课包一 · 经典素质课</div>
-        <div class="plan-tag" style="background:#2A2438;color:var(--coral);" data-page-node-id="t9DM7xJOwpjsDs6Gti5shV">适合：全班整齐练素质</div>
-      </div>
-      <div class="flow-list" data-page-node-id="rKx6fxa5aSRm0f332nosbd">
-        <div class="flow-step" data-page-node-id="nhHpqtv2j9JhcvXtq8UWDR"><div class="flow-time" data-page-node-id="QFAAddQAfEM6S2hEEEv1jD">5 分钟</div><div class="flow-body" data-page-node-id="oyZneIvml97rHeu5wEG620"><div class="flow-name" data-page-node-id="YMk13p6lOKSOvm54OrKCoV">热身 · 节拍跟练</div><div class="flow-desc" data-page-node-id="M8OAiiKOmKpnBZ5xLUVZER">100 BPM 原地踏步摆臂，2个8拍换一个动作（踏步→开合→弓步走）</div></div><button class="flow-go" onclick="showPage('beat')" data-page-node-id="bcSBI9xoU46AYDopB0l1OF">前往</button></div>
-        <div class="flow-step" data-page-node-id="VIZSDnaxDamb23VFsNxfEw"><div class="flow-time" data-page-node-id="t8aZtFt6Py0Q6JXNfdP97j">8 分钟</div><div class="flow-body" data-page-node-id="Bm1hCK6e3o3jTSXSn2UzZJ"><div class="flow-name" data-page-node-id="c0r6P9OlxCEhhxJnQWNN1U">红绿灯反应游戏</div><div class="flow-desc" data-page-node-id="AzDUXU8usGDwdaJ9PrT2Ln">绿动红停，练反应练纪律，犯规的下场当裁判</div></div><button class="flow-go" onclick="showPage('game')" data-page-node-id="rfxavdrntiPfchUKwwyNnh">前往</button></div>
-        <div class="flow-step" data-page-node-id="Eq7NBC4VCjI6mHX2McZNOh"><div class="flow-time" data-page-node-id="XUnZV7roT8s9pJbbgWLjZK">15 分钟</div><div class="flow-body" data-page-node-id="tqASevptOA1qAkozFTNKYw"><div class="flow-name" data-page-node-id="qnD2UDnVRIU8zDxBcCYtMP">挑战台素质循环</div><div class="flow-desc" data-page-node-id="HYttz4tYrbH0Qz0gVNmpkj">开合跳30秒×3组、深蹲45秒×3组、平板支撑60秒×2组，组间休息30秒</div></div><button class="flow-go" onclick="showPage('challenge')" data-page-node-id="B8R9kNbE0qKGVyU7k9jYbY">前往</button></div>
-        <div class="flow-step" data-page-node-id="Fa7WvooqMDyiDNp5eDwVz3"><div class="flow-time" data-page-node-id="vvim4Awsjl7eyl80CsP2Q6">8 分钟</div><div class="flow-body" data-page-node-id="YzbUhFV8HqmISM0NquhHJe"><div class="flow-name" data-page-node-id="7v8jaXprPem9caN55J15Z5">方向快闪</div><div class="flow-desc" data-page-node-id="qSul84G2qtDKHSXz5GwipD">从慢速开始玩到快速，最后1分钟魔鬼模式，全班沸腾</div></div><button class="flow-go" onclick="showPage('game')" data-page-node-id="L8yWzE6yFj0G0CKLHZbgA1">前往</button></div>
-        <div class="flow-step" data-page-node-id="SDN58ShAEKoZDGpYSJ9ttO"><div class="flow-time" data-page-node-id="XMzb2olOcwAhuEgAMpXRj3">4 分钟</div><div class="flow-body" data-page-node-id="zG2HRttDzDPbsUNGHrPqCo"><div class="flow-name" data-page-node-id="ygDnkbF83aSWE8O62Ei8Hm">放松拉伸</div><div class="flow-desc" data-page-node-id="y3zRlmDCBfrAbUjuZ5MR3F">坐姿体前屈、大腿前侧拉伸、深呼吸，跟着节拍台慢速80做</div></div><button class="flow-go" onclick="showPage('beat')" data-page-node-id="4Z8D4ItoLyTyGyJ0bwLT46">前往</button></div>
-      </div>
     </div>
 
-    <div class="plan-card" data-page-node-id="9F1wxfVxCvSoRYgRXIAiUQ">
-      <div class="plan-head" data-page-node-id="9nHf0TVnrw34CHIwwqYBhs">
-        <div class="plan-name" data-page-node-id="GH59iHu4kZJ39nMQ8UMePO">课包二 · 小组竞技课</div>
-        <div class="plan-tag" style="background:#1B3A4A;color:var(--blue);" data-page-node-id="kXmrerXmCDELI84aE73LBM">适合：想炒热气氛</div>
-      </div>
-      <div class="flow-list" data-page-node-id="pxrenpeVVh3mDTF7mW0BEH">
-        <div class="flow-step" data-page-node-id="pqo0pLaRqvBbUNfNJKDJHg"><div class="flow-time" data-page-node-id="N48EgFQg6bF2pv1BOBFgME">5 分钟</div><div class="flow-body" data-page-node-id="ySVKGkBoMGHtwfGzoxSjl3"><div class="flow-name" data-page-node-id="K8fBZnXE8ihibdHBCi3gvM">分组 + 计分板开台</div><div class="flow-desc" data-page-node-id="7YxB5kadHSz3kBKU8mLTg7">按座位分四队，打开计分板，宣布规则：赢的队加分，违纪扣分</div></div><button class="flow-go" onclick="showPage('score')" data-page-node-id="8LHQLhNPjGQZnguFPnCVxu">前往</button></div>
-        <div class="flow-step" data-page-node-id="0kWqaENJUvZ4VKcrvFMbFS"><div class="flow-time" data-page-node-id="kh5t8QGsWOZGIH1OHKBl7S">5 分钟</div><div class="flow-body" data-page-node-id="aSYC20xoMVqaeKwWQvcNGz"><div class="flow-name" data-page-node-id="DlGtKcAwqyx35LMtBjvvSS">热身 · 节拍跟练</div><div class="flow-desc" data-page-node-id="iqNOqwoRV3GFIUSKXB7fYP">120 BPM 快节奏热身，跟不上的队扣1分</div></div><button class="flow-go" onclick="showPage('beat')" data-page-node-id="AslWNrF0qrvTGuIrw9BIIz">前往</button></div>
-        <div class="flow-step" data-page-node-id="uhSDDxG7SjUZNIE0QQSRVn"><div class="flow-time" data-page-node-id="d0t7TcXY8YJhfzyrmJ6i77">20 分钟</div><div class="flow-body" data-page-node-id="gARorhFsgHCQ3RKS6EjaQI"><div class="flow-name" data-page-node-id="XW0OfIJlChQhqeYrYJKvIv">大转盘 + 挑战台对抗</div><div class="flow-desc" data-page-node-id="cmalTYDrcb6DtrS9KG2qSk">转盘选出项目 → 每队派代表上台挑战 → 按坚持时长给全队加分</div></div><button class="flow-go" onclick="showPage('wheel')" data-page-node-id="57Pw8HDOv37FnC8CBaCSyw">前往</button></div>
-        <div class="flow-step" data-page-node-id="uusWiwUjx0zkhK66qWoMYx"><div class="flow-time" data-page-node-id="LByrsUXgQc5wy5jECSZVtA">6 分钟</div><div class="flow-body" data-page-node-id="yLX5B78yNdT8QLNjz0c7Db"><div class="flow-name" data-page-node-id="NwZGb2k5mwBEfokFluUami">随机点将 · 知识问答</div><div class="flow-desc" data-page-node-id="hMDNcB4IvuDroAeI3vn5qO">摇号点将答体育健康小知识，答对+2分（题你来出：如"蹲起时膝盖能不能超脚尖"）</div></div><button class="flow-go" onclick="showPage('wheel')" data-page-node-id="C1zTX8AHQxwQ5c3lmDdNh9">前往</button></div>
-        <div class="flow-step" data-page-node-id="FpDQrpw83x6WYuOpNUl9yO"><div class="flow-time" data-page-node-id="Wa7O2Ak08anP5q4tBNCTVx">4 分钟</div><div class="flow-body" data-page-node-id="INkh63kbY6VkGnbXadazut"><div class="flow-name" data-page-node-id="wlp0tZJnJZgS0TKfWW4qvp">宣布冠军 + 放松</div><div class="flow-desc" data-page-node-id="dTCABSRzQD2hVXrPVH3Zso">冠军队起立接受欢呼，全班拉伸放松收尾</div></div><button class="flow-go" onclick="showPage('score')" data-page-node-id="AQeWjGEHRTrhoKWMrAUUVu">前往</button></div>
-      </div>
-    </div>
-
-    <div class="plan-card" data-page-node-id="LMA2Fjv5Al8w5yLYEbuGEU">
-      <div class="plan-head" data-page-node-id="KRvuRTH8TevbfGDAwsG7k4">
-        <div class="plan-name" data-page-node-id="UXh3U8biL4R6RmVqT6l6z2">课包三 · 静悄悄素质课</div>
-        <div class="plan-tag" style="background:#1B3A2E;color:var(--teal);" data-page-node-id="M2pGKOlOajSXVxdEnaDz7N">适合：隔壁班考试/楼层限制</div>
-      </div>
-      <div class="flow-list" data-page-node-id="ATleLlRFrWsTHYd0Ve2RSz">
-        <div class="flow-step" data-page-node-id="7v9L1cjKaYlE3fmGsVyUdX"><div class="flow-time" data-page-node-id="0GE5QPL7JIkjuiTb5Pp3Nh">5 分钟</div><div class="flow-body" data-page-node-id="SaSw31TO9twng5OmTjrZRw"><div class="flow-name" data-page-node-id="bXmfAt8kkQUCa0FFHWXqz1">坐姿热身（无跳跃）</div><div class="flow-desc" data-page-node-id="wPquifEEEaQTywgBBWfkus">头颈环绕、肩绕环、手腕脚踝激活，跟着节拍台80慢速做</div></div><button class="flow-go" onclick="showPage('beat')" data-page-node-id="kHCQbUSzJv0EgKrTPbV8sj">前往</button></div>
-        <div class="flow-step" data-page-node-id="xrFkdIUAccTPEWpvV2gZCT"><div class="flow-time" data-page-node-id="HX8V6dqEHnCmnLoI0myzKI">12 分钟</div><div class="flow-body" data-page-node-id="KgYsyxVOeYgMsbkR6xt19Y"><div class="flow-name" data-page-node-id="jPQHmwHNHh2nr9iabVAXnh">静音素质挑战</div><div class="flow-desc" data-page-node-id="iXpCFCyjnrrcljnwfta73e">靠墙静蹲60秒×3、平板支撑60秒×2、坐姿举腿30秒×3（关闭音效，用大屏倒计时）</div></div><button class="flow-go" onclick="showPage('challenge')" data-page-node-id="hbQUbfMHVmqn2lM8MoFBbU">前往</button></div>
-        <div class="flow-step" data-page-node-id="LYvzg2dLhux8csT1VdhXKi"><div class="flow-time" data-page-node-id="Mm4sso7cwDJEnXlmiqFTMU">10 分钟</div><div class="flow-body" data-page-node-id="xCB4EVtBTjVBauJYvlto5F"><div class="flow-name" data-page-node-id="13APJ5IoQUMNx9bylMcMUx">坐姿游戏 · 石头剪刀布锦标赛</div><div class="flow-desc" data-page-node-id="F8RCWEaJsR93LccJzCDr6J">同桌对战→小组冠军→全班总决赛，输的做5个坐姿举腿</div></div><button class="flow-go" onclick="showPage('score')" data-page-node-id="yfZYSJ4BoFLp5biGy4l6vB">前往</button></div>
-        <div class="flow-step" data-page-node-id="vTwtrnLocrKLStDpzLOKol"><div class="flow-time" data-page-node-id="l8B2ZYWQr8AesRWAEDLLke">8 分钟</div><div class="flow-body" data-page-node-id="DxLGB8GphleFZmPCcWolMd"><div class="flow-name" data-page-node-id="dOafz052B0QhffL2qdZ3EW">拉伸 + 呼吸放松</div><div class="flow-desc" data-page-node-id="MI7p6Z6eKtICxJ1vnWBjIm">坐姿体前屈保持、闭眼深呼吸10次，安静收尾</div></div><button class="flow-go" onclick="showPage('beat')" data-page-node-id="Xce6IyzQAsIhAotQ8hyj42">前往</button></div>
-      </div>
-    </div>
-    <div style="height:20px;" data-page-node-id="1MP6MCRSv7KXw0VNNjDi6X"></div>
-  </div>
-</div>
-
-<div class="modal-mask" id="settingsMask" data-page-node-id="hpUz9nfGkQj7kPKqzTwJHG">
-  <div class="modal" data-page-node-id="4eLBrT5EfLEHqpcD6B8ZSO">
-    <h3 data-page-node-id="MAbi7YRYV2FnhpoDo6zsw8">⚙️ 设置</h3>
-    <div class="form-row" data-page-node-id="TSehW2cVAhExcflGvCPezc">
-      <label data-page-node-id="5ySjPHXiyeKR1UUppML5y3">班级名称（显示在主页）</label>
-      <input type="text" id="setClassName" placeholder="如：四年级(2)班" data-page-node-id="JxnXSpWAtFZBuiQzjfDLkc">
-    </div>
-    <div class="form-row" data-page-node-id="RQJxSDeQCKFxeLXQgn6ZPa">
-      <label data-page-node-id="3VDfYDcI0Ntc4nf1LZ8nfK">班级学生名单（一行一个名字，用于随机点将）</label>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center;" data-page-node-id="8XV7GHs0ZX24JhxKDWcDhr">
-        <span style="color:var(--muted);font-size:14px;" data-page-node-id="XPzdgqNC7GO0hzVrvDPnxX">快速填入：</span>
-        <button class="cp-mini" onclick="fillPreset('四年级1班')" data-page-node-id="Pxl3Wp2Pm9ol45Dt8HQyoD">1班</button>
-        <button class="cp-mini" onclick="fillPreset('四年级2班')" data-page-node-id="rZVHGRBAr94fwefb8fqcHW">2班</button>
-        <button class="cp-mini" onclick="fillPreset('四年级3班')" data-page-node-id="Ykc63xa0B0JRqbPCjBbzEN">3班</button>
-        <button class="cp-mini" onclick="fillPreset('四年级4班')" data-page-node-id="8lXGFAWCZAPw5nOei5tc0U">4班</button>
-        <button class="cp-mini" onclick="fillPreset('四年级5班')" data-page-node-id="GTbGWbrBq1fZFvyxUgawgv">5班</button>
-        <button class="cp-mini" onclick="fillPreset('四年级6班')" data-page-node-id="dpKrvhEuKOVne4TANrUN6h">6班</button>
-      </div>
-      <textarea id="setStudents" placeholder="张三&#10;李四&#10;王五"></textarea>
-      <div class="hint" data-page-node-id="jz09ZH6Y0T5M9rGX5IU63X">点上面的按钮快速填入班级名单，也可以自己粘贴修改；平时上课直接在主页点班级按钮切换更方便</div>
-    </div>
-    <div class="modal-btns" data-page-node-id="9KwPuwl2zYCLGqLQcA1kPs">
-      <button class="broad-btn primary" onclick="saveSettings()" data-page-node-id="37AsYGR377O6DAz29s4B8p">保存</button>
-      <button class="broad-btn ghost" onclick="closeSettings()" data-page-node-id="c3YvN53ES677j4OMC7XZPF">取消</button>
-      <button class="broad-btn ghost" onclick="exportData()" data-page-node-id="MWnfOB3cFoKdI7zHELeIlo">⬇ 导出备份</button>
-      <button class="broad-btn ghost" onclick="document.getElementById('importFile').click()" data-page-node-id="aP1KEkieoHRQYViO8aEl8o">⬆ 导入恢复</button>
-      <button class="broad-btn ghost" onclick="clearAll()" data-page-node-id="Ez4gNRUEFpmfFVOPhe8Av3">清空全部数据</button>
-    </div>
-    <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importData(this)" data-page-node-id="vngujKdJTpsHEvy6jfxEKp">
-  </div>
-</div>
-
-<div class="toast" id="toast" data-page-node-id="ZBVRIj0ZoCpyAVQr8j8DrB"></div>
-
-<script>
-var STORAGE_KEY = 'class_pe_screen_v1';
-var CHALLENGES = [
-  {name:'平板支撑', dur:60, tip:'手肘撑地，身体一条直线，屁股别翘'},
-  {name:'靠墙静蹲', dur:60, tip:'背贴墙滑下，大腿与地面平行'},
-  {name:'开合跳', dur:30, tip:'跳起手脚打开，落地轻一点'},
-  {name:'深蹲', dur:45, tip:'屁股往后坐，膝盖对脚尖方向'},
-  {name:'高抬腿', dur:30, tip:'大腿抬平，快速交替，原地做'},
-  {name:'俯卧撑', dur:30, tip:'做不了标准的可以跪姿'},
-  {name:'波比跳', dur:30, tip:'蹲-撑-跳一气呵成，量力而行'},
-  {name:'弓步蹲', dur:45, tip:'两腿交替，前面膝盖弯到90度'},
-  {name:'坐姿举腿', dur:30, tip:'坐地上双腿并拢抬起放下，练肚子'},
-  {name:'金鸡独立', dur:60, tip:'单脚站直，双手侧平举，比谁稳'},
-  {name:'原地踏步', dur:30, tip:'抬头挺胸，手臂自然前后摆'},
-  {name:'交叉开合跳', dur:30, tip:'开合时双手在胸前交叉'},
-  {name:'后踢腿跑', dur:30, tip:'脚后跟踢到屁股，节奏加快'},
-  {name:'深蹲跳', dur:30, tip:'蹲下立刻跳起，落地轻一点'},
-  {name:'登山跑', dur:30, tip:'双手撑地，膝盖快速交替收'},
-  {name:'左右侧滑步', dur:30, tip:'向侧面滑步移动，别跨太大'},
-  {name:'仰卧起坐', dur:30, tip:'抱头慢慢起，用肚子发力'},
-  {name:'平板交替摸肩', dur:30, tip:'平板支撑，左右手交替摸肩'},
-  {name:'螃蟹步', dur:30, tip:'半蹲横向走，像小螃蟹一样'},
-  {name:'静坐深呼吸', dur:60, tip:'坐直闭眼，慢慢吸气再吐气（静音项目）'}
-];
-var WHEEL_ITEMS = ['开合跳','深蹲','平板支撑','高抬腿','波比跳','靠墙静蹲','弓步蹲','金鸡独立'];
-var WHEEL_COLORS = ['#F0997B','#5DCAA5','#85B7EB','#ED93B1','#FAC775','#E24B4A'];
-var PRESET_CLASSES = {
-  '四年级1班': ['郑奕朗','梁依依','陈英恺','许弘煜','黄友铉','郑舒蔚','薛梓昊','林晓烨','俞皓源','沈瑞博','李晓慧','蔡凯州','丘梓妤','廖彦淳','林国弘','蔡怿可','谢友贤','蔡楒桐','陈锶桐','林佳韵','余梓豪','陈钰琪','许诺','杨乐悠','黄信煜','陈一泓','林凯历','王泽林','林钇晋','唐梦曦','陈启灿','黄紫琳','叶骏谊','许礼源','王子铨','郑施恩','马启洋','赖致行','李奕溥','陈嘉垲','张仕成','黄洢彤','许文睿','郑舒晗','李梓琳'],
-  '四年级2班': ['庄梓慧','谭诗妍','徐启泽','卢泓宇','林子凡','蔡伟超','李安语','庄佳桓','周钦宁','罗芮淇','沈诗雅','陈怡佳','丁锶妍','朱杰楷','刘未钒','黄妍心','陈梓杭','陈政钖','林正胜','郑梓灿','吴桦峻','翁梓晨','庄雅棐','肖宇炀','连翊捷','肖海洲','黄煜鑫','孙一心','张芷羽','李颜明勋','郭易楷','林彧','吴俊扬','肖舒菀','林润丝','孙也涵','曾若熙','刘得雨','林煜典','庄可馨','林芷榆','郑济芃','黄若仪','蔡诗涵','黄新淇'],
-  '四年级3班': ['颜铄','佘坤颖','陈博宇','吴昭颖','周祖含','黄嘉泓','陈泐铟','卢睿颖','赵韵杰','林依涵','周梦辰','庄杰辉','许昱妍','陈沫瑶','彭依柏','陈圣超','黄镕臻','黄熙桐','杨舒钒','张斯豪','李佳怡','林祈言','陈建楠','吴庆栋','周志楠','杨雅琳','吴可非','陈力煜','吴佳航','刘竣凯','林楚校','黄铠航','郭梓潼','庄雨萱','林佳金','朱高远','黄漫妮','周怡潞','黄宥源','钟雨欣','谢忻霖'],
-  '四年级4班': ['刘峻宇','郑子汐','林雨馨','谢洛鑫','谢佳颖','黄泓奋','黄纪程','蔡佳恩','林靖欣','刘艺阳','高佳淇','陈衍勋','赖芷依','洪瑞雨','沈梓城','林学炜','薛维涛','林铄','陈元诺','陈若菲','蔡佳薇','许震廷','李文堉','周思妤','陈培健','林珂雅','黄玮琳','黄育铭','欧梓涵','林镡捷','郑友锐','郑皓楠','李圣跃','蔡建源','温子妍','王绎凡','李亦桐','陈均喆','苏志霆','黄于晋','周楠稀','杨书妍','林宝莹','沈家扬'],
-  '四年级5班': ['陈浩哲','刘浩然','朱伟铭','卓俊涛','许炯强','黄启睎','刘岳桐','郑又绮','陈晋乐','黄垲乐','李润熙','吴淋菲','林凯潼','许正曦','郑泉浩','蔡佩璇','陈泓瑜','邱文滢','张思曼','林诗瑾','庄享昂','肖凯勋','卢选红','黄奕涵','陈梓潼','李柏睿','陈钇皓','陈育权','师朗轩','曾静恩','周芷仪','林奕孜','黄启城','陈思琪','黄怡萌','肖圳韩','李昕洇','欧珂铟','黄靖皓','唐梓铭','卓锐泽','吴佳欣','薛熙潼','席杨','陈冠帆'],
-  '四年级6班': ['张林思语','姜书源','林佳盈','李城沿','肖文旭','李宇涵','黄美珊','陈梓信','洪豪','谢元航','林展熠','林玄昊','杨淙凯','蓝绘雯','许晋淑','陈建壕','吴骐翰','黄胜杰','陈培恺','陈叙杭','沈子轩','陈梓越','陈澍峣','张淳轩','郑嘉颖','冯思琪','郑梦依','蔡在野','翁羽岚','翟珣岚','林佳扬','陈依桐','蔡宇哲','庄舒雅','谢嘉润','陈奕延','陈诗涵','杨佩玄','李思钒','黄曼语','陈秒旬','周子高','蔡依姗','肖昕桐']
-};
-var TEAM_DEFS = [
-  {key:'red', name:'红队', cls:'t-red'},
-  {key:'blue', name:'蓝队', cls:'t-blue'},
-  {key:'yellow', name:'黄队', cls:'t-yellow'},
-  {key:'green', name:'绿队', cls:'t-green'}
-];
-var TITLES = {home:'室内体育大屏', challenge:'全班挑战台', wheel:'幸运大转盘', score:'小组计分板', beat:'节拍跟练台', game:'大屏反应游戏', plan:'一键雨天课包'};
-
-var state = load();
-var currentPage = 'home';
-var chalSel = 0, chalDur = 60;
-var chalTimer = null, chalRemain = 0, chalTotal = 60;
-var wheelRot = 0, wheelSpinning = false, lastWheelIdx = null;
-var slotTimer = null;
-var beatRun = false, beatCount = 0, beatTimer = null, bpm = 100;
-var tlRun = false, tlTimer = null, tlAuto = true, tlState = 'g';
-var arrowRun = false, arrowTimer = null, arrowMs = 2000;
-
-function load(){
-  var def = {className:'四年级1班', students:PRESET_CLASSES['四年级1班'].slice(), scores:[0,0,0,0], teamNames:['红队','蓝队','黄队','绿队'], soundOn:true, picked:[], pickedByClass:{}};
-  try{
-    var raw = localStorage.getItem(STORAGE_KEY);
-    if(raw){
-      var s = JSON.parse(raw);
-      for(var k in def){ if(s[k]===undefined){ s[k]=def[k]; } }
-      return s;
-    }
-  }catch(e){}
-  return def;
-}
-function save(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){} }
-function toast(msg){
-  var t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(t._tm);
-  t._tm = setTimeout(function(){ t.classList.remove('show'); }, 2200);
-}
-
-/* ---------- 班级切换 ---------- */
-function renderClassRow(){
-  var row = document.getElementById('clsRow');
-  var html = '';
-  for(var k in PRESET_CLASSES){
-    var sel = state.className===k;
-    html += '<button class="cp-btn'+(sel?' sel':'')+'" onclick="pickClass(\''+k+'\')">'+k+'</button>';
-  }
-  row.innerHTML = html;
-}
-function pickClass(k){
-  if(state.className===k && (state.students||[]).length===PRESET_CLASSES[k].length){ toast('当前已经是 '+k); return; }
-  if(!state.pickedByClass){ state.pickedByClass = {}; }
-  if(state.className){ state.pickedByClass[state.className] = (state.picked||[]).slice(); }
-  state.className = k;
-  state.students = PRESET_CLASSES[k].slice();
-  state.picked = (state.pickedByClass[k]||[]).slice();
-  state.scores = [0,0,0,0];
-  save();
-  document.getElementById('homeClassName').textContent = k;
-  renderClassRow();
-  renderScores();
-  renderPickedChips();
-  toast('已切换到 '+k+'（'+state.students.length+'人）· 分数已清零');
-}
-function fillPreset(k){
-  document.getElementById('setClassName').value = k;
-  document.getElementById('setStudents').value = PRESET_CLASSES[k].join('\n');
-  toast('已填入 '+k+' 名单，记得点「保存」');
-}
-
-/* ---------- 音效引擎 ---------- */
-var Sound = {
-  ctx:null,
-  ensure:function(){
-    if(!this.ctx){
-      try{ this.ctx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){}
-    }
-    if(this.ctx && this.ctx.state==='suspended'){ this.ctx.resume(); }
-  },
-  play:function(freq,dur,type,vol,when){
-    if(!state.soundOn){ return; }
-    this.ensure();
-    if(!this.ctx){ return; }
-    var t = this.ctx.currentTime + (when||0);
-    var o = this.ctx.createOscillator();
-    var g = this.ctx.createGain();
-    o.type = type||'sine';
-    o.frequency.value = freq;
-    g.gain.setValueAtTime(vol||0.3, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t+dur);
-    o.connect(g); g.connect(this.ctx.destination);
-    o.start(t); o.stop(t+dur+0.05);
-  },
-  beep:function(){ this.play(880,0.12,'sine',0.3); },
-  count:function(){ this.play(660,0.15,'square',0.18); },
-  go:function(){ this.play(1047,0.45,'sine',0.35); },
-  whistle:function(){
-    for(var i=0;i<5;i++){ this.play(2100,0.1,'square',0.16,i*0.09); }
-  },
-  cheer:function(){
-    var arr = [523,659,784,1047];
-    for(var i=0;i<arr.length;i++){ this.play(arr[i],0.18,'triangle',0.28,i*0.13); }
-  },
-  tick:function(hi){ this.play(hi?1320:880, hi?0.1:0.06,'sine', hi?0.32:0.2); },
-  red:function(){ this.play(220,0.3,'sawtooth',0.22); },
-  green:function(){ this.play(880,0.2,'sine',0.28); }
-};
-/* ---------- 背景音乐（循环播放） ---------- */
-var Music = {
-  audio:null, current:'',
-  ensure:function(){
-    if(!this.audio){ try{ this.audio = new Audio(); this.audio.loop = true; this.audio.volume = 0.6; }catch(e){} }
-  },
-  play:function(src){
-    this.ensure();
-    if(!this.audio){ return; }
-    if(this.current !== src){ this.audio.src = src; this.current = src; }
-    var p = this.audio.play();
-    if(p && p.catch){ p.catch(function(){}); }
-  },
-  stop:function(){
-    if(this.audio){ this.audio.pause(); try{ this.audio.currentTime = 0; }catch(e){} this.current = ''; }
-  },
-  isPlaying:function(src){ return !!this.audio && this.current === src && !this.audio.paused; }
-};
-var GAME_BGM = 'https://workbuddy-bga-1258344699.cos.ap-beijing.myqcloud.com/attachments/a57915bf-abd7-4865-aaa1-9c17684d3f8d/1788744336_24d67cee/%E5%B0%8F%E5%A4%B4%E9%92%88%20%20%E5%90%B4%E7%91%9E%E6%96%AF%20-%E9%A3%8E%E5%90%B9%E4%B8%80%E5%A4%8F%20(DJ%E7%89%88).mp3?q-sign-algorithm=sha1&q-ak=AKID6A1d7VrU8gw1tYzKapy22sb7RZUQAfut&q-sign-time=1788744336%3B1796520336&q-key-time=1788744336%3B1796520336&q-header-list=host&q-url-param-list=&q-signature=0778eae052d5dac51ec69b46c73d7feaac262175';
-var RADIO_BGM = 'https://workbuddy-bga-1258344699.cos.ap-beijing.myqcloud.com/attachments/a57915bf-abd7-4865-aaa1-9c17684d3f8d/1788744413_11ed74c7/%E4%B8%83%E5%BD%A9%E9%98%B3%E5%85%89-%E4%B9%8B%E5%A3%B0%E4%BD%93%E6%93%8D-503114.mp3?q-sign-algorithm=sha1&q-ak=AKID6A1d7VrU8gw1tYzKapy22sb7RZUQAfut&q-sign-time=1788744413%3B1796520413&q-key-time=1788744413%3B1796520413&q-header-list=host&q-url-param-list=&q-signature=0f17eaf634f904d273dbd8a8806656177b6fbb0b';
-var gameMusicOn = true;
-document.addEventListener('click', function(){ Sound.ensure(); }, {once:true});
-
-function toggleSound(){
-  state.soundOn = !state.soundOn;
-  save();
-  var b = document.getElementById('btnSound');
-  b.textContent = state.soundOn ? '音效开' : '音效关';
-  if(state.soundOn){ b.classList.remove('off'); Sound.beep(); } else { b.classList.add('off'); }
-  toast(state.soundOn ? '音效已开启' : '已静音（隔壁班考试可用）');
-}
-function toggleFull(){
-  try{
-    if(document.fullscreenElement){ document.exitFullscreen(); }
-    else{ document.documentElement.requestFullscreen(); }
-  }catch(e){ toast('当前浏览器不支持全屏'); }
-}
-
-/* ---------- 页面切换 ---------- */
-function goHome(){ showPage('home'); }
-function showPage(id){
-  stopAll();
-  currentPage = id;
-  var pages = document.querySelectorAll('.page');
-  for(var i=0;i<pages.length;i++){ pages[i].classList.remove('active'); }
-  var p = document.getElementById('page-'+id);
-  if(p){ p.classList.add('active'); }
-  document.getElementById('pageTitle').textContent = TITLES[id]||'';
-  if(id==='home'){ document.getElementById('homeClassName').textContent = state.className; }
-  if(id==='score'){ renderScores(); }
-  if(id==='wheel'){ renderPickedChips(); }
-}
-function stopAll(){
-  clearChalTimer();
-  chalPickMode();
-  stopSlot();
-  stopBeat();
-  stopTL();
-  stopArrow();
-  resetRadioBtns();
-}
-
-/* ---------- 挑战台 ---------- */
-function renderChal(){
-  var g = document.getElementById('chalGrid');
-  var html = '';
-  for(var i=0;i<CHALLENGES.length;i++){
-    var c = CHALLENGES[i];
-    html += '<button class="chal-item'+(i===chalSel?' sel':'')+'" onclick="pickChal('+i+')">'
-      +'<div class="ci-name">'+c.name+'</div>'
-      +'<div class="ci-dur">'+c.dur+' 秒</div>'
-      +'<div class="ci-tip">'+c.tip+'</div>'
-      +'</button>';
-  }
-  g.innerHTML = html;
-  var dur = document.getElementById('durRow');
-  var opts = [15,30,45,60,90,120,180];
-  var hh = '';
-  for(var j=0;j<opts.length;j++){
-    hh += '<button class="dur-btn'+(opts[j]===chalDur?' sel':'')+'" onclick="pickDur('+opts[j]+')">'+opts[j]+'</button>';
-  }
-  dur.innerHTML = hh;
-}
-function pickChal(i){ chalSel = i; chalDur = CHALLENGES[i].dur; renderChal(); }
-function pickDur(d){ chalDur = d; renderChal(); }
-function chalPickMode(){
-  document.getElementById('chalPick').style.display = '';
-  document.getElementById('chalStage').style.display = 'none';
-  document.getElementById('chalCount').style.display = 'none';
-  document.getElementById('chalDone').style.display = 'none';
-}
-function clearChalTimer(){
-  if(chalTimer){ clearInterval(chalTimer); chalTimer = null; }
-}
-function startChallenge(){
-  var c = CHALLENGES[chalSel];
-  clearChalTimer();
-  document.getElementById('chalPick').style.display = 'none';
-  document.getElementById('chalStage').style.display = 'none';
-  document.getElementById('chalDone').style.display = 'none';
-  document.getElementById('chalCount').style.display = '';
-  var numEl = document.getElementById('cntNum');
-  var n = 3;
-  numEl.textContent = n;
-  Sound.count();
-  var iv = setInterval(function(){
-    n--;
-    if(n > 0){ numEl.textContent = n; Sound.count(); }
-    else{
-      clearInterval(iv);
-      document.getElementById('chalCount').style.display = 'none';
-      Sound.go();
-      runChallenge();
-    }
-  }, 1000);
-  chalTimer = iv;
-}
-function runChallenge(){
-  var c = CHALLENGES[chalSel];
-  chalTotal = chalDur; chalRemain = chalDur;
-  document.getElementById('stgProject').textContent = c.name;
-  document.getElementById('stgTip').textContent = c.tip;
-  document.getElementById('chalStage').style.display = '';
-  paintChal();
-  chalTimer = setInterval(function(){
-    chalRemain--;
-    paintChal();
-    if(chalRemain <= 0){ finishChallenge(); }
-    else if(chalRemain <= 5){ Sound.beep(); }
-  }, 1000);
-}
-function paintChal(){
-  var m = Math.floor(chalRemain/60), s = chalRemain%60;
-  document.getElementById('stgTime').textContent = (m<10?'0':'')+m+':'+(s<10?'0':'')+s;
-  var pct = chalTotal>0 ? Math.round(chalRemain/chalTotal*100) : 0;
-  document.getElementById('stgFill').style.width = pct+'%';
-  document.getElementById('stgTime').className = 'stage-time'+(chalRemain<=10?' warn':'');
-}
-function finishChallenge(){
-  clearChalTimer();
-  Sound.whistle();
-  setTimeout(function(){ Sound.cheer(); }, 600);
-  document.getElementById('chalStage').style.display = 'none';
-  document.getElementById('doneTip').textContent = CHALLENGES[chalSel].name+' 坚持 '+chalTotal+' 秒，全班鼓掌！';
-  document.getElementById('chalDone').style.display = '';
-}
-function stopChallenge(){ finishChallenge(); }
-function backToPick(){ clearChalTimer(); chalPickMode(); }
-
-/* ---------- 大转盘（项目） ---------- */
-function buildWheel(){
-  var g = document.getElementById('wheelG');
-  var n = WHEEL_ITEMS.length;
-  var seg = 360/n;
-  var html = '';
-  for(var i=0;i<n;i++){
-    var a0 = (i*seg-90)*Math.PI/180;
-    var a1 = ((i+1)*seg-90)*Math.PI/180;
-    var x0 = 150+140*Math.cos(a0), y0 = 150+140*Math.sin(a0);
-    var x1 = 150+140*Math.cos(a1), y1 = 150+140*Math.sin(a1);
-    var large = seg>180 ? 1 : 0;
-    html += '<path d="M150,150 L'+x0.toFixed(1)+','+y0.toFixed(1)+' A140,140 0 '+large+' 1 '+x1.toFixed(1)+','+y1.toFixed(1)+' Z" fill="'+WHEEL_COLORS[i%WHEEL_COLORS.length]+'" stroke="#14162B" stroke-width="2"/>';
-  }
-  for(var k=0;k<n;k++){
-    var mid = (k*seg+seg/2-90)*Math.PI/180;
-    var tx = 150+100*Math.cos(mid), ty = 150+100*Math.sin(mid);
-    html += '<text x="'+tx.toFixed(1)+'" y="'+ty.toFixed(1)+'" text-anchor="middle" dominant-baseline="central" font-size="'+(n>=8?13:15)+'" font-weight="600" fill="#14162B">'+WHEEL_ITEMS[k]+'</text>';
-  }
-  g.innerHTML = html;
-  g.style.transform = 'rotate(0deg)';
-  wheelRot = 0;
-}
-function randInt(n){
-  try{
-    var a = new Uint32Array(1);
-    window.crypto.getRandomValues(a);
-    return a[0] % n;
-  }catch(e){ return Math.floor(Math.random()*n); }
-}
-function randFloat(){
-  try{
-    var a = new Uint32Array(1);
-    window.crypto.getRandomValues(a);
-    return a[0] / 4294967296;
-  }catch(e){ return Math.random(); }
-}
-function spinWheel(){
-  if(wheelSpinning){ return; }
-  wheelSpinning = true;
-  Sound.beep();
-  document.getElementById('wrLabel').textContent = '转盘旋转中……';
-  document.getElementById('wrName').textContent = '？';
-  document.getElementById('wheelAction').style.display = 'none';
-  document.getElementById('waDurRow').style.display = 'none';
-  var n = WHEEL_ITEMS.length;
-  var seg = 360/n;
-  var target = randInt(n);
-  if(lastWheelIdx !== null && target === lastWheelIdx && n > 1){
-    target = (target + 1 + randInt(n-1)) % n;
-  }
-  lastWheelIdx = target;
-  var targetCenter = target*seg + seg/2;
-  var jitter = (randFloat()-0.5)*seg*0.6;
-  var cur = ((wheelRot%360)+360)%360;
-  var need = (360 - targetCenter - cur + 720)%360;
-  var turns = 5 + randInt(3);
-  var final = wheelRot + 360*turns + need + jitter;
-  var g = document.getElementById('wheelG');
-  g.style.transition = 'transform 4.2s cubic-bezier(0.12,0.8,0.2,1)';
-  g.style.transform = 'rotate('+final+'deg)';
-  wheelRot = final;
-  setTimeout(function(){
-    wheelSpinning = false;
-    var result = WHEEL_ITEMS[target];
-    document.getElementById('wrLabel').textContent = '恭喜！抽中了——';
-    document.getElementById('wrName').textContent = result;
-    document.getElementById('wheelAction').style.display = '';
-    Sound.cheer();
-  }, 4400);
-}
-function showWheelDur(){
-  document.getElementById('wheelAction').style.display = 'none';
-  document.getElementById('waDurRow').style.display = 'flex';
-}
-function wheelGo(d){
-  var name = document.getElementById('wrName').textContent;
-  var idx = -1;
-  for(var i=0;i<CHALLENGES.length;i++){ if(CHALLENGES[i].name === name){ idx = i; break; } }
-  if(idx < 0){
-    for(var j=0;j<CHALLENGES.length;j++){
-      if(CHALLENGES[j].name.indexOf(name) > -1 || name.indexOf(CHALLENGES[j].name) > -1){ idx = j; break; }
-    }
-  }
-  if(idx < 0){ idx = 0; }
-  chalSel = idx;
-  chalDur = d;
-  showPage('challenge');
-  renderChal();
-  startChallenge();
-}
-function wheelMode(m){
-  document.getElementById('wtProj').classList.toggle('sel', m==='proj');
-  document.getElementById('wtName').classList.toggle('sel', m==='name');
-  document.getElementById('wheelProjView').style.display = m==='proj' ? '' : 'none';
-  document.getElementById('wheelNameView').style.display = m==='name' ? '' : 'none';
-}
-
-/* ---------- 随机点将（老虎机） ---------- */
-function stopSlot(){
-  if(slotTimer){ clearTimeout(slotTimer); slotTimer = null; }
-}
-function spinName(){
-  var st = state.students||[];
-  if(st.length===0){ toast('请先回主页点一下班级按钮'); return; }
-  var noRep = document.getElementById('noRepeat').checked;
-  var pool = [];
-  for(var i=0;i<st.length;i++){
-    if(!noRep || state.picked.indexOf(i)<0){ pool.push(i); }
-  }
-  if(pool.length===0){
-    state.picked = [];
-    save();
-    pool = [];
-    for(var j=0;j<st.length;j++){ pool.push(j); }
-    toast('全班都点过啦，自动重新开始');
-  }
-  var finalIdx = pool[Math.floor(Math.random()*pool.length)];
-  var nameEl = document.getElementById('slotName');
-  var delay = 55;
-  var steps = 0;
-  stopSlot();
-  Sound.beep();
-  function step(){
-    var showIdx = Math.floor(Math.random()*st.length);
-    nameEl.textContent = st[showIdx];
-    steps++;
-    if(delay < 300){
-      delay = delay*1.13;
-      slotTimer = setTimeout(step, delay);
-    } else {
-      nameEl.textContent = st[finalIdx];
-      if(state.picked.indexOf(finalIdx)<0){ state.picked.push(finalIdx); }
-      save();
-      renderPickedChips();
-      Sound.cheer();
-      toast('请 '+st[finalIdx]+' 起立！');
-    }
-  }
-  slotTimer = setTimeout(step, delay);
-}
-function resetPicked(){
-  state.picked = [];
-  save();
-  renderPickedChips();
-  toast('点名已重置，全员待命');
-}
-function renderPickedChips(){
-  var st = state.students||[];
-  var box = document.getElementById('pickedChips');
-  var info = document.getElementById('slotInfo');
-  if(st.length===0){ info.textContent = '回主页点班级按钮选班级，名单就自动加载'; box.innerHTML=''; return; }
-  info.textContent = '已点 '+state.picked.length+' / '+st.length+' 人';
-  var html = '';
-  for(var i=0;i<st.length;i++){
-    html += '<span class="picked-chip'+(state.picked.indexOf(i)>=0?' done':'')+'">'+st[i]+'</span>';
-  }
-  box.innerHTML = html;
-}
-
-/* ---------- 计分板 ---------- */
-function renderScores(){
-  var g = document.getElementById('scoreGrid');
-  var html = '';
-  var max = Math.max.apply(null, state.scores.concat([0]));
-  for(var i=0;i<4;i++){
-    var lead = state.scores[i]>0 && state.scores[i]===max;
-    html += '<div class="team-card '+TEAM_DEFS[i].cls+(lead?' lead':'')+'">'
-      +'<div class="team-name" onclick="renameTeam('+i+')" style="cursor:pointer;">'+state.teamNames[i]+'</div>'
-      +'<div class="team-score" onclick="setScore('+i+')" style="cursor:pointer;">'+state.scores[i]+'</div>'
-      +'<div class="team-btns">'
-      +'<button class="tb-btn minus" onclick="addScore('+i+',-1)">−1</button>'
-      +'<button class="tb-btn plus" onclick="addScore('+i+',1)">＋1</button>'
-      +'<button class="tb-btn plus" onclick="addScore('+i+',5)">＋5</button>'
-      +'</div></div>';
-  }
-  g.innerHTML = html;
-}
-function addScore(i,d){
-  state.scores[i] = state.scores[i]+d;
-  if(state.scores[i]<0){ state.scores[i]=0; }
-  save();
-  renderScores();
-  if(d>0){ Sound.tick(true); } else { Sound.tick(false); }
-}
-function renameTeam(i){
-  var v = prompt('给队伍改个名字：', state.teamNames[i]);
-  if(v && v.trim()){ state.teamNames[i]=v.trim(); save(); renderScores(); }
-}
-function setScore(i){
-  var v = prompt('直接输入 '+state.teamNames[i]+' 的分数：', state.scores[i]);
-  if(v!==null && v!==''){
-    var n = parseInt(v,10);
-    if(!isNaN(n) && n>=0){ state.scores[i]=n; save(); renderScores(); }
-    else{ toast('请输入大于等于0的数字'); }
-  }
-}
-function resetScores(){
-  if(confirm('确定四队分数全部清零吗？')){
-    state.scores=[0,0,0,0]; save(); renderScores(); Sound.beep();
-  }
-}
-
-/* ---------- 节拍跟练台 ---------- */
-function initBeatDots(){
-  var d = '';
-  for(var i=0;i<8;i++){ d += '<div class="bdot"></div>'; }
-  document.getElementById('beatDots').innerHTML = d;
-}
-function paintBeat(){
-  var beatInEight = beatCount%8;
-  document.getElementById('beatNum').textContent = beatInEight+1;
-  document.getElementById('beatEighth').innerHTML = '第 <b>'+(Math.floor(beatCount/8)+1)+'</b> 个 8 拍';
-  var dots = document.getElementById('beatDots').children;
-  for(var i=0;i<8;i++){ dots[i].className = 'bdot'+(i<=beatInEight?' on':''); }
-}
-function beatStep(){
-  var beatInEight = beatCount%8;
-  Sound.tick(beatInEight===0);
-  paintBeat();
-  beatCount++;
-  beatTimer = setTimeout(beatStep, 60000/bpm);
-}
-function toggleBeat(){
-  if(beatRun){ stopBeat(); }
-  else{
-    beatRun = true;
-    beatCount = 0;
-    document.getElementById('beatBtn').textContent = '停止';
-    Sound.ensure();
-    beatStep();
-  }
-}
-function stopBeat(){
-  if(beatTimer){ clearTimeout(beatTimer); beatTimer=null; }
-  beatRun = false;
-  document.getElementById('beatBtn').textContent = '开始';
-}
-function setBpm(v){ bpm=v; document.getElementById('bpmVal').textContent=v; }
-function stepBpm(d){
-  var v = bpm+d;
-  if(v<40){ v=40; }
-  if(v>200){ v=200; }
-  setBpm(v);
-}
-
-/* ---------- 红绿灯 ---------- */
-function gameTab(t){
-  document.getElementById('gtTL').classList.toggle('sel', t==='tl');
-  document.getElementById('gtArrow').classList.toggle('sel', t==='arrow');
-  document.getElementById('gameTL').style.display = t==='tl' ? '' : 'none';
-  document.getElementById('gameArrow').style.display = t==='arrow' ? '' : 'none';
-  stopTL();
-  stopArrow();
-}
-function setTL(s){
-  tlState = s;
-  var f = document.getElementById('tlFace');
-  var w = document.getElementById('tlWord');
-  var sub = document.getElementById('tlSub');
-  if(s==='g'){
-    f.className = 'tl-face g';
-    w.textContent = '动！';
-    sub.textContent = '原地跑 / 开合跳，动起来！';
-    Sound.green();
-  } else {
-    f.className = 'tl-face r';
-    w.textContent = '停！';
-    sub.textContent = '马上定住！谁动了下场当裁判';
-    Sound.red();
-  }
-}
-function tlToggleAuto(){
-  setTL(tlState==='g' ? 'r' : 'g');
-  if(tlRun && tlAuto){
-    if(tlTimer){ clearTimeout(tlTimer); }
-    tlTimer = setTimeout(tlToggleAuto, 2000+Math.random()*2500);
-  }
-}
-function toggleTL(){
-  if(tlRun){ stopTL(); }
-  else{
-    tlRun = true;
-    document.getElementById('tlBtn').textContent = '结束游戏';
-    Sound.ensure();
-    setTL('g');
-    if(gameMusicOn){ Music.play(GAME_BGM); }
-    if(tlAuto){
-      tlTimer = setTimeout(tlToggleAuto, 2000+Math.random()*2500);
-    }
-  }
-}
-function stopTL(){
-  if(tlTimer){ clearTimeout(tlTimer); tlTimer=null; }
-  tlRun = false;
-  Music.stop();
-  document.getElementById('tlBtn').textContent = '开始游戏';
-  var f = document.getElementById('tlFace');
-  f.className = 'tl-face';
-  document.getElementById('tlWord').textContent = '红绿灯';
-  document.getElementById('tlSub').textContent = '绿=动（原地跑/开合跳） 红=马上定住！';
-}
-function toggleTLMode(){
-  tlAuto = !tlAuto;
-  document.getElementById('tlModeBtn').textContent = '模式：'+(tlAuto?'自动':'手动');
-  document.getElementById('tlManualBtn').style.display = tlAuto ? 'none' : '';
-  if(tlTimer){ clearTimeout(tlTimer); tlTimer=null; }
-  if(tlRun && tlAuto){ tlTimer = setTimeout(tlToggleAuto, 2000+Math.random()*2500); }
-  toast(tlAuto ? '自动模式：屏幕自动切换' : '手动模式：点「变！」切换');
-}
-function manualTL(){ if(tlRun){ tlToggleAuto(); } }
-
-/* ---------- 方向快闪 ---------- */
-var ARROWS = [
-  {ch:'↑', act:'上 = 原地纵跳'},
-  {ch:'↓', act:'下 = 快速下蹲'},
-  {ch:'←', act:'左 = 向左单脚跳'},
-  {ch:'→', act:'右 = 向右单脚跳'}
-];
-function pickSpeed(btn){
-  var btns = document.querySelectorAll('.speed-btn');
-  for(var i=0;i<btns.length;i++){ btns[i].classList.remove('sel'); }
-  btn.classList.add('sel');
-  arrowMs = parseInt(btn.getAttribute('data-ms'),10);
-  if(arrowRun){
-    if(arrowTimer){ clearTimeout(arrowTimer); }
-    arrowTimer = setTimeout(nextArrow, arrowMs);
-  }
-}
-function nextArrow(){
-  var a = ARROWS[Math.floor(Math.random()*4)];
-  document.getElementById('arrowBig').textContent = a.ch;
-  document.getElementById('arrowAct').textContent = a.act;
-  Sound.tick(true);
-  arrowTimer = setTimeout(nextArrow, arrowMs);
-}
-function toggleArrow(){
-  if(arrowRun){ stopArrow(); }
-  else{
-    arrowRun = true;
-    document.getElementById('arrowBtn').textContent = '结束游戏';
-    Sound.ensure();
-    if(gameMusicOn){ Music.play(GAME_BGM); }
-    nextArrow();
-  }
-}
-function stopArrow(){
-  if(arrowTimer){ clearTimeout(arrowTimer); arrowTimer=null; }
-  arrowRun = false;
-  Music.stop();
-  document.getElementById('arrowBtn').textContent = '开始游戏';
-  document.getElementById('arrowBig').textContent = '↑';
-  document.getElementById('arrowAct').textContent = '上 = 原地纵跳 · 下 = 快速下蹲 · 左/右 = 向侧单脚跳';
-}
-
-/* ---------- 配乐 / 体操音乐 ---------- */
-function toggleGameMusic(){
-  gameMusicOn = !gameMusicOn;
-  var b = document.getElementById('gtMusic');
-  if(b){ b.textContent = '🎵 配乐:' + (gameMusicOn ? '开' : '关'); }
-  if(!gameMusicOn){ Music.stop(); }
-  else if(tlRun || arrowRun){ Music.play(GAME_BGM); }
-}
-function playRadio(src, id){
-  if(Music.isPlaying(src)){ Music.stop(); resetRadioBtns(); return; }
-  Music.play(src);
-  resetRadioBtns();
-  var b = document.getElementById(id);
-  if(b){ b.style.borderColor = 'var(--teal)'; b.style.color = 'var(--teal)'; }
-}
-function stopRadio(){ Music.stop(); resetRadioBtns(); }
-function resetRadioBtns(){
-  var ids = ['bgmQicai','bgmFeng'];
-  for(var i=0;i<ids.length;i++){
-    var b = document.getElementById(ids[i]);
-    if(b){ b.style.borderColor = ''; b.style.color = ''; }
-  }
-}
-
-/* ---------- 设置 ---------- */
-function openSettings(){
-  document.getElementById('setClassName').value = state.className;
-  document.getElementById('setStudents').value = (state.students||[]).join('\n');
-  document.getElementById('settingsMask').classList.add('show');
-}
-function closeSettings(){ document.getElementById('settingsMask').classList.remove('show'); }
-function saveSettings(){
-  state.className = document.getElementById('setClassName').value.trim() || '我的班级';
-  var txt = document.getElementById('setStudents').value;
-  var arr = [];
-  var lines = txt.split(/\r?\n/);
-  for(var i=0;i<lines.length;i++){
-    var n = lines[i].trim();
-    if(n){ arr.push(n); }
-  }
-  state.students = arr;
-  state.picked = [];
-  save();
-  closeSettings();
-  document.getElementById('homeClassName').textContent = state.className;
-  renderPickedChips();
-  toast('已保存：'+state.className+' · '+arr.length+' 名学生');
-}
-function exportData(){
-  var blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = '班级体育大屏备份.json';
-  a.click();
-  toast('备份文件已下载，请妥善保存');
-}
-function importData(input){
-  var f = input.files[0];
-  if(!f){ return; }
-  var r = new FileReader();
-  r.onload = function(){
-    try{
-      var s = JSON.parse(r.result);
-      if(!s || typeof s !== 'object'){ throw new Error('bad'); }
-      if(s.className===undefined || s.students===undefined){ throw new Error('bad'); }
-      state = s;
-      save();
-      document.getElementById('homeClassName').textContent = state.className;
-      renderScores();
-      renderPickedChips();
-      toast('导入成功！');
-    }catch(e){ toast('文件格式不对，导入失败'); }
-    input.value = '';
-  };
-  r.readAsText(f);
-}
-function clearAll(){
-  if(confirm('确定清空全部数据吗？（班级名单、分数、点名记录都会没了）')){
-    localStorage.removeItem(STORAGE_KEY);
-    state = load();
-    document.getElementById('homeClassName').textContent = state.className;
-    renderClassRow();
-    renderScores();
-    renderPickedChips();
-    closeSettings();
-    toast('已恢复出厂状态');
-  }
-}
-
-/* ---------- 初始化 ---------- */
-(function init(){
-  if(!state.soundOn){
-    document.getElementById('btnSound').textContent = '音效关';
-    document.getElementById('btnSound').classList.add('off');
-  }
-  document.getElementById('homeClassName').textContent = state.className;
-  renderClassRow();
-  renderChal();
-  buildWheel();
-  initBeatDots();
-  renderPickedChips();
-})();
-</script>
 </body>
 </html>
