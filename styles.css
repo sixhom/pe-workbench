@@ -298,10 +298,69 @@ html, body {
     flex-wrap: wrap;
 }
 
+/* ── 花名册：年级 → 班级 两级导航 ── */
+.roster-nav-bar { align-items: flex-start; }
+
+.grade-class-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.grade-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.grade-tab {
+    padding: 8px 18px;
+    border-radius: 22px;
+    border: 1px solid var(--gray-300);
+    background: var(--white);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--gray-600);
+    transition: all var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.grade-tab.active {
+    background: var(--primary);
+    color: var(--white);
+    border-color: var(--primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .12);
+}
+
+.grade-tab:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
+
+.grade-tab-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: 10px;
+    background: var(--gray-100, #f1f3f5);
+    color: var(--gray-600);
+    white-space: nowrap;
+}
+
+.grade-tab.active .grade-tab-badge {
+    background: rgba(255, 255, 255, .25);
+    color: var(--white);
+}
+
+/* 班级子菜单：缩进 + 左引导线，视觉上明确从属于上方年级 */
 .class-tabs {
     display: flex;
     gap: 6px;
     flex-wrap: wrap;
+    padding-left: 14px;
+    border-left: 3px solid var(--primary, #1976d2);
 }
 
 .class-tab {
@@ -1501,7 +1560,12 @@ body.page-scoreentry-active .fab-btn {
 
     /* Toolbar */
     .toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
-    .class-tabs { justify-content: flex-start; overflow-x: auto; padding-bottom: 4px; }
+    .roster-nav-bar { align-items: stretch; }
+    .grade-class-nav { gap: 6px; }
+    .grade-tabs { justify-content: flex-start; overflow-x: auto; padding-bottom: 4px; flex-wrap: nowrap; }
+    .grade-tab { padding: 6px 14px; font-size: 13px; white-space: nowrap; }
+    .grade-tab-badge { font-size: 10px; padding: 1px 6px; }
+    .class-tabs { justify-content: flex-start; overflow-x: auto; padding-bottom: 4px; flex-wrap: nowrap; }
     .class-tab { padding: 6px 12px; font-size: 12px; white-space: nowrap; }
     .filter-bar { flex-wrap: wrap; width: 100%; }
     .search-input { flex: 1; min-width: 0; font-size: 12px; }
@@ -1743,6 +1807,27 @@ body.page-scoreentry-active .fab-btn {
 .warmup-prohibit-box { background: #FFEBEE; border: 1px solid #FFCDD2; }
 .warmup-prohibit-box .warmup-part-title { color: #C62828; border-left-color: #C62828; }
 .warmup-prohibit-list { margin: 8px 0 0 22px; font-size: 13.5px; color: #B71C1C; line-height: 1.9; }
+
+/* 跳绳课周计划 */
+.rope-head { background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 14px; box-shadow: var(--shadow); }
+.rope-head h3 { margin: 0 0 8px; font-size: 16px; color: var(--gray-800); }
+.rope-sub { color: var(--primary-dark) !important; font-weight: 600; font-size: 13px; margin: 0 0 8px; }
+.rope-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.rope-tags span { font-size: 12px; padding: 3px 10px; border-radius: 10px; background: var(--primary-bg); color: var(--primary-dark); }
+.rope-toolbar { display: flex; gap: 8px; }
+.rope-notes { background: #FFF3E0; border: 1px solid #FFE0B2; border-radius: var(--radius); padding: 12px 14px; margin-bottom: 14px; font-size: 13px; color: #E65100; }
+.rope-notes b { display: block; margin-bottom: 4px; color: #E65100; }
+.rope-notes ul { margin: 4px 0 0 20px; line-height: 1.8; }
+.rope-week { background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px; box-shadow: var(--shadow); }
+.rope-week-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.rope-wk { flex: 0 0 auto; background: var(--primary); color: #fff; font-weight: 700; font-size: 13px; padding: 4px 10px; border-radius: 12px; }
+.rope-theme { font-size: 16px; font-weight: 800; color: var(--primary-dark); }
+.rope-goal { font-size: 13px; color: var(--gray-700); margin-bottom: 8px; }
+.rope-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rope-tbl th { background: var(--primary-bg); color: var(--primary-dark); text-align: left; padding: 7px 10px; border: 1px solid var(--gray-200); font-weight: 600; }
+.rope-tbl td { border: 1px solid var(--gray-200); padding: 7px 10px; color: var(--gray-700); vertical-align: top; }
+.rope-tbl .rope-sets { white-space: nowrap; font-weight: 600; color: var(--primary-dark); }
+.rope-adv { margin-top: 8px; font-size: 12.5px; color: #1565C0; background: #E3F2FD; border: 1px solid #BBDEFB; border-radius: 8px; padding: 8px 10px; }
 
 .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin: 10px 0 18px; }
 .detail-grid div { font-size: 13px; color: var(--gray-700); }
