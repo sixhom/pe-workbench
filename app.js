@@ -1647,31 +1647,126 @@ function updateSeToolbar() {
     bar.classList.toggle('visible', seState.step === 3);
 }
 
-// ===== 一分钟跳绳计时音乐 =====
-function toggleRopeMusic() {
-    const a = document.getElementById('ropeAudio');
+// ===== 一分钟跳绳计时音乐（播放器：播放/暂停 ▶⏸ + 重置 ⏹ + 进度条） =====
+let _ropeScrubbing = false;   // 拖动进度条时暂停自动刷新，避免跳动
+
+function _ropeEl() {
+    return {
+        a: document.getElementById('ropeAudio'),
+        playBtn: document.getElementById('ropePlayBtn'),
+        seek: document.getElementById('ropeSeek'),
+        time: document.getElementById('ropeTime')
+    };
+}
+
+// 时间格式化 mm:ss
+function _ropeFmt(s) {
+    if (!isFinite(s) || s < 0) s = 0;
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return m + ':' + (sec < 10 ? '0' : '') + sec;
+}
+
+// 播放/暂停 切换（▶️ 点击播放；⏸️ 点击暂停并从暂停处继续）
+function ropeToggle() {
+    const { a } = _ropeEl();
     if (!a) return;
-    if (a.paused) {
-        a.currentTime = 0;
-        a.play().then(() => updateRopeMusicUI(true)).catch(() => showToast('音乐播放失败，请检查音频文件', 'error'));
+    if (a.paused || a.ended) {
+        a.play().then(ropePaint).catch(() => showToast('音乐播放失败，请检查音频文件', 'error'));
     } else {
         a.pause();
-        updateRopeMusicUI(false);
+    }
+    ropePaint();
+}
+
+// 重置：跳回 0:00，若 needStop=true 则停止播放（方便下一组重新开测）
+function ropeReset(needStop) {
+    const { a } = _ropeEl();
+    if (!a) return;
+    a.currentTime = 0;
+    if (needStop !== false && !a.paused) a.pause();
+    ropePaint();
+}
+
+// 用户拖动进度条：跳转到百分比对应位置
+function ropeSeekTo(pct) {
+    const { a } = _ropeEl();
+    if (!a) return;
+    const d = a.duration;
+    if (isFinite(d) && d > 0) {
+        a.currentTime = d * (pct / 100);
+        ropePaint();
+    }
+    _ropeScrubbing = false;   // 松手结束拖动
+}
+
+// 拖动进度条过程中：暂停自动刷新，仅实时预览时间，松手(change)才真正定位
+function ropeSeekDrag(pct) {
+    _ropeScrubbing = true;
+    const { a, time } = _ropeEl();
+    if (!a) return;
+    const d = a.duration;
+    if (isFinite(d) && d > 0 && time) {
+        time.textContent = _ropeFmt(d * (pct / 100)) + ' / ' + _ropeFmt(d);
     }
 }
-function updateRopeMusicUI(playing) {
-    const icon = document.getElementById('ropeMusicIcon');
-    const label = document.getElementById('ropeMusicLabel');
-    const btn = document.getElementById('ropeMusicBtn');
-    if (icon) icon.textContent = playing ? '⏸️' : '🎵';
-    if (label) label.textContent = playing ? '停止计时音乐' : '一分钟计时音乐';
-    if (btn) btn.classList.toggle('playing', playing);
+
+// 按音频实时进度刷新按钮图标 / 进度条 / 时间文本
+function ropePaint() {
+    const { a, playBtn, seek, time } = _ropeEl();
+    if (!a || !playBtn) return;
+    const d = a.duration;
+    const cur = a.currentTime || 0;
+    const playing = !a.paused && !a.ended;
+    // 播放/暂停图标
+    playBtn.textContent = playing ? '⏸' : '▶';
+    playBtn.classList.toggle('rope-playing', playing);
+    playBtn.title = playing ? '暂停' : '播放';
+    // 时间
+    if (time) time.textContent = _ropeFmt(cur) + ' / ' + (isFinite(d) ? _ropeFmt(d) : '--:--');
+    // 进度条（拖动中不覆盖用户输入）
+    if (seek && !_ropeScrubbing) {
+        if (isFinite(d) && d > 0) {
+            const pct = Math.min(100, (cur / d) * 100);
+            seek.value = pct.toFixed(1);
+        }
+    }
 }
+
+// 停止并复位（离开跳绳项目 / 切回步骤时调用）
 function pauseRopeMusic() {
-    const a = document.getElementById('ropeAudio');
-    if (a && !a.paused) { a.pause(); a.currentTime = 0; }
-    updateRopeMusicUI(false);
+    const { a } = _ropeEl();
+    if (a) { if (!a.paused) a.pause(); a.currentTime = 0; }
+    ropePaint();
 }
+
+// 播放器显示开关（仅在「一分钟跳绳」项目显示）
+function ropeShowPlayer(show) {
+    const el = document.getElementById('ropePlayer');
+    if (!el) return;
+    el.style.display = show ? 'inline-flex' : 'none';
+    if (!show) pauseRopeMusic();
+}
+
+// —— 音频事件：加载后、播放中、结束 ——
+function _ropeBindEvents() {
+    const a = document.getElementById('ropeAudio');
+    if (!a || a._ropeBound) return;
+    a._ropeBound = true;
+    a.addEventListener('loadedmetadata', ropePaint);
+    a.addEventListener('timeupdate', ropePaint);
+    a.addEventListener('play', ropePaint);
+    a.addEventListener('pause', ropePaint);
+    a.addEventListener('ended', () => {
+        // 自然播放结束：保持停在结尾，重置按钮可一键回 0:00
+        ropePaint();
+        const pb = document.getElementById('ropePlayBtn');
+        if (pb) pb.textContent = '▶';
+        pb && pb.classList.remove('rope-playing');
+    });
+}
+document.addEventListener('DOMContentLoaded', _ropeBindEvents);
+if (document.readyState !== 'loading') _ropeBindEvents();
 
 // ===== 录入界面：快速分组（性别 / 身高 / 性别+身高） =====
 // 计算某分组内「已录入」人数
@@ -1831,13 +1926,8 @@ function renderSeEntryTable() {
     const projInfo = SE_PROJECTS.find(p => p.code === project);
     document.getElementById('seEntryTitle').textContent = `${klass.replace('班','')}班 · ${projInfo.name}`;
 
-    // 一分钟跳绳：显示「一分钟计时音乐」按钮，其它项目隐藏并停止播放
-    const ropeBtn = document.getElementById('ropeMusicBtn');
-    if (ropeBtn) {
-        const isRope = seState.project === 'skipRope';
-        ropeBtn.style.display = isRope ? '' : 'none';
-        if (!isRope) pauseRopeMusic();
-    }
+    // 一分钟跳绳：显示「一分钟计时音乐」播放器，其它项目隐藏并停止复位
+    ropeShowPlayer(seState.project === 'skipRope');
 
     // 分组方式
     const gmSel = document.getElementById('seGroupMode');
