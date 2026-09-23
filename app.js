@@ -1681,26 +1681,31 @@ function ropeToggle() {
 
 // 重置到开头：跳回 0:00。
 // ⚠️ 移动端（尤其 iOS Safari）兼容处理：
-//   1) iOS 默认不预载音频（seekable 为空），currentTime=0 会被静默忽略；
-//   2) iOS 在 pause() 后同帧设置 currentTime 经常被吞（WebKit 已知坑）。
-// 因此这里：可定位就延迟到下一帧再 set；不可定位就先 load() 复位；并二次确认。
+//   iOS 经常静默忽略 currentTime=0（不预载 / pause 后同帧 seek 被吞）。
+//   策略：先正常置零并监听 seeked 确认；若 200ms 内没真正归零（被忽略），
+//   则强制 a.load() 把播放位置复位到开头 —— 这是移动端最可靠的重置方式。
 function ropeSeekToStart() {
     const { a } = _ropeEl();
     if (!a) return;
-    const setZero = () => {
-        try { a.currentTime = 0; } catch (e) {}
-        // iOS 偶发 seek 不生效，二次确认（避免卡在结尾/中途）
-        if (a.currentTime > 0.25) { try { a.currentTime = 0; } catch (e) {} }
+    if (!a.paused) { try { a.pause(); } catch (e) {} }
+    let settled = false;
+    const onSeeked = () => {
+        if (settled) return;
+        settled = true;
+        a.removeEventListener('seeked', onSeeked);
         ropePaint();
     };
-    if (a.seekable && a.seekable.length > 0) {
-        // 已可定位：延迟到下一帧再 set，避免被 pause 状态吞掉
-        setTimeout(setZero, 0);
-    } else {
-        // iOS 未预载：先 load() 把播放位置复位到 0，再确保置零
-        try { a.load(); } catch (e) {}
-        setZero();
-    }
+    a.addEventListener('seeked', onSeeked);
+    try { a.currentTime = 0; } catch (e) {}
+    // 兜底：若 seeked 未触发且仍在非 0 位置（说明本次 seek 被浏览器忽略），强制 load() 复位
+    setTimeout(() => {
+        a.removeEventListener('seeked', onSeeked);
+        if (!settled && a.currentTime > 0.3) {
+            try { a.load(); } catch (e) {}
+            try { a.currentTime = 0; } catch (e) {}
+        }
+        ropePaint();
+    }, 200);
 }
 
 // 重置：跳回 0:00，若 needStop=true 则停止播放（方便下一组重新开测）
