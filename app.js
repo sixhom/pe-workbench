@@ -1679,41 +1679,29 @@ function ropeToggle() {
     ropePaint();
 }
 
-// 重置到开头：跳回 0:00。
-// ⚠️ 移动端（尤其 iOS Safari）兼容处理：
-//   iOS 经常静默忽略 currentTime=0（不预载 / pause 后同帧 seek 被吞）。
-//   策略：先正常置零并监听 seeked 确认；若 200ms 内没真正归零（被忽略），
-//   则强制 a.load() 把播放位置复位到开头 —— 这是移动端最可靠的重置方式。
-function ropeSeekToStart() {
-    const { a } = _ropeEl();
-    if (!a) return;
-    if (!a.paused) { try { a.pause(); } catch (e) {} }
-    let settled = false;
-    const onSeeked = () => {
-        if (settled) return;
-        settled = true;
-        a.removeEventListener('seeked', onSeeked);
-        ropePaint();
-    };
-    a.addEventListener('seeked', onSeeked);
-    try { a.currentTime = 0; } catch (e) {}
-    // 兜底：若 seeked 未触发且仍在非 0 位置（说明本次 seek 被浏览器忽略），强制 load() 复位
-    setTimeout(() => {
-        a.removeEventListener('seeked', onSeeked);
-        if (!settled && a.currentTime > 0.3) {
-            try { a.load(); } catch (e) {}
-            try { a.currentTime = 0; } catch (e) {}
-        }
-        ropePaint();
-    }, 200);
+// 硬重置：克隆一个新的 <audio> 节点替换旧的。
+// 这是跨 iOS Safari / 安卓 WebView 最可靠的重置方式——
+// 移动端经常静默忽略对「旧节点」的 currentTime=0 与 load()，而新节点天生
+// currentTime=0、且处于未播放状态，不依赖任何 seek/load 时序，100% 回到 0:00 并停止。
+function ropeHardReset() {
+    const old = document.getElementById('ropeAudio');
+    if (!old) return;
+    try { old.pause(); } catch (e) {}
+    try {
+        const fresh = old.cloneNode(true);
+        fresh.removeAttribute('_ropeBound');   // 清掉旧绑定标记，确保新节点重新挂事件
+        old.parentNode.replaceChild(fresh, old);
+        _ropeBindEvents();                      // 给新节点重新绑定 loadedmetadata/timeupdate 等
+    } catch (e) {
+        // 极端兜底（理论上不会走到这里）
+        try { old.load(); old.currentTime = 0; } catch (e2) {}
+    }
+    ropePaint();
 }
 
-// 重置：跳回 0:00，若 needStop=true 则停止播放（方便下一组重新开测）
+// 重置：跳回 0:00 并停止播放（方便下一组重新开测）
 function ropeReset(needStop) {
-    const { a } = _ropeEl();
-    if (!a) return;
-    if (needStop !== false && !a.paused) a.pause();
-    ropeSeekToStart();
+    ropeHardReset();
 }
 
 // 用户拖动进度条：跳转到百分比对应位置
@@ -1763,9 +1751,7 @@ function ropePaint() {
 
 // 停止并复位（离开跳绳项目 / 切回步骤时调用）
 function pauseRopeMusic() {
-    const { a } = _ropeEl();
-    if (a) { if (!a.paused) a.pause(); }
-    ropeSeekToStart();
+    ropeHardReset();
 }
 
 // 播放器显示开关（仅在「一分钟跳绳」项目显示）
