@@ -1679,13 +1679,36 @@ function ropeToggle() {
     ropePaint();
 }
 
+// 重置到开头：跳回 0:00。
+// ⚠️ 移动端（尤其 iOS Safari）兼容处理：
+//   1) iOS 默认不预载音频（seekable 为空），currentTime=0 会被静默忽略；
+//   2) iOS 在 pause() 后同帧设置 currentTime 经常被吞（WebKit 已知坑）。
+// 因此这里：可定位就延迟到下一帧再 set；不可定位就先 load() 复位；并二次确认。
+function ropeSeekToStart() {
+    const { a } = _ropeEl();
+    if (!a) return;
+    const setZero = () => {
+        try { a.currentTime = 0; } catch (e) {}
+        // iOS 偶发 seek 不生效，二次确认（避免卡在结尾/中途）
+        if (a.currentTime > 0.25) { try { a.currentTime = 0; } catch (e) {} }
+        ropePaint();
+    };
+    if (a.seekable && a.seekable.length > 0) {
+        // 已可定位：延迟到下一帧再 set，避免被 pause 状态吞掉
+        setTimeout(setZero, 0);
+    } else {
+        // iOS 未预载：先 load() 把播放位置复位到 0，再确保置零
+        try { a.load(); } catch (e) {}
+        setZero();
+    }
+}
+
 // 重置：跳回 0:00，若 needStop=true 则停止播放（方便下一组重新开测）
 function ropeReset(needStop) {
     const { a } = _ropeEl();
     if (!a) return;
-    a.currentTime = 0;
     if (needStop !== false && !a.paused) a.pause();
-    ropePaint();
+    ropeSeekToStart();
 }
 
 // 用户拖动进度条：跳转到百分比对应位置
@@ -1736,8 +1759,8 @@ function ropePaint() {
 // 停止并复位（离开跳绳项目 / 切回步骤时调用）
 function pauseRopeMusic() {
     const { a } = _ropeEl();
-    if (a) { if (!a.paused) a.pause(); a.currentTime = 0; }
-    ropePaint();
+    if (a) { if (!a.paused) a.pause(); }
+    ropeSeekToStart();
 }
 
 // 播放器显示开关（仅在「一分钟跳绳」项目显示）
